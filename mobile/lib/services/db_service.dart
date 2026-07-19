@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
@@ -11,16 +12,29 @@ class DbService {
   DbService._internal();
 
   Database? _database;
+  Future<Database>? _initFuture;
   static const _uuid = Uuid();
 
   Future<Database> get database async {
-    _database ??= await _initDatabase();
-    return _database!;
+    if (_database != null) return _database!;
+    _initFuture ??= _initDatabase();
+    try {
+      _database = await _initFuture!;
+      return _database!;
+    } catch (e) {
+      _initFuture = null;
+      rethrow;
+    }
   }
 
   Future<Database> _initDatabase() async {
-    final dbPath = await getDatabasesPath();
-    final path = p.join(dbPath, 'labbridge_v2.db');
+    String path;
+    if (Platform.environment.containsKey('FLUTTER_TEST')) {
+      path = inMemoryDatabasePath;
+    } else {
+      final dbPath = await getDatabasesPath();
+      path = p.join(dbPath, 'labbridge_v2.db');
+    }
 
     return await openDatabase(
       path,

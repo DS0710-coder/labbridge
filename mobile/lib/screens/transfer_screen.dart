@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../core/config.dart';
 import '../models/folder.dart';
 import '../services/db_service.dart';
 import '../services/transfer_service.dart';
@@ -31,6 +32,9 @@ class _TransferScreenState extends State<TransferScreen> {
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
   TransferProgress? _currentProgress;
   List<Folder> _folders = [];
+  List<Folder> _currentFolderChildren = [];
+  List<Folder> _folderBreadcrumbs = [];
+  // ignore: unused_field
   String? _selectedFolderId;
   final List<String> _completedFiles = [];
   String? _error;
@@ -88,6 +92,18 @@ class _TransferScreenState extends State<TransferScreen> {
     if (widget.sessionId != null) {
       await _connect();
     }
+    await _loadFolderChildren(null);
+  }
+
+  Future<void> _loadFolderChildren(String? parentId) async {
+    final children = await _dbService.getChildFolders(parentId);
+    if (mounted) {
+      setState(() {
+        _currentFolderChildren = children;
+        _selectedFolderId = parentId; // selecting a folder = saving here
+        _transferService.setTargetFolder(parentId);
+      });
+    }
   }
 
   Future<void> _connect() async {
@@ -99,7 +115,7 @@ class _TransferScreenState extends State<TransferScreen> {
     });
 
     // Get worker URL from settings (for now, use default)
-    const workerUrl = 'ws://10.0.2.2:8787';
+    final workerUrl = AppConfig.workerWsUrl;
     await _transferService.connect(widget.sessionId!, workerUrl);
 
     // Send folder tree to PC
@@ -117,13 +133,6 @@ class _TransferScreenState extends State<TransferScreen> {
 
     final file = File(filePath);
     await _transferService.sendFile(file, widget.sessionId ?? '');
-  }
-
-  void _selectFolder(Folder? folder) {
-    setState(() {
-      _selectedFolderId = folder?.id;
-    });
-    _transferService.setTargetFolder(folder?.id);
   }
 
   @override
@@ -413,66 +422,145 @@ class _TransferScreenState extends State<TransferScreen> {
   }
 
   Widget _buildFolderSelector() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFF111118),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF1E1E2E)),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String?>(
-          value: _selectedFolderId,
-          isExpanded: true,
-          dropdownColor: const Color(0xFF111118),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded,
-              color: Color(0xFF6B6B80)),
-          hint: const Text(
-            'Root (no folder)',
-            style: TextStyle(color: Color(0xFF6B6B80), fontSize: 14),
-          ),
-          items: [
-            const DropdownMenuItem<String?>(
-              value: null,
-              child: Text(
-                'Root (no folder)',
-                style: TextStyle(color: Color(0xFFE8E8F0), fontSize: 14),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Breadcrumb
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  setState(() => _folderBreadcrumbs = []);
+                  _loadFolderChildren(null);
+                },
+                child: Text(
+                  'Root',
+                  style: TextStyle(
+                    color: _folderBreadcrumbs.isEmpty
+                        ? const Color(0xFF6C63FF)
+                        : const Color(0xFF6B6B80),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
+              ..._folderBreadcrumbs.asMap().entries.map((entry) {
+                final i = entry.key;
+                final crumb = entry.value;
+                final isLast = i == _folderBreadcrumbs.length - 1;
+                return Row(
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 4),
+                      child: Icon(Icons.chevron_right_rounded,
+                          color: Color(0xFF6B6B80), size: 14),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _folderBreadcrumbs = _folderBreadcrumbs.sublist(0, i + 1);
+                        });
+                        _loadFolderChildren(crumb.id);
+                      },
+                      child: Text(
+                        crumb.name,
+                        style: TextStyle(
+                          color: isLast
+                              ? const Color(0xFF6C63FF)
+                              : const Color(0xFF6B6B80),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              }),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Current save location indicator
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF6C63FF).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.save_rounded, color: Color(0xFF6C63FF), size: 14),
+              const SizedBox(width: 8),
+              Text(
+                _folderBreadcrumbs.isEmpty
+                    ? 'Saving to: Root'
+                    : 'Saving to: ${_folderBreadcrumbs.last.name}',
+                style: const TextStyle(
+                  color: Color(0xFF6C63FF),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // Folder list
+        if (_currentFolderChildren.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'No subfolders — files will save here',
+              style: TextStyle(color: Color(0xFF6B6B80), fontSize: 13),
             ),
-            ..._folders.map((f) => DropdownMenuItem<String?>(
-                  value: f.id,
+          )
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _currentFolderChildren.map((folder) {
+              final folderColor = Color(
+                int.parse('FF${folder.color.replaceAll('#', '')}', radix: 16),
+              );
+              return GestureDetector(
+                onTap: () {
+                  setState(() => _folderBreadcrumbs.add(folder));
+                  _loadFolderChildren(folder.id);
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF111118),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFF1E1E2E)),
+                  ),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.folder_rounded,
-                        color: Color(
-                          int.parse('FF${f.color.replaceAll('#', '')}', radix: 16),
-                        ),
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          f.name,
-                          style: const TextStyle(
-                            color: Color(0xFFE8E8F0),
-                            fontSize: 14,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                      Icon(Icons.folder_rounded, color: folderColor, size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        folder.name,
+                        style: const TextStyle(
+                          color: Color(0xFFE8E8F0),
+                          fontSize: 13,
                         ),
                       ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right_rounded,
+                          color: Color(0xFF6B6B80), size: 14),
                     ],
                   ),
-                )),
-          ],
-          onChanged: (folderId) {
-            final folder = folderId == null
-                ? null
-                : _folders.firstWhere((f) => f.id == folderId);
-            _selectFolder(folder);
-          },
-        ),
-      ),
+                ),
+              );
+            }).toList(),
+          ),
+      ],
     );
   }
 }
