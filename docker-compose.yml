@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: labbridge_secret
       POSTGRES_DB: labbridge_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -24,7 +24,7 @@ services:
     container_name: labbridge_redis
     restart: always
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -48,11 +48,22 @@ services:
       - JWT_SECRET=super-secret-jwt-key-change-in-prod-labbridge
       - JWT_REFRESH_SECRET=super-secret-refresh-key-change-in-prod-labbridge
       - SMS_PROVIDER_KEY=dev
-      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000
+      - CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://localhost:80
       - MAX_FILE_SIZE_MB=500
       - CHUNK_SIZE_KB=512
     ports:
       - "8000:8000"
+
+  webapp:
+    build:
+      context: ./webapp
+      dockerfile: Dockerfile
+    container_name: labbridge_webapp
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
 
 volumes:
   postgres_data:
