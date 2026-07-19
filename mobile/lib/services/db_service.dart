@@ -18,8 +18,13 @@ class DbService {
   Future<Database> get database async {
     if (_database != null) return _database!;
     _initFuture ??= _initDatabase();
-    _database = await _initFuture!;
-    return _database!;
+    try {
+      _database = await _initFuture!;
+      return _database!;
+    } catch (e) {
+      _initFuture = null;
+      rethrow;
+    }
   }
 
   Future<Database> _initDatabase() async {

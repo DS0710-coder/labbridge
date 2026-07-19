@@ -385,7 +385,16 @@ class TransferService extends ChangeNotifier {
   /// Clean up resources
   @override
   void dispose() {
-    disconnect();
+    _subscription?.cancel();
+    _subscription = null;
+    _channel?.sink.close();
+    _channel = null;
+    _derivedKey = null;
+    _currentSessionId = null;
+    _tempSink?.close();
+    _tempSink = null;
+    _tempFile = null;
+    _status = ConnectionStatus.disconnected;
     _connectionStatusController.close();
     _progressController.close();
     _errorController.close();
