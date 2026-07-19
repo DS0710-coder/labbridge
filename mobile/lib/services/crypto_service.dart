@@ -1,51 +1,110 @@
-import 'dart:convert';
-import 'package:cryptography/cryptography.dart';
+import 'dart:typed_data';
+import 'dart:math';
+import 'package:pointycastle/export.dart';
 
 class CryptoService {
-  static final CryptoService _instance = CryptoService._internal();
-  factory CryptoService() => _instance;
-  CryptoService._internal();
+  /// Derive a 256-bit key from session ID using HKDF with SHA-256
+  Uint8List deriveKey(String sessionId) {
+    final ikm = Uint8List.fromList(sessionId.codeUnits);
+    final salt = Uint8List.fromList('labbridge-v2'.codeUnits);
+    final info = Uint8List.fromList('file-transfer'.codeUnits);
 
-  final _aesGcm = AesGcm.with256bits();
-  final _hkdf = Hkdf(
-    hmac: Hmac.sha256(),
-    outputLength: 32, // 256 bits for AES-256
-  );
+    // HKDF-Extract
+    final hmacExtract = HMac(SHA256Digest(), 64)..init(KeyParameter(salt));
+    final prk = Uint8List(hmacExtract.macSize);
+    hmacExtract.update(ikm, 0, ikm.length);
+    hmacExtract.doFinal(prk, 0);
 
-  static final _salt = utf8.encode('LabBridge-Transfer-Salt-v1');
-  static final _info = utf8.encode('LabBridge-AES-Key');
+    // HKDF-Expand
+    const outputLength = 32;
+    final hmacExpand = HMac(SHA256Digest(), 64)..init(KeyParameter(prk));
+    final n = (outputLength + hmacExpand.macSize - 1) ~/ hmacExpand.macSize;
+    final okm = Uint8List(n * hmacExpand.macSize);
+    var prev = Uint8List(0);
 
-  Future<SecretKey> deriveKeyFromPairingToken(String pairingToken) async {
-    final tokenBytes = utf8.encode(pairingToken);
-
-    final secretKey = await _hkdf.deriveKey(
-      secretKey: SecretKey(tokenBytes),
-      nonce: _salt,
-      info: _info,
-    );
-
-    return secretKey;
-  }
-
-  Future<List<int>> decryptChunk(SecretKey key, String base64EncryptedData) async {
-    final combined = base64Decode(base64EncryptedData);
-    if (combined.length < 28) {
-      // 12 (IV) + 16 (Auth Tag) = 28 minimum bytes for empty chunk
-      throw Exception('Invalid encrypted chunk payload (too short)');
+    for (var i = 1; i <= n; i++) {
+      hmacExpand.reset();
+      hmacExpand.update(prev, 0, prev.length);
+      hmacExpand.update(info, 0, info.length);
+      final counterByte = Uint8List.fromList([i]);
+      hmacExpand.update(counterByte, 0, 1);
+      prev = Uint8List(hmacExpand.macSize);
+      hmacExpand.doFinal(prev, 0);
+      okm.setRange((i - 1) * hmacExpand.macSize, i * hmacExpand.macSize, prev);
     }
 
+    return Uint8List.fromList(okm.sublist(0, outputLength));
+  }
+
+  /// Encrypt a chunk using AES-256-GCM
+  /// IV: 8 random bytes + 4 bytes from chunkIndex (big-endian)
+  /// Returns: IV (12) + ciphertext + authTag (16)
+  Uint8List encryptChunk(Uint8List plaintext, Uint8List key, int chunkIndex) {
+    final random = Random.secure();
+    final iv = Uint8List(12);
+
+    // 8 random bytes
+    for (var i = 0; i < 8; i++) {
+      iv[i] = random.nextInt(256);
+    }
+
+    // 4 bytes from chunkIndex (big-endian)
+    iv[8] = (chunkIndex >> 24) & 0xFF;
+    iv[9] = (chunkIndex >> 16) & 0xFF;
+    iv[10] = (chunkIndex >> 8) & 0xFF;
+    iv[11] = chunkIndex & 0xFF;
+
+    final cipher = GCMBlockCipher(AESEngine())
+      ..init(
+        true,
+        AEADParameters(
+          KeyParameter(key),
+          128, // auth tag length in bits
+          iv,
+          Uint8List(0), // no AAD
+        ),
+      );
+
+    final ciphertext = Uint8List(cipher.getOutputSize(plaintext.length));
+    final len = cipher.processBytes(plaintext, 0, plaintext.length, ciphertext, 0);
+    cipher.doFinal(ciphertext, len);
+
+    // Combine: IV + ciphertext (includes auth tag from GCM)
+    final result = Uint8List(12 + ciphertext.length);
+    result.setRange(0, 12, iv);
+    result.setRange(12, result.length, ciphertext);
+
+    return result;
+  }
+
+  /// Decrypt a chunk using AES-256-GCM
+  /// Input: IV (12) + ciphertext + authTag (16) concatenated
+  /// Returns plaintext bytes
+  Uint8List decryptChunk(Uint8List combined, Uint8List key, int chunkIndex) {
     final iv = combined.sublist(0, 12);
-    final ciphertextAndMac = combined.sublist(12);
-    final cipherBytes = ciphertextAndMac.sublist(0, ciphertextAndMac.length - 16);
-    final macBytes = ciphertextAndMac.sublist(ciphertextAndMac.length - 16);
+    final ciphertextWithTag = combined.sublist(12);
 
-    final secretBox = SecretBox(
-      cipherBytes,
-      nonce: iv,
-      mac: Mac(macBytes),
+    final cipher = GCMBlockCipher(AESEngine())
+      ..init(
+        false,
+        AEADParameters(
+          KeyParameter(key),
+          128,
+          iv,
+          Uint8List(0),
+        ),
+      );
+
+    final plaintext = Uint8List(cipher.getOutputSize(ciphertextWithTag.length));
+    final len = cipher.processBytes(
+      ciphertextWithTag,
+      0,
+      ciphertextWithTag.length,
+      plaintext,
+      0,
     );
+    cipher.doFinal(plaintext, len);
 
-    final decrypted = await _aesGcm.decrypt(secretBox, secretKey: key);
-    return decrypted;
+    return plaintext;
   }
 }

@@ -1,13 +1,541 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>webapp</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LabBridge v2 — PC Terminal</title>
+  <script src="qr.min.js"></script>
+  <style>
+    :root {
+      --bg: #0A0A0F;
+      --surface: #111118;
+      --surface-hover: #191924;
+      --border: #1E1E2E;
+      --primary: #6C63FF;
+      --success: #22C55E;
+      --error: #EF4444;
+      --text: #E8E8F0;
+      --muted: #6B6B80;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    .container { width: 100%; max-width: 650px; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; box-shadow: 0 12px 40px rgba(0,0,0,0.5); }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+    h1 { font-size: 20px; font-weight: 700; color: var(--text); }
+    .status-badge { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .status-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .btn-disconnect { background: transparent; border: 1px solid var(--border); color: var(--error); padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-left: 10px; }
+    .btn-disconnect:hover { background: rgba(239, 68, 68, 0.1); }
+    
+    /* Phase 1: Waiting */
+    #phase-waiting { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding: 20px 0; }
+    .qr-box { background: #E8E8F0; padding: 16px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-width: 252px; min-height: 252px; }
+    #qrcode { width: 220px; height: 220px; }
+    .timer { font-size: 14px; color: var(--muted); }
+    .timer span { color: var(--primary); font-weight: 600; }
+
+    /* Phase 2: Paired & Folders */
+    #phase-paired { display: none; flex-direction: column; gap: 20px; }
+    .breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 14px; color: var(--muted); padding: 8px 12px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border); }
+    .breadcrumb-item { cursor: pointer; color: var(--text); transition: color 0.15s; }
+    .breadcrumb-item:hover { color: var(--primary); }
+    .breadcrumb-sep { color: var(--muted); }
+    .folder-grid { display: flex; flex-wrap: wrap; gap: 10px; min-height: 80px; }
+    .folder-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 8px; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.15s; }
+    .folder-btn:hover { border-color: var(--primary); background: var(--surface-hover); }
+    .folder-btn.active { border-color: var(--primary); background: rgba(108, 99, 255, 0.15); font-weight: 600; }
+    
+    .dropzone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; }
+    .dropzone:hover, .dropzone.dragover { border-color: var(--primary); background: rgba(108, 99, 255, 0.05); }
+    .dropzone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .dropzone p { font-size: 15px; color: var(--text); margin-bottom: 4px; }
+    .dropzone span { font-size: 13px; color: var(--muted); }
+
+    /* Phase 3: Transferring */
+    #phase-transferring { display: none; flex-direction: column; gap: 20px; padding: 10px 0; }
+    .transfer-info { display: flex; justify-content: space-between; font-size: 14px; }
+    .progress-bar-wrap { width: 100%; height: 12px; background: var(--bg); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+    .progress-bar-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.1s linear; }
+    .btn-cancel { align-self: flex-start; background: transparent; border: 1px solid var(--border); color: var(--error); padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    
+    /* Phase 4: Done */
+    #phase-done { display: none; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding: 20px 0; }
+    .done-icon { width: 56px; height: 56px; border-radius: 50%; background: rgba(34, 197, 94, 0.15); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold; }
+    .btn-reset { background: var(--primary); border: none; color: white; padding: 10px 20px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>LabBridge v2</h1>
+      <div class="status-badge">
+        <div id="status-dot" class="status-dot"></div>
+        <span id="status-text">Disconnected</span>
+        <button id="btn-disconnect" class="btn-disconnect" style="display:none;" onclick="disconnectSession()">Disconnect</button>
+      </div>
+    </header>
+
+    <!-- Phase 1: Waiting -->
+    <div id="phase-waiting">
+      <div class="qr-box">
+        <div id="qrcode"></div>
+      </div>
+      <p style="font-size: 16px; font-weight: 500;">Scan with LabBridge Mobile App</p>
+      <div class="timer">Session refreshes in <span id="timer-sec">240s</span></div>
+    </div>
+
+    <!-- Phase 2: Paired & Browsing -->
+    <div id="phase-paired">
+      <div>
+        <p style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">Target Folder on Phone:</p>
+        <div id="breadcrumb" class="breadcrumb">
+          <span class="breadcrumb-item" onclick="navigateRoot()">Root</span>
+        </div>
+      </div>
+
+      <div id="folder-grid" class="folder-grid">
+        <!-- Folders injected dynamically -->
+      </div>
+
+      <div id="dropzone" class="dropzone">
+        <input type="file" id="file-input" />
+        <p>Drop file here or click to browse</p>
+        <span>Will be saved directly to the selected folder above</span>
+      </div>
+    </div>
+
+    <!-- Phase 3: Transferring -->
+    <div id="phase-transferring">
+      <div>
+        <div class="transfer-info">
+          <span id="transfer-filename" style="font-weight: 600;">File.pdf</span>
+          <span id="transfer-pct">0%</span>
+        </div>
+        <div style="font-size: 13px; color: var(--muted); margin-top: 4px;" id="transfer-size">0 KB</div>
+      <progress id="transfer-progress" value="0" max="100" style="width: 100%; height: 16px; accent-color: var(--primary);"></progress>
+      <button class="btn-cancel" onclick="cancelTransfer()">Cancel Transfer</button>
+    </div>
+
+    <!-- Phase 4: Done -->
+    <div id="phase-done">
+      <div class="done-icon">✓</div>
+      <div>
+        <p id="done-message" style="font-size: 18px; font-weight: 600; margin-bottom: 4px;">Transfer Completed!</p>
+        <p id="done-subtext" style="font-size: 14px; color: var(--muted);">Saved to phone</p>
+      </div>
+      <button class="btn-reset" onclick="resetToPaired()">Send Another File</button>
+    </div>
+  </div>
+
+  <script>
+    const WORKER_URL = 'ws://localhost:8787'; // Change to wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev in production
+    const HTTP_URL = WORKER_URL.replace('ws://', 'http://').replace('wss://', 'https://');
+
+    const state = {
+      sessionId: null,
+      ws: null,
+      cryptoKey: null,
+      folderTree: [],
+      currentFolderId: null,
+      currentFolderPath: [],
+      phase: 'waiting',
+      timerInterval: null,
+      expirySeconds: 240,
+      connectedDevice: null,
+      currentTransfer: null
+    };
+
+    // Initialize on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      createSession();
+      setupDropzone();
+    });
+
+    async function createSession() {
+      clearInterval(state.timerInterval);
+      state.expirySeconds = 240;
+      updateTimerDisplay();
+
+      try {
+        const res = await fetch(`${HTTP_URL}/session/new`);
+        const data = await res.json();
+        state.sessionId = data.session_id;
+
+        // Render QR Code
+        const qrEl = document.getElementById('qrcode');
+        qrEl.innerHTML = '';
+        new QRCode(qrEl, {
+          text: data.qr_payload,
+          width: 220,
+          height: 220,
+          colorDark: "#0A0A0F",
+          colorLight: "#E8E8F0",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+
+        // Start Countdown Timer
+        state.timerInterval = setInterval(() => {
+          state.expirySeconds--;
+          updateTimerDisplay();
+          if (state.expirySeconds <= 0) {
+            createSession(); // Auto-refresh after 4 mins
+          }
+        }, 1000);
+
+        connectWebSocket();
+      } catch (err) {
+        console.error('Failed to create session:', err);
+        document.getElementById('status-text').innerText = 'Connection Error (Make sure Worker is running on port 8787)';
+      }
+    }
+
+    function updateTimerDisplay() {
+      const el = document.getElementById('timer-sec');
+      if (el) el.innerText = `${state.expirySeconds}s`;
+    }
+
+    function connectWebSocket() {
+      if (state.ws) state.ws.close();
+      const ws = new WebSocket(`${WORKER_URL}/session/${state.sessionId}/pc`);
+      ws.binaryType = 'arraybuffer';
+      state.ws = ws;
+
+      ws.onopen = () => {
+        setStatus(false, 'Waiting for phone...');
+      };
+
+      ws.onmessage = async (event) => {
+        if (typeof event.data === 'string') {
+          const msg = JSON.parse(event.data);
+          handleTextMessage(msg);
+        } else if (event.data instanceof ArrayBuffer) {
+          handleIncomingBinaryChunk(event.data);
+        }
+      };
+
+      ws.onclose = () => {
+        if (state.phase !== 'waiting') {
+          setStatus(false, 'Disconnected');
+          document.getElementById('btn-disconnect').style.display = 'none';
+        }
+      };
+    }
+
+    async function handleTextMessage(msg) {
+      if (msg.type === 'waiting') {
+        setStatus(false, 'Waiting for phone...');
+      } else if (msg.type === 'paired') {
+        state.connectedDevice = msg.device || 'Phone App';
+        setStatus(true, `Connected: ${state.connectedDevice}`);
+        document.getElementById('btn-disconnect').style.display = 'block';
+        state.cryptoKey = await deriveAESKey(state.sessionId);
+        setPhase('paired');
+      } else if (msg.type === 'folders') {
+        state.folderTree = msg.tree || [];
+        renderFolders();
+      } else if (msg.type === 'ready') {
+        if (state.currentTransfer && state.currentTransfer.direction === 'sending') {
+          startSendingChunks();
+        }
+      } else if (msg.type === 'ack') {
+        if (state.currentTransfer && state.currentTransfer.direction === 'sending') {
+          handleAck(msg.chunk_index);
+        }
+      } else if (msg.type === 'transfer_init') {
+        // Phone initiated transfer to PC
+        state.currentTransfer = {
+          direction: 'receiving',
+          filename: msg.filename,
+          size: msg.size,
+          total_chunks: msg.total_chunks,
+          mime_type: msg.mime_type || 'application/octet-stream',
+          receivedChunks: 0,
+          chunksData: new Array(msg.total_chunks)
+        };
+        setPhase('transferring');
+        updateProgressDisplay(msg.filename, msg.size, 0);
+        state.ws.send(JSON.stringify({ type: 'ready' }));
+      } else if (msg.type === 'cancelled') {
+        alert('Transfer cancelled by phone');
+        setPhase('paired');
+      }
+    }
+
+    function setStatus(active, text) {
+      const dot = document.getElementById('status-dot');
+      const txt = document.getElementById('status-text');
+      if (active) dot.classList.add('active');
+      else dot.classList.remove('active');
+      txt.innerText = text;
+    }
+
+    function setPhase(phase) {
+      state.phase = phase;
+      document.getElementById('phase-waiting').style.display = (phase === 'waiting') ? 'flex' : 'none';
+      document.getElementById('phase-paired').style.display = (phase === 'paired') ? 'flex' : 'none';
+      document.getElementById('phase-transferring').style.display = (phase === 'transferring') ? 'flex' : 'none';
+      document.getElementById('phase-done').style.display = (phase === 'done') ? 'flex' : 'none';
+      if (phase === 'paired') renderFolders();
+    }
+
+    function disconnectSession() {
+      if (state.ws) state.ws.close();
+      clearInterval(state.timerInterval);
+      setPhase('waiting');
+      document.getElementById('btn-disconnect').style.display = 'none';
+      createSession();
+    }
+
+    // Folder Navigation & Rendering
+    function navigateRoot() {
+      state.currentFolderId = null;
+      state.currentFolderPath = [];
+      renderFolders();
+    }
+
+    function navigateIntoFolder(id, name) {
+      state.currentFolderId = id;
+      state.currentFolderPath.push({ id, name });
+      renderFolders();
+    }
+
+    function renderFolders() {
+      // Render breadcrumbs
+      const bcEl = document.getElementById('breadcrumb');
+      let bcHtml = `<span class="breadcrumb-item" onclick="navigateRoot()">Root</span>`;
+      let currentList = state.folderTree;
+
+      for (let i = 0; i < state.currentFolderPath.length; i++) {
+        const item = state.currentFolderPath[i];
+        bcHtml += ` <span class="breadcrumb-sep">></span> <span class="breadcrumb-item" onclick="navigateUpTo(${i})">${item.name}</span>`;
+      }
+      bcEl.innerHTML = bcHtml;
+
+      // Find children of currentFolderId
+      const children = state.folderTree.filter(f => f.parentId === state.currentFolderId || (state.currentFolderId === null && !f.parentId));
+      const gridEl = document.getElementById('folder-grid');
+
+      if (children.length === 0) {
+        gridEl.innerHTML = `<p style="color: var(--muted); font-size: 13px; align-self: center;">No subfolders inside this directory</p>`;
+        return;
+      }
+
+      gridEl.innerHTML = children.map(f => `
+        <button class="folder-btn" onclick="navigateIntoFolder('${f.id}', '${f.name.replace(/'/g, "\\'")}')">
+          📁 ${f.name}
+        </button>
+      `).join('');
+    }
+
+    function navigateUpTo(index) {
+      if (index < 0) {
+        navigateRoot();
+        return;
+      }
+      state.currentFolderPath = state.currentFolderPath.slice(0, index + 1);
+      state.currentFolderId = state.currentFolderPath[state.currentFolderPath.length - 1].id;
+      renderFolders();
+    }
+
+    // HKDF / AES-GCM Key Derivation & Encryption
+    async function deriveAESKey(sessionId) {
+      const enc = new TextEncoder();
+      const baseKey = await crypto.subtle.importKey(
+        'raw', enc.encode(sessionId), { name: 'HKDF' }, false, ['deriveKey']
+      );
+      return await crypto.subtle.deriveKey(
+        {
+          name: 'HKDF',
+          hash: 'SHA-256',
+          salt: enc.encode('labbridge-v2'),
+          info: enc.encode('file-transfer')
+        },
+        baseKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    }
+
+    async function encryptChunk(plaintextBuffer, key, chunkIndex) {
+      const iv = new Uint8List(12);
+      crypto.getRandomValues(iv);
+      // Put chunkIndex into last 4 bytes of IV (big-endian) to ensure uniqueness
+      const view = new DataView(iv.buffer);
+      view.setUint32(8, chunkIndex, false);
+
+      const ciphertext = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        plaintextBuffer
+      );
+
+      // Return combined buffer: IV (12) + ciphertext/authTag
+      const combined = new Uint8List(12 + ciphertext.byteLength);
+      combined.set(iv, 0);
+      combined.set(new Uint8List(ciphertext), 12);
+      return combined.buffer;
+    }
+
+    async function decryptChunk(combinedBuffer, key, chunkIndex) {
+      const combined = new Uint8List(combinedBuffer);
+      const iv = combined.slice(0, 12);
+      const ciphertext = combined.slice(12);
+
+      return await crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv },
+        key,
+        ciphertext
+      );
+    }
+
+    // File Drop & Sending
+    function setupDropzone() {
+      const dz = document.getElementById('dropzone');
+      const fileInput = document.getElementById('file-input');
+
+      dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('dragover'); });
+      dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+      dz.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dz.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          initiateSendFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        if (fileInput.files && fileInput.files[0]) {
+          initiateSendFile(fileInput.files[0]);
+          fileInput.value = '';
+        }
+      });
+    }
+
+    function initiateSendFile(file) {
+      if (state.phase !== 'paired') return;
+      const totalChunks = Math.ceil(file.size / (512 * 1024));
+      
+      state.currentTransfer = {
+        direction: 'sending',
+        file: file,
+        filename: file.name,
+        size: file.size,
+        total_chunks: totalChunks,
+        sentChunks: 0,
+        pendingAck: null
+      };
+
+      setPhase('transferring');
+      updateProgressDisplay(file.name, file.size, 0);
+
+      // Send transfer init to phone
+      state.ws.send(JSON.stringify({
+        type: 'transfer_init',
+        filename: file.name,
+        size: file.size,
+        total_chunks: totalChunks,
+        folder_id: state.currentFolderId,
+        mime_type: file.type || 'application/octet-stream'
+      }));
+    }
+
+    async function startSendingChunks() {
+      if (!state.currentTransfer || state.currentTransfer.direction !== 'sending') return;
+      sendNextChunk(0);
+    }
+
+    async function sendNextChunk(chunkIndex) {
+      const transfer = state.currentTransfer;
+      if (!transfer || chunkIndex >= transfer.total_chunks) {
+        setPhase('done');
+        document.getElementById('done-message').innerText = '✓ Sent to Phone!';
+        document.getElementById('done-subtext').innerText = `${transfer.filename} (${formatSize(transfer.size)})`;
+        return;
+      }
+
+      const offset = chunkIndex * 512 * 1024;
+      const slice = transfer.file.slice(offset, offset + 512 * 1024);
+      const arrayBuffer = await slice.arrayBuffer();
+
+      const encrypted = await encryptChunk(arrayBuffer, state.cryptoKey, chunkIndex);
+      transfer.pendingAck = chunkIndex;
+      state.ws.send(encrypted);
+    }
+
+    function handleAck(chunkIndex) {
+      const transfer = state.currentTransfer;
+      if (!transfer || transfer.direction !== 'sending') return;
+      
+      transfer.sentChunks++;
+      const pct = Math.round((transfer.sentChunks / transfer.total_chunks) * 100);
+      updateProgressDisplay(transfer.filename, transfer.size, pct);
+
+      // Send next chunk immediately
+      sendNextChunk(chunkIndex + 1);
+    }
+
+    // Receiving Binary Chunks (Phone to PC)
+    async function handleIncomingBinaryChunk(buffer) {
+      const transfer = state.currentTransfer;
+      if (!transfer || transfer.direction !== 'receiving') return;
+
+      const chunkIndex = transfer.receivedChunks;
+      try {
+        const decrypted = await decryptChunk(buffer, state.cryptoKey, chunkIndex);
+        transfer.chunksData[chunkIndex] = decrypted;
+        transfer.receivedChunks++;
+
+        const pct = Math.round((transfer.receivedChunks / transfer.total_chunks) * 100);
+        updateProgressDisplay(transfer.filename, transfer.size, pct);
+
+        // Send ACK back to phone
+        state.ws.send(JSON.stringify({ type: 'ack', chunk_index: chunkIndex }));
+
+        if (transfer.receivedChunks >= transfer.total_chunks) {
+          // All chunks received, trigger browser download
+          const blob = new Blob(transfer.chunksData, { type: transfer.mime_type });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = transfer.filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          setPhase('done');
+          document.getElementById('done-message').innerText = '✓ Received from Phone!';
+          document.getElementById('done-subtext').innerText = `${transfer.filename} downloaded`;
+        }
+      } catch (err) {
+        console.error('Failed to decrypt incoming chunk:', err);
+      }
+    }
+
+    function cancelTransfer() {
+      if (state.ws) state.ws.send(JSON.stringify({ type: 'cancelled' }));
+      state.currentTransfer = null;
+      setPhase('paired');
+    }
+
+    function resetToPaired() {
+      state.currentTransfer = null;
+      setPhase('paired');
+    }
+
+    function updateProgressDisplay(filename, size, pct) {
+      document.getElementById('transfer-filename').innerText = filename;
+      document.getElementById('transfer-size').innerText = formatSize(size);
+      document.getElementById('transfer-pct').innerText = `${pct}%`;
+      const prog = document.getElementById('transfer-progress');
+      if (prog) prog.value = pct;
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+  </script>
+</body>
 </html>

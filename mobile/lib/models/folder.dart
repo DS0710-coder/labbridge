@@ -3,15 +3,15 @@ class Folder {
   final String name;
   final String? parentId;
   final String color;
-  final bool pinned;
-  final DateTime createdAt;
+  final int sortOrder;
+  final int createdAt;
 
-  Folder({
+  const Folder({
     required this.id,
     required this.name,
     this.parentId,
     this.color = '#6C63FF',
-    this.pinned = false,
+    this.sortOrder = 0,
     required this.createdAt,
   });
 
@@ -21,8 +21,8 @@ class Folder {
       'name': name,
       'parent_id': parentId,
       'color': color,
-      'pinned': pinned ? 1 : 0,
-      'created_at': createdAt.toIso8601String(),
+      'sort_order': sortOrder,
+      'created_at': createdAt,
     };
   }
 
@@ -32,8 +32,8 @@ class Folder {
       name: map['name'] as String,
       parentId: map['parent_id'] as String?,
       color: (map['color'] as String?) ?? '#6C63FF',
-      pinned: (map['pinned'] as int) == 1,
-      createdAt: DateTime.parse(map['created_at'] as String),
+      sortOrder: (map['sort_order'] as int?) ?? 0,
+      createdAt: map['created_at'] as int,
     );
   }
 
@@ -41,17 +41,38 @@ class Folder {
     String? id,
     String? name,
     String? parentId,
+    bool clearParentId = false,
     String? color,
-    bool? pinned,
-    DateTime? createdAt,
+    int? sortOrder,
+    int? createdAt,
   }) {
     return Folder(
       id: id ?? this.id,
       name: name ?? this.name,
-      parentId: parentId ?? this.parentId,
+      parentId: clearParentId ? null : (parentId ?? this.parentId),
       color: color ?? this.color,
-      pinned: pinned ?? this.pinned,
+      sortOrder: sortOrder ?? this.sortOrder,
       createdAt: createdAt ?? this.createdAt,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'parent_id': parentId,
+      'color': color,
+      'sort_order': sortOrder,
+    };
+  }
+
+  @override
+  String toString() => 'Folder(id: $id, name: $name, parentId: $parentId)';
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || other is Folder && id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
 }

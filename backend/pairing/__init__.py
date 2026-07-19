@@ -1,1 +1,0 @@
-# Pairing module initialization

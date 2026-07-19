@@ -1,8 +1,13 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import '../providers/organizer_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:uuid/uuid.dart';
+
+import '../models/folder.dart';
+import '../models/file_item.dart';
+import '../services/db_service.dart';
+import '../widgets/folder_tile.dart';
+import '../widgets/file_tile.dart';
 
 class FilesScreen extends StatefulWidget {
   const FilesScreen({super.key});
@@ -12,359 +17,650 @@ class FilesScreen extends StatefulWidget {
 }
 
 class _FilesScreenState extends State<FilesScreen> {
+  final DbService _dbService = DbService();
+  static const _uuid = Uuid();
+
+  List<Folder> _folders = [];
+  List<FileItem> _files = [];
+  List<Folder> _breadcrumbs = [];
+  String? _currentFolderId;
+  bool _loading = true;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<OrganizerProvider>(context, listen: false).loadCurrentView();
-    });
+    _loadFolder(null);
   }
 
-  void _showNewFolderModal() {
-    final nameController = TextEditingController();
-    String selectedColor = '#6C63FF';
-    final colors = ['#6C63FF', '#3B82F6', '#22C55E', '#F59E0B', '#EF4444', '#EC4899'];
+  Future<void> _loadFolder(String? folderId) async {
+    setState(() => _loading = true);
 
-    showDialog(
+    final folders = await _dbService.getChildFolders(folderId);
+    final files = await _dbService.getFilesInFolder(folderId);
+
+    // Build breadcrumbs
+    final crumbs = <Folder>[];
+    String? id = folderId;
+    while (id != null) {
+      final folder = await _dbService.getFolder(id);
+      if (folder != null) {
+        crumbs.insert(0, folder);
+        id = folder.parentId;
+      } else {
+        break;
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _currentFolderId = folderId;
+        _folders = folders;
+        _files = files;
+        _breadcrumbs = crumbs;
+        _loading = false;
+      });
+    }
+  }
+
+  void _navigateToFolder(String? folderId) {
+    _loadFolder(folderId);
+  }
+
+  Future<void> _showCreateFolderDialog() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setModalState) => AlertDialog(
-          backgroundColor: const Color(0xFF111118),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Create Academic Folder', style: TextStyle(color: Colors.white, fontSize: 16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: nameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'e.g. Data Structures Lab',
-                  hintStyle: const TextStyle(color: Color(0xFF6B6B80)),
-                  filled: true,
-                  fillColor: const Color(0xFF0A0A0F),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text('Color Theme', style: TextStyle(color: Color(0xFFE8E8F0), fontSize: 12)),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: colors.map((hex) {
-                  final color = Color(int.parse(hex.replaceAll('#', '0xFF')));
-                  final isSelected = hex == selectedColor;
-                  return GestureDetector(
-                    onTap: () => setModalState(() => selectedColor = hex),
-                    child: Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: isSelected ? Border.all(color: Colors.white, width: 2.5) : null,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF111118),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'New Folder',
+          style: TextStyle(color: Color(0xFFE8E8F0)),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: Color(0xFFE8E8F0)),
+          decoration: InputDecoration(
+            hintText: 'Folder name',
+            hintStyle: const TextStyle(color: Color(0xFF6B6B80)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Create', style: TextStyle(color: Color(0xFF6C63FF))),
+          ),
+        ],
+      ),
+    );
+
+    if (name != null && name.isNotEmpty) {
+      final folder = Folder(
+        id: _uuid.v4(),
+        name: name,
+        parentId: _currentFolderId,
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      );
+      await _dbService.insertFolder(folder);
+      _loadFolder(_currentFolderId);
+    }
+  }
+
+  void _showFolderOptions(Folder folder) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF111118),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E2E),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.trim().isEmpty) return;
-                Navigator.pop(ctx);
-                final org = Provider.of<OrganizerProvider>(context, listen: false);
-                await org.createFolder(nameController.text.trim(), color: selectedColor);
+            Text(
+              folder.name,
+              style: const TextStyle(
+                color: Color(0xFFE8E8F0),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildSheetOption(
+              Icons.edit_rounded,
+              'Rename',
+              () {
+                Navigator.pop(context);
+                _showRenameFolderDialog(folder);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C63FF)),
-              child: const Text('Create', style: TextStyle(color: Colors.white)),
             ),
+            _buildSheetOption(
+              Icons.palette_rounded,
+              'Change Color',
+              () {
+                Navigator.pop(context);
+                _showColorPicker(folder);
+              },
+            ),
+            _buildSheetOption(
+              Icons.delete_rounded,
+              'Delete',
+              () {
+                Navigator.pop(context);
+                _deleteFolder(folder);
+              },
+              color: const Color(0xFFEF4444),
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
     );
   }
 
-  Color _parseHex(String hex) {
-    try {
-      return Color(int.parse(hex.replaceAll('#', '0xFF')));
-    } catch (_) {
-      return const Color(0xFF6C63FF);
+  Future<void> _showRenameFolderDialog(Folder folder) async {
+    final controller = TextEditingController(text: folder.name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF111118),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Rename Folder', style: TextStyle(color: Color(0xFFE8E8F0))),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: Color(0xFFE8E8F0)),
+          decoration: InputDecoration(
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Rename', style: TextStyle(color: Color(0xFF6C63FF))),
+          ),
+        ],
+      ),
+    );
+
+    if (name != null && name.isNotEmpty) {
+      await _dbService.updateFolder(folder.copyWith(name: name));
+      _loadFolder(_currentFolderId);
     }
   }
 
-  String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
+  void _showColorPicker(Folder folder) {
+    final colors = [
+      '#6C63FF', '#22C55E', '#EF4444', '#F97316',
+      '#3B82F6', '#A855F7', '#EC4899', '#F59E0B',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF111118),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Choose Color',
+                style: TextStyle(
+                  color: Color(0xFFE8E8F0),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: colors.map((hex) {
+                  final colorVal = Color(
+                    int.parse('FF${hex.replaceAll('#', '')}', radix: 16),
+                  );
+                  final isSelected = folder.color == hex;
+                  return GestureDetector(
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await _dbService.updateFolder(folder.copyWith(color: hex));
+                      _loadFolder(_currentFolderId);
+                    },
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: colorVal,
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? Border.all(color: Colors.white, width: 3)
+                            : null,
+                      ),
+                      child: isSelected
+                          ? const Icon(Icons.check, color: Colors.white, size: 20)
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteFolder(Folder folder) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF111118),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Folder?', style: TextStyle(color: Color(0xFFE8E8F0))),
+        content: Text(
+          'Delete "${folder.name}"? Sub-folders will be moved up.',
+          style: const TextStyle(color: Color(0xFF6B6B80)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _dbService.deleteFolder(folder.id);
+      _loadFolder(_currentFolderId);
+    }
+  }
+
+  void _showFileOptions(FileItem file) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF111118),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E1E2E),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Text(
+              file.name,
+              style: const TextStyle(
+                color: Color(0xFFE8E8F0),
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 16),
+            _buildSheetOption(
+              Icons.open_in_new_rounded,
+              'Open',
+              () {
+                Navigator.pop(context);
+                OpenFile.open(file.localPath);
+              },
+            ),
+            _buildSheetOption(
+              Icons.share_rounded,
+              'Share',
+              () {
+                Navigator.pop(context);
+                SharePlus.instance.share(ShareParams(files: [XFile(file.localPath)]));
+              },
+            ),
+            _buildSheetOption(
+              Icons.drive_file_move_rounded,
+              'Move to Folder',
+              () {
+                Navigator.pop(context);
+                _showMoveFolderPicker(file);
+              },
+            ),
+            _buildSheetOption(
+              Icons.label_rounded,
+              'Edit Tags',
+              () {
+                Navigator.pop(context);
+                _showEditTagsDialog(file);
+              },
+            ),
+            _buildSheetOption(
+              Icons.delete_rounded,
+              'Delete',
+              () {
+                Navigator.pop(context);
+                _deleteFile(file);
+              },
+              color: const Color(0xFFEF4444),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showMoveFolderPicker(FileItem file) async {
+    final allFolders = await _dbService.getAllFolders();
+    if (!mounted) return;
+
+    final selectedId = await showDialog<String?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF111118),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Move to Folder', style: TextStyle(color: Color(0xFFE8E8F0))),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.folder_rounded, color: Color(0xFF6B6B80)),
+                title: const Text('Root', style: TextStyle(color: Color(0xFFE8E8F0))),
+                onTap: () => Navigator.pop(context, '__root__'),
+              ),
+              ...allFolders.map((f) => ListTile(
+                    leading: Icon(
+                      Icons.folder_rounded,
+                      color: Color(
+                        int.parse('FF${f.color.replaceAll('#', '')}', radix: 16),
+                      ),
+                    ),
+                    title: Text(f.name, style: const TextStyle(color: Color(0xFFE8E8F0))),
+                    onTap: () => Navigator.pop(context, f.id),
+                  )),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (selectedId != null) {
+      final newFolderId = selectedId == '__root__' ? null : selectedId;
+      await _dbService.updateFile(
+        newFolderId == null
+            ? file.copyWith(clearFolderId: true)
+            : file.copyWith(folderId: newFolderId),
+      );
+      _loadFolder(_currentFolderId);
+    }
+  }
+
+  Future<void> _showEditTagsDialog(FileItem file) async {
+    final controller = TextEditingController(text: file.tags);
+    final tags = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF111118),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Edit Tags', style: TextStyle(color: Color(0xFFE8E8F0))),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(color: Color(0xFFE8E8F0)),
+          decoration: InputDecoration(
+            hintText: 'Comma-separated tags',
+            hintStyle: const TextStyle(color: Color(0xFF6B6B80)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Save', style: TextStyle(color: Color(0xFF6C63FF))),
+          ),
+        ],
+      ),
+    );
+
+    if (tags != null) {
+      await _dbService.updateFile(file.copyWith(tags: tags));
+      _loadFolder(_currentFolderId);
+    }
+  }
+
+  Future<void> _deleteFile(FileItem file) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF111118),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete File?', style: TextStyle(color: Color(0xFFE8E8F0))),
+        content: Text(
+          'Delete "${file.name}"?',
+          style: const TextStyle(color: Color(0xFF6B6B80)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _dbService.deleteFile(file.id);
+      _loadFolder(_currentFolderId);
+    }
+  }
+
+  Widget _buildSheetOption(IconData icon, String label, VoidCallback onTap,
+      {Color? color}) {
+    return ListTile(
+      leading: Icon(icon, color: color ?? const Color(0xFFE8E8F0), size: 22),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: color ?? const Color(0xFFE8E8F0),
+          fontSize: 15,
+        ),
+      ),
+      onTap: onTap,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final org = Provider.of<OrganizerProvider>(context);
-
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF0A0A0F),
-        elevation: 0,
-        title: Row(
-          children: [
-            if (org.breadcrumbs.isNotEmpty)
-              IconButton(
-                onPressed: org.navigateUp,
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-              ),
-            Expanded(
-              child: Text(
-                org.currentFolder?.name ?? 'Academic Organizer',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            onPressed: _showNewFolderModal,
-            icon: const Icon(Icons.create_new_folder_outlined, color: Color(0xFF6C63FF)),
-            tooltip: 'New Folder',
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF6C63FF),
+        onPressed: _showCreateFolderDialog,
+        child: const Icon(Icons.create_new_folder_rounded, color: Colors.white),
       ),
-      body: org.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF)))
-          : RefreshIndicator(
-              onRefresh: org.loadCurrentView,
-              color: const Color(0xFF6C63FF),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Breadcrumbs Bar
-                    if (org.breadcrumbs.isNotEmpty) ...[
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            GestureDetector(
-                              onTap: org.navigateToRoot,
-                              child: const Text('Root', style: TextStyle(color: Color(0xFF6C63FF), fontSize: 13, fontWeight: FontWeight.bold)),
-                            ),
-                            for (var folder in org.breadcrumbs) ...[
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 6),
-                                child: Text('>', style: TextStyle(color: Color(0xFF6B6B80), fontSize: 12)),
-                              ),
-                              Text(folder.name, style: const TextStyle(color: Color(0xFFE8E8F0), fontSize: 13)),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-
-                    // Subfolders section
-                    if (org.folders.isNotEmpty) ...[
-                      const Text(
-                        'Folders',
-                        style: TextStyle(color: Color(0xFF6B6B80), fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-                      ),
-                      const SizedBox(height: 10),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 1.6,
-                        ),
-                        itemCount: org.folders.length,
-                        itemBuilder: (ctx, idx) {
-                          final f = org.folders[idx];
-                          final folderColor = _parseHex(f.color);
-                          return GestureDetector(
-                            onTap: () => org.navigateToFolder(f),
-                            child: Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF111118),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: f.pinned ? folderColor : const Color(0xFF1E1E2E), width: f.pinned ? 1.5 : 1),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Icon(Icons.folder_rounded, color: folderColor, size: 28),
-                                      Row(
-                                        children: [
-                                          GestureDetector(
-                                            onTap: () => org.togglePin(f),
-                                            child: Icon(
-                                              f.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-                                              size: 18,
-                                              color: f.pinned ? folderColor : const Color(0xFF6B6B80),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          GestureDetector(
-                                            onTap: () => org.deleteFolder(f),
-                                            child: const Icon(Icons.delete_outline, size: 18, color: Color(0xFF6B6B80)),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    f.name,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-
-                    // Files section
-                    const Text(
-                      'Transferred Files',
-                      style: TextStyle(color: Color(0xFF6B6B80), fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 0.5),
-                    ),
-                    const SizedBox(height: 10),
-                    if (org.files.isEmpty)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(32),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF111118),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFF1E1E2E)),
-                        ),
-                        child: const Column(
-                          children: [
-                            Icon(Icons.folder_open_rounded, color: Color(0xFF6B6B80), size: 40),
-                            SizedBox(height: 12),
-                            Text(
-                              'No files transferred here yet',
-                              style: TextStyle(color: Color(0xFFE8E8F0), fontWeight: FontWeight.w600, fontSize: 14),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Scan lab computer QR code to receive files directly into this folder.',
-                              style: TextStyle(color: Color(0xFF6B6B80), fontSize: 12),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: org.files.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 10),
-                        itemBuilder: (ctx, idx) {
-                          final file = org.files[idx];
-                          final fileExists = File(file.localPath).existsSync();
-
-                          return Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF111118),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: const Color(0xFF1E1E2E)),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF6C63FF).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    fileExists ? Icons.insert_drive_file_rounded : Icons.broken_image_rounded,
-                                    color: fileExists ? const Color(0xFF6C63FF) : const Color(0xFFEF4444),
-                                  ),
-                                ),
-                                const SizedBox(width: 14),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        file.name,
-                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 3),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            _formatSize(file.size),
-                                            style: const TextStyle(color: Color(0xFF6B6B80), fontSize: 11, fontFamily: 'monospace'),
-                                          ),
-                                          const Text(' • ', style: TextStyle(color: Color(0xFF6B6B80))),
-                                          Text(
-                                            DateFormat('MMM d, h:mm a').format(file.transferredAt.toLocal()),
-                                            style: const TextStyle(color: Color(0xFF6B6B80), fontSize: 11),
-                                          ),
-                                        ],
-                                      ),
-                                      if (file.tags.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 6),
-                                          child: Row(
-                                            children: file.tags.split(',').map((t) {
-                                              return Container(
-                                                margin: const EdgeInsets.only(right: 6),
-                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFF1E1E2E),
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
-                                                child: Text(t, style: const TextStyle(color: Color(0xFF6C63FF), fontSize: 10)),
-                                              );
-                                            }).toList(),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () => org.deleteFileItem(file),
-                                  icon: const Icon(Icons.delete_outline, color: Color(0xFF6B6B80), size: 20),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                  ],
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Text(
+                'Files',
+                style: TextStyle(
+                  color: Color(0xFFE8E8F0),
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+
+            // Breadcrumbs
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => _navigateToFolder(null),
+                    child: Text(
+                      'Root',
+                      style: TextStyle(
+                        color: _currentFolderId == null
+                            ? const Color(0xFF6C63FF)
+                            : const Color(0xFF6B6B80),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  ..._breadcrumbs.map((crumb) {
+                    final isLast = crumb == _breadcrumbs.last;
+                    return Row(
+                      children: [
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 6),
+                          child: Icon(
+                            Icons.chevron_right_rounded,
+                            color: Color(0xFF6B6B80),
+                            size: 16,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => _navigateToFolder(crumb.id),
+                          child: Text(
+                            crumb.name,
+                            style: TextStyle(
+                              color: isLast
+                                  ? const Color(0xFF6C63FF)
+                                  : const Color(0xFF6B6B80),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Content
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+                    )
+                  : (_folders.isEmpty && _files.isEmpty)
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.folder_open_rounded,
+                                color: const Color(0xFF6B6B80).withValues(alpha: 0.5),
+                                size: 56,
+                              ),
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Empty folder',
+                                style: TextStyle(
+                                  color: Color(0xFF6B6B80),
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.only(bottom: 80),
+                          children: [
+                            ..._folders.map((folder) => FolderTile(
+                                  folder: folder,
+                                  onTap: () => _navigateToFolder(folder.id),
+                                  onLongPress: () => _showFolderOptions(folder),
+                                )),
+                            if (_folders.isNotEmpty && _files.isNotEmpty)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                child: Divider(color: Color(0xFF1E1E2E), height: 1),
+                              ),
+                            ..._files.map((file) => FileTile(
+                                  file: file,
+                                  onTap: () => OpenFile.open(file.localPath),
+                                  onLongPress: () => _showFileOptions(file),
+                                )),
+                          ],
+                        ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
