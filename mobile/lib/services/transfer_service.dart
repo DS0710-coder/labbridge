@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -37,7 +37,7 @@ class TransferProgress {
   String get percentage => '${(progress * 100).toStringAsFixed(1)}%';
 }
 
-class TransferService {
+class TransferService extends ChangeNotifier {
   final CryptoService _cryptoService = CryptoService();
   final DbService _dbService = DbService();
   static const _uuid = Uuid();
@@ -77,6 +77,7 @@ class TransferService {
   Future<void> connect(String sessionId, String workerUrl) async {
     _status = ConnectionStatus.connecting;
     _connectionStatusController.add(ConnectionStatus.connecting);
+    notifyListeners();
     _currentSessionId = sessionId;
 
     try {
@@ -91,6 +92,7 @@ class TransferService {
 
       _status = ConnectionStatus.connected;
       _connectionStatusController.add(ConnectionStatus.connected);
+      notifyListeners();
 
       // Listen for messages
       _subscription = _channel!.stream.listen(
@@ -98,16 +100,19 @@ class TransferService {
         onError: (error) {
           _status = ConnectionStatus.error;
           _connectionStatusController.add(ConnectionStatus.error);
+          notifyListeners();
           _errorController.add('WebSocket error: $error');
         },
         onDone: () {
           _status = ConnectionStatus.disconnected;
           _connectionStatusController.add(ConnectionStatus.disconnected);
+          notifyListeners();
         },
       );
     } catch (e) {
       _status = ConnectionStatus.error;
       _connectionStatusController.add(ConnectionStatus.error);
+      notifyListeners();
       _errorController.add('Connection failed: $e');
     }
   }
@@ -170,6 +175,7 @@ class TransferService {
       completedChunks: 0,
       direction: TransferDirection.received,
     ));
+    notifyListeners();
   }
 
   Future<void> _handleBinaryMessage(Uint8List data) async {
@@ -199,6 +205,7 @@ class TransferService {
         completedChunks: _receivedChunks,
         direction: TransferDirection.received,
       ));
+      notifyListeners();
 
       // Check if all chunks received
       if (_receivedChunks >= _totalChunks) {
@@ -252,6 +259,7 @@ class TransferService {
       ));
 
       _completionController.add(_currentFileName);
+      notifyListeners();
     } catch (e) {
       _errorController.add('Failed to save file: $e');
     }
@@ -328,6 +336,7 @@ class TransferService {
         completedChunks: chunkIndex,
         direction: TransferDirection.sent,
       ));
+      notifyListeners();
     }
 
     // Record transfer
@@ -342,6 +351,7 @@ class TransferService {
     ));
 
     _completionController.add(fileName);
+    notifyListeners();
   }
 
   /// Set the target folder for incoming files
@@ -369,14 +379,17 @@ class TransferService {
     _tempFile = null;
     _status = ConnectionStatus.disconnected;
     _connectionStatusController.add(ConnectionStatus.disconnected);
+    notifyListeners();
   }
 
   /// Clean up resources
+  @override
   void dispose() {
     disconnect();
     _connectionStatusController.close();
     _progressController.close();
     _errorController.close();
     _completionController.close();
+    super.dispose();
   }
 }

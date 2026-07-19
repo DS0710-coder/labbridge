@@ -129,7 +129,8 @@
   </div>
 
   <script>
-    const WORKER_URL = 'ws://localhost:8787'; // Change to wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev in production
+    // Change to wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev for production
+    const WORKER_URL = window.LABBRIDGE_WORKER_URL || 'ws://localhost:8787';
     const HTTP_URL = WORKER_URL.replace('ws://', 'http://').replace('wss://', 'https://');
 
     const state = {
@@ -359,7 +360,7 @@
     }
 
     async function encryptChunk(plaintextBuffer, key, chunkIndex) {
-      const iv = new Uint8List(12);
+      const iv = new Uint8Array(12);
       crypto.getRandomValues(iv);
       // Put chunkIndex into last 4 bytes of IV (big-endian) to ensure uniqueness
       const view = new DataView(iv.buffer);
@@ -372,14 +373,14 @@
       );
 
       // Return combined buffer: IV (12) + ciphertext/authTag
-      const combined = new Uint8List(12 + ciphertext.byteLength);
+      const combined = new Uint8Array(12 + ciphertext.byteLength);
       combined.set(iv, 0);
-      combined.set(new Uint8List(ciphertext), 12);
+      combined.set(new Uint8Array(ciphertext), 12);
       return combined.buffer;
     }
 
     async function decryptChunk(combinedBuffer, key, chunkIndex) {
-      const combined = new Uint8List(combinedBuffer);
+      const combined = new Uint8Array(combinedBuffer);
       const iv = combined.slice(0, 12);
       const ciphertext = combined.slice(12);
 

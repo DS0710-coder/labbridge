@@ -35,8 +35,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
         if (sessionId == null || expiry == null) continue;
 
-        // Check expiry
-        final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+        // Check expiry (expiry is stored as milliseconds epoch)
+        final now = DateTime.now().millisecondsSinceEpoch;
         if (now > expiry) {
           _showError('QR has expired, refresh the PC page');
           return;
