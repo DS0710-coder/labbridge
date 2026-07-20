@@ -232,7 +232,7 @@
           updateTimerDisplay();
           if (state.expirySeconds <= 0) {
             if (state.phase !== 'waiting') {
-              alert('Session expired. Please rescan.');
+              console.warn('Session expired. Please rescan.');
             }
             createSession();
           }
@@ -490,6 +490,13 @@
     async function decryptChunk(combinedBuffer, key, chunkIndex) {
       const combined = new Uint8Array(combinedBuffer);
       const iv = combined.slice(0, 12);
+      
+      const view = new DataView(iv.buffer, iv.byteOffset, iv.byteLength);
+      const extractedIndex = view.getUint32(8, false);
+      if (extractedIndex !== chunkIndex) {
+        throw new Error(`Chunk index mismatch: expected ${chunkIndex}, got ${extractedIndex}`);
+      }
+      
       const ciphertext = combined.slice(12);
 
       return await crypto.subtle.decrypt(
@@ -665,6 +672,7 @@
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 
           state.currentTransfer = null;
           if (state.sendQueue.length > 0) {

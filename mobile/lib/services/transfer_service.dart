@@ -191,6 +191,7 @@ class TransferService extends ChangeNotifier {
 
   Future<void> _handleTransferInit(Map<String, dynamic> data) async {
     if (_tempSink != null || _tempFile != null) {
+      _errorController.add('A transfer is already in progress, cancelling previous.');
       try {
         await _tempSink?.close();
       } catch (_) {}
@@ -295,6 +296,7 @@ class TransferService extends ChangeNotifier {
       }
     } catch (e) {
       _errorController.add('Decryption failed: $e');
+      disconnect(sendSignal: true);
     }
   }
 

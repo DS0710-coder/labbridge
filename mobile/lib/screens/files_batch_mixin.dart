@@ -90,6 +90,7 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
     );
 
     if (confirm == true) {
+      if (!mounted) return;
       for (final id in selectedFolderIds) {
         await dbService.deleteFolder(id);
       }
