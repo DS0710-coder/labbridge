@@ -98,6 +98,10 @@
         <!-- Folders injected dynamically -->
       </div>
 
+      <div id="shortcut-mode-hint" style="display:none; padding: 10px 14px; background: rgba(108,99,255,0.08); border: 1px solid rgba(108,99,255,0.3); border-radius: 8px; font-size: 13px; color: #6C63FF; margin-top: 8px;">
+        📱 iPhone Shortcut mode — drop a file and your iPhone will receive it via polling
+      </div>
+
       <div id="dropzone" class="dropzone">
         <input type="file" id="file-input" multiple />
         <p>Drop files here or click to browse</p>
@@ -308,6 +312,9 @@
         document.getElementById('btn-disconnect').style.display = 'block';
         state.cryptoKey = await deriveAESKey(state.sessionId);
         setPhase('paired');
+        if (msg.shortcut_mode) {
+          document.getElementById('shortcut-mode-hint').style.display = 'block';
+        }
       } else if (msg.type === 'folders') {
         const list = msg.folders || flattenTreeList(msg.tree || []);
         state.folderTree = list;
@@ -320,6 +327,10 @@
         if (state.currentTransfer && state.currentTransfer.direction === 'sending') {
           handleAck(msg.chunk_index);
         }
+      } else if (msg.type === 'shortcut_ack') {
+        setPhase('done');
+        document.getElementById('done-message').innerText = 'Received on iPhone!';
+        document.getElementById('done-subtext').innerText = 'File saved to iPhone Files app';
       } else if (msg.type === 'transfer_init') {
         state.currentTransfer = {
           direction: 'receiving',

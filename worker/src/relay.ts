@@ -36,6 +36,7 @@ const ALLOWED_MESSAGE_TYPES = new Set([
   "cancelled",
   "disconnected",
   "error",
+  "shortcut_ack",
 ]);
 
 /** Minimal validation: the parsed JSON must be a non-null object with a valid `type` string. */

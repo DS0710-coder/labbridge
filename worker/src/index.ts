@@ -16,7 +16,7 @@ interface Env {
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "*",
 };
 
@@ -110,6 +110,116 @@ export default {
       }
       const errBody = await res.text();
       return corsResponse(errBody, { status: res.status, headers: res.headers });
+    }
+
+    // ── GET /session/:id/poll  (iPhone Shortcut polls this) ──────────────
+    const pollMatch = path.match(/^\/session\/([a-zA-Z0-9]{12})\/poll$/);
+    if (pollMatch && request.method === "GET") {
+      if (!checkRateLimit(`poll:${ip}`, 60, 60 * 1000)) {
+        return corsResponse(JSON.stringify({ error: "Rate limit exceeded" }), {
+          status: 429,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      const [, sessionId] = pollMatch;
+      const doId = env.SESSIONS.idFromName(sessionId);
+      const stub = env.SESSIONS.get(doId);
+      const doUrl = new URL(request.url);
+      doUrl.pathname = "/poll";
+      doUrl.searchParams.set("id", sessionId);
+      const res = await stub.fetch(doUrl.toString());
+      const body = await res.text();
+      return corsResponse(body, {
+        status: res.status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // ── GET /session/:id/chunk/:index  (iPhone downloads one chunk) ──────
+    const chunkMatch = path.match(/^\/session\/([a-zA-Z0-9]{12})\/chunk\/(\d+)$/);
+    if (chunkMatch && request.method === "GET") {
+      if (!checkRateLimit(`chunk:${ip}`, 200, 60 * 1000)) {
+        return corsResponse("Rate limit exceeded", { status: 429 });
+      }
+      const [, sessionId, chunkIndexStr] = chunkMatch;
+      const chunkIndex = parseInt(chunkIndexStr, 10);
+      const doId = env.SESSIONS.idFromName(sessionId);
+      const stub = env.SESSIONS.get(doId);
+      const doUrl = new URL(request.url);
+      doUrl.pathname = `/chunk/${chunkIndex}`;
+      doUrl.searchParams.set("id", sessionId);
+      const res = await stub.fetch(doUrl.toString());
+      if (!res.ok) {
+        return corsResponse(await res.text(), { status: res.status });
+      }
+      const buffer = await res.arrayBuffer();
+      const headers = new Headers(CORS_HEADERS);
+      headers.set("Content-Type", "application/octet-stream");
+      headers.set("Content-Length", buffer.byteLength.toString());
+      return new Response(buffer, { status: 200, headers });
+    }
+
+    // ── POST /session/:id/phone_ack  (iPhone confirms file received) ──────
+    const ackMatch = path.match(/^\/session\/([a-zA-Z0-9]{12})\/phone_ack$/);
+    if (ackMatch && request.method === "POST") {
+      const [, sessionId] = ackMatch;
+      const doId = env.SESSIONS.idFromName(sessionId);
+      const stub = env.SESSIONS.get(doId);
+      const doUrl = new URL(request.url);
+      doUrl.pathname = "/phone_ack";
+      doUrl.searchParams.set("id", sessionId);
+      const res = await stub.fetch(doUrl.toString(), {
+        method: "POST",
+        body: request.body,
+        headers: request.headers,
+      });
+      return corsResponse(await res.text(), {
+        status: res.status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // ── POST /session/:id/phone_connect  (iPhone Shortcut first connect) ──
+    const connectMatch = path.match(/^\/session\/([a-zA-Z0-9]{12})\/phone_connect$/);
+    if (connectMatch && request.method === "POST") {
+      const [, sessionId] = connectMatch;
+      const doId = env.SESSIONS.idFromName(sessionId);
+      const stub = env.SESSIONS.get(doId);
+      const doUrl = new URL(request.url);
+      doUrl.pathname = "/phone_connect";
+      doUrl.searchParams.set("id", sessionId);
+      const res = await stub.fetch(doUrl.toString(), { method: "POST" });
+      return corsResponse(await res.text(), {
+        status: res.status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // ── POST /session/:id/decrypt  (Option A helper for iOS Shortcut) ────
+    const decryptMatch = path.match(/^\/session\/([a-zA-Z0-9]{12})\/decrypt$/);
+    if (decryptMatch && request.method === "POST") {
+      if (!checkRateLimit(`decrypt:${ip}`, 200, 60 * 1000)) {
+        return corsResponse("Rate limit exceeded", { status: 429 });
+      }
+      const [, sessionId] = decryptMatch;
+      const doId = env.SESSIONS.idFromName(sessionId);
+      const stub = env.SESSIONS.get(doId);
+      const doUrl = new URL(request.url);
+      doUrl.pathname = "/decrypt";
+      doUrl.searchParams.set("id", sessionId);
+      const res = await stub.fetch(doUrl.toString(), {
+        method: "POST",
+        body: request.body,
+        headers: request.headers,
+      });
+      if (!res.ok) {
+        return corsResponse(await res.text(), { status: res.status });
+      }
+      const buffer = await res.arrayBuffer();
+      const headers = new Headers(CORS_HEADERS);
+      headers.set("Content-Type", "application/octet-stream");
+      headers.set("Content-Length", buffer.byteLength.toString());
+      return new Response(buffer, { status: 200, headers });
     }
 
     // ── Fallback ──────────────────────────────────────────────────────
