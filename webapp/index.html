@@ -159,13 +159,40 @@
       setupDropzone();
     });
 
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str || '';
+      return div.innerHTML;
+    }
+
+    function flattenTreeList(tree, parentId = null) {
+      let result = [];
+      if (!tree || !Array.isArray(tree)) return result;
+      for (const item of tree) {
+        const flatItem = {
+          id: item.id,
+          name: item.name || 'Folder',
+          parentId: item.parentId || item.parent_id || parentId,
+          color: item.color || '#6C63FF'
+        };
+        result.push(flatItem);
+        if (item.children && Array.isArray(item.children)) {
+          result = result.concat(flattenTreeList(item.children, item.id));
+        }
+      }
+      return result;
+    }
+
     async function createSession() {
       clearInterval(state.timerInterval);
       if (state.ws) {
-        if (state.ws.readyState === WebSocket.OPEN && state.phase !== 'waiting') {
-          state.ws.send(JSON.stringify({ type: 'cancelled' }));
+        const oldWs = state.ws;
+        state.ws = null;
+        oldWs.onclose = null;
+        if (oldWs.readyState === WebSocket.OPEN && state.phase !== 'waiting') {
+          try { oldWs.send(JSON.stringify({ type: 'cancelled' })); } catch (e) {}
         }
-        state.ws.close();
+        try { oldWs.close(); } catch (e) {}
       }
       if (state.receivedFiles) {
         state.receivedFiles.forEach(f => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
@@ -223,6 +250,12 @@
         setStatus(false, 'Disconnected by phone');
         document.getElementById('btn-disconnect').style.display = 'none';
         clearInterval(state.timerInterval);
+        const oldWs = state.ws;
+        state.ws = null;
+        if (oldWs) {
+          oldWs.onclose = null;
+          try { oldWs.close(); } catch (e) {}
+        }
         setPhase('waiting');
         createSession();
       }
@@ -237,7 +270,11 @@
     }
 
     function connectWebSocket() {
-      if (state.ws) state.ws.close();
+      if (state.ws) {
+        const old = state.ws;
+        old.onclose = null;
+        try { old.close(); } catch (e) {}
+      }
       const ws = new WebSocket(`${WORKER_URL}/session/${state.sessionId}/pc`);
       ws.binaryType = 'arraybuffer';
       state.ws = ws;
@@ -272,7 +309,8 @@
         state.cryptoKey = await deriveAESKey(state.sessionId);
         setPhase('paired');
       } else if (msg.type === 'folders') {
-        state.folderTree = msg.tree || [];
+        const list = msg.folders || flattenTreeList(msg.tree || []);
+        state.folderTree = list;
         renderFolders();
       } else if (msg.type === 'ready') {
         if (state.currentTransfer && state.currentTransfer.direction === 'sending') {
@@ -285,16 +323,18 @@
       } else if (msg.type === 'transfer_init') {
         state.currentTransfer = {
           direction: 'receiving',
-          filename: msg.filename,
-          size: msg.size,
-          total_chunks: msg.total_chunks,
+          filename: msg.filename || 'received_file',
+          size: typeof msg.size === 'number' ? msg.size : 0,
+          total_chunks: typeof msg.total_chunks === 'number' ? msg.total_chunks : 0,
           mime_type: msg.mime_type || 'application/octet-stream',
           receivedChunks: 0,
-          chunksData: new Array(msg.total_chunks)
+          chunksData: new Array(typeof msg.total_chunks === 'number' ? msg.total_chunks : 0)
         };
         setPhase('transferring');
-        updateProgressDisplay(msg.filename, msg.size, 0);
-        state.ws.send(JSON.stringify({ type: 'ready' }));
+        updateProgressDisplay(state.currentTransfer.filename, state.currentTransfer.size, 0);
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+          state.ws.send(JSON.stringify({ type: 'ready' }));
+        }
       } else if (msg.type === 'cancelled') {
         alert('Transfer cancelled by phone');
         setPhase('paired');
@@ -325,8 +365,11 @@
 
     function disconnectSession() {
       if (state.ws) {
-        try { state.ws.send(JSON.stringify({ type: 'disconnected' })); } catch (e) {}
-        state.ws.close();
+        const oldWs = state.ws;
+        state.ws = null;
+        oldWs.onclose = null;
+        try { oldWs.send(JSON.stringify({ type: 'disconnected' })); } catch (e) {}
+        try { oldWs.close(); } catch (e) {}
       }
       clearInterval(state.timerInterval);
       setPhase('waiting');
@@ -348,31 +391,52 @@
     }
 
     function renderFolders() {
-      // Render breadcrumbs
+      // Render breadcrumbs safely using DOM manipulation
       const bcEl = document.getElementById('breadcrumb');
-      let bcHtml = `<span class="breadcrumb-item" onclick="navigateRoot()">Root</span>`;
-      let currentList = state.folderTree;
+      if (!bcEl) return;
+      bcEl.innerHTML = '';
+      
+      const rootSpan = document.createElement('span');
+      rootSpan.className = 'breadcrumb-item';
+      rootSpan.textContent = 'Root';
+      rootSpan.addEventListener('click', () => navigateRoot());
+      bcEl.appendChild(rootSpan);
 
       for (let i = 0; i < state.currentFolderPath.length; i++) {
         const item = state.currentFolderPath[i];
-        bcHtml += ` <span class="breadcrumb-sep">></span> <span class="breadcrumb-item" onclick="navigateUpTo(${i})">${item.name}</span>`;
-      }
-      bcEl.innerHTML = bcHtml;
+        const sepSpan = document.createElement('span');
+        sepSpan.className = 'breadcrumb-sep';
+        sepSpan.textContent = ' > ';
+        bcEl.appendChild(sepSpan);
 
-      // Find children of currentFolderId
-      const children = state.folderTree.filter(f => f.parentId === state.currentFolderId || (state.currentFolderId === null && !f.parentId));
+        const itemSpan = document.createElement('span');
+        itemSpan.className = 'breadcrumb-item';
+        itemSpan.textContent = item.name;
+        itemSpan.addEventListener('click', () => navigateUpTo(i));
+        bcEl.appendChild(itemSpan);
+      }
+
+      // Find children of currentFolderId (checking both camelCase and snake_case parentId)
+      const children = (state.folderTree || []).filter(f => {
+        const pid = f.parentId !== undefined ? f.parentId : f.parent_id;
+        return pid === state.currentFolderId || (state.currentFolderId === null && !pid);
+      });
       const gridEl = document.getElementById('folder-grid');
+      if (!gridEl) return;
 
       if (children.length === 0) {
         gridEl.innerHTML = `<p style="color: var(--muted); font-size: 13px; align-self: center;">No subfolders inside this directory</p>`;
         return;
       }
 
-      gridEl.innerHTML = children.map(f => `
-        <button class="folder-btn" onclick="navigateIntoFolder('${f.id}', '${f.name.replace(/'/g, "\\'")}')">
-          📁 ${f.name}
-        </button>
-      `).join('');
+      gridEl.innerHTML = '';
+      children.forEach(f => {
+        const btn = document.createElement('button');
+        btn.className = 'folder-btn';
+        btn.textContent = `📁 ${f.name || 'Folder'}`;
+        btn.addEventListener('click', () => navigateIntoFolder(f.id, f.name || 'Folder'));
+        gridEl.appendChild(btn);
+      });
     }
 
     function navigateUpTo(index) {
@@ -408,7 +472,6 @@
     async function encryptChunk(plaintextBuffer, key, chunkIndex) {
       const iv = new Uint8Array(12);
       crypto.getRandomValues(iv);
-      // Put chunkIndex into last 4 bytes of IV (big-endian) to ensure uniqueness
       const view = new DataView(iv.buffer);
       view.setUint32(8, chunkIndex, false);
 
@@ -418,7 +481,6 @@
         plaintextBuffer
       );
 
-      // Return combined buffer: IV (12) + ciphertext/authTag
       const combined = new Uint8Array(12 + ciphertext.byteLength);
       combined.set(iv, 0);
       combined.set(new Uint8Array(ciphertext), 12);
@@ -508,7 +570,6 @@
       setPhase('transferring');
       updateProgressDisplay(file.name, file.size, 0);
 
-      // Send transfer init to phone
       state.ws.send(JSON.stringify({
         type: 'transfer_init',
         filename: file.name,
@@ -544,7 +605,9 @@
 
       const encrypted = await encryptChunk(arrayBuffer, state.cryptoKey, chunkIndex);
       transfer.pendingAck = chunkIndex;
-      state.ws.send(encrypted);
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(encrypted);
+      }
     }
 
     function handleAck(chunkIndex) {
@@ -558,7 +621,6 @@
       const pct = Math.round((transfer.sentChunks / transfer.total_chunks) * 100);
       updateProgressDisplay(transfer.filename, transfer.size, pct);
 
-      // Send next chunk immediately
       sendNextChunk(chunkIndex + 1);
     }
 
@@ -573,19 +635,22 @@
       const chunkIndex = transfer.receivedChunks;
       try {
         const decrypted = await decryptChunk(buffer, state.cryptoKey, chunkIndex);
-        transfer.chunksData[chunkIndex] = decrypted;
+        // Wrap decrypted chunk in a Blob immediately so browser can page/spill off heap
+        transfer.chunksData[chunkIndex] = new Blob([decrypted]);
         transfer.receivedChunks++;
 
         const pct = Math.round((transfer.receivedChunks / transfer.total_chunks) * 100);
         updateProgressDisplay(transfer.filename, transfer.size, pct);
 
-        // Send ACK back to phone
-        state.ws.send(JSON.stringify({ type: 'ack', chunk_index: chunkIndex }));
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: chunkIndex }));
+        }
 
         if (transfer.receivedChunks >= transfer.total_chunks) {
-          // All chunks received, trigger browser download & store in receivedFiles
-          const blob = new Blob(transfer.chunksData, { type: transfer.mime_type });
-          const blobUrl = URL.createObjectURL(blob);
+          const finalBlob = new Blob(transfer.chunksData, { type: transfer.mime_type });
+          // Release references to intermediate chunks immediately to free memory
+          transfer.chunksData = null;
+          const blobUrl = URL.createObjectURL(finalBlob);
           state.receivedFiles = state.receivedFiles || [];
           state.receivedFiles.push({
             filename: transfer.filename,

@@ -36,10 +36,21 @@ class AppColors {
   ];
 
   static Color fromHex(String hexColor) {
-    hexColor = hexColor.replaceAll('#', '');
-    if (hexColor.length == 6) {
-      hexColor = 'FF$hexColor';
+    try {
+      var hex = hexColor.replaceAll('#', '').trim();
+      if (hex.length == 3) {
+        hex = hex.split('').map((c) => '$c$c').join('');
+      }
+      if (hex.length == 6) {
+        hex = 'FF$hex';
+      } else if (hex.length == 8) {
+        // Already ARGB or RGBA. Assume ARGB format if 8 digits.
+      } else {
+        return const Color(0xFF6C63FF); // Fallback color
+      }
+      return Color(int.parse(hex, radix: 16));
+    } catch (_) {
+      return const Color(0xFF6C63FF);
     }
-    return Color(int.parse(hexColor, radix: 16));
   }
 }

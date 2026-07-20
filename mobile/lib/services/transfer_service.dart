@@ -8,7 +8,7 @@ import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:path/path.dart' as p;
 
-import '../models/folder.dart';
+
 import '../models/file_item.dart';
 import '../models/transfer.dart';
 import 'crypto_service.dart';
@@ -70,6 +70,11 @@ class TransferService extends ChangeNotifier {
   int _transferredBytes = 0;
   DateTime? _transferStartTime;
 
+  // State for sending
+  bool _isSending = false;
+  Completer<void>? _readyCompleter;
+  Completer<int>? _ackCompleter;
+
   ConnectionStatus _status = ConnectionStatus.disconnected;
   ConnectionStatus get currentStatus => _status;
 
@@ -88,7 +93,7 @@ class TransferService extends ChangeNotifier {
       final wsUrl = '$workerUrl/session/$sessionId/phone';
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
 
-      await _channel!.ready;
+      await _channel!.ready.timeout(const Duration(seconds: 10));
 
       _status = ConnectionStatus.connected;
       _connectionStatusController.add(ConnectionStatus.connected);
@@ -102,13 +107,18 @@ class TransferService extends ChangeNotifier {
           _connectionStatusController.add(ConnectionStatus.error);
           notifyListeners();
           _errorController.add('WebSocket error: $error');
+          disconnect(sendSignal: false);
         },
         onDone: () {
           _status = ConnectionStatus.disconnected;
           _connectionStatusController.add(ConnectionStatus.disconnected);
           notifyListeners();
+          disconnect(sendSignal: false);
         },
       );
+
+      // Send initial folder tree when connected
+      await sendFolderTree();
     } catch (e) {
       _status = ConnectionStatus.error;
       _connectionStatusController.add(ConnectionStatus.error);
@@ -134,11 +144,19 @@ class TransferService extends ChangeNotifier {
         case 'transfer_init':
           _handleTransferInit(data);
           break;
+        case 'folder_request':
+          sendFolderTree();
+          break;
         case 'ready':
-          // Server is ready to receive our file - handled by sendFile
+          if (_readyCompleter != null && !_readyCompleter!.isCompleted) {
+            _readyCompleter!.complete();
+          }
           break;
         case 'ack':
-          // Acknowledgment of chunk received by server
+          if (_ackCompleter != null && !_ackCompleter!.isCompleted) {
+            final idx = data['chunk_index'] as int? ?? 0;
+            _ackCompleter!.complete(idx);
+          }
           break;
         case 'disconnected':
           disconnect(sendSignal: false);
@@ -152,7 +170,39 @@ class TransferService extends ChangeNotifier {
     }
   }
 
+  Future<void> sendFolderTree() async {
+    if (_channel == null) return;
+    try {
+      final folders = await _dbService.getAllFolders();
+      final foldersList = folders.map((f) => {
+        'id': f.id,
+        'name': f.name,
+        'parentId': f.parentId,
+        'color': f.color,
+      }).toList();
+      _channel!.sink.add(json.encode({
+        'type': 'folders',
+        'folders': foldersList,
+      }));
+    } catch (e) {
+      _errorController.add('Failed to send folder tree: $e');
+    }
+  }
+
   Future<void> _handleTransferInit(Map<String, dynamic> data) async {
+    if (_tempSink != null || _tempFile != null) {
+      try {
+        await _tempSink?.close();
+      } catch (_) {}
+      if (_tempFile != null && await _tempFile!.exists()) {
+        try {
+          await _tempFile!.delete();
+        } catch (_) {}
+      }
+      _tempSink = null;
+      _tempFile = null;
+    }
+
     _currentFileName = data['filename'] as String? ?? 'unknown';
     _currentFileSize = data['size'] as int? ?? 0;
     _totalChunks = data['total_chunks'] as int? ?? 0;
@@ -310,96 +360,113 @@ class TransferService extends ChangeNotifier {
     }
   }
 
-  /// Send folder tree to the PC browser
-  void sendFolderTree(List<Folder> folders) {
-    final tree = _buildFolderTree(folders, null);
-    _channel?.sink.add(json.encode({
-      'type': 'folders',
-      'tree': tree,
-    }));
-  }
-
-  List<Map<String, dynamic>> _buildFolderTree(List<Folder> folders, String? parentId) {
-    return folders
-        .where((f) => f.parentId == parentId)
-        .map((f) {
-          final json = f.toJson();
-          json['children'] = _buildFolderTree(folders, f.id);
-          return json;
-        })
-        .toList();
-  }
-
   /// Send a file to the PC browser
   Future<void> sendFile(File file, String sessionId) async {
     if (_channel == null || _derivedKey == null) {
       _errorController.add('Not connected');
       return;
     }
+    if (_isSending) {
+      _errorController.add('A file transfer is already in progress');
+      return;
+    }
+    _isSending = true;
 
     final fileName = p.basename(file.path);
     final fileSize = await file.length();
     final totalChunks = (fileSize / _chunkSize).ceil();
 
-    // Send transfer_init
-    _channel!.sink.add(json.encode({
-      'type': 'transfer_init',
-      'filename': fileName,
-      'size': fileSize,
-      'total_chunks': totalChunks,
-    }));
-
-    _transferStartTime = DateTime.now();
-
-    // Read and send chunks using RandomAccessFile to prevent high memory usage
-    final raf = await file.open(mode: FileMode.read);
-    int chunkIndex = 0;
-    int transferred = 0;
+    _readyCompleter = Completer<void>();
 
     try {
-      while (true) {
-        final chunk = await raf.read(_chunkSize);
-        if (chunk.isEmpty) break;
+      // Send transfer_init
+      _channel!.sink.add(json.encode({
+        'type': 'transfer_init',
+        'filename': fileName,
+        'size': fileSize,
+        'total_chunks': totalChunks,
+      }));
 
-        final encrypted = _cryptoService.encryptChunk(
-          chunk,
-          _derivedKey!,
-          chunkIndex,
-        );
+      _transferStartTime = DateTime.now();
 
-        _channel!.sink.add(encrypted);
+      // Wait for 'ready' signal from server/peer before sending chunks
+      await _readyCompleter!.future.timeout(const Duration(seconds: 15));
+      _readyCompleter = null;
 
-        transferred += chunk.length;
-        chunkIndex++;
+      // Read and send chunks using RandomAccessFile
+      final raf = await file.open(mode: FileMode.read);
+      int chunkIndex = 0;
+      int transferred = 0;
 
-        _progressController.add(TransferProgress(
-          fileName: fileName,
-          totalBytes: fileSize,
-          transferredBytes: transferred,
-          totalChunks: totalChunks,
-          completedChunks: chunkIndex,
-          direction: TransferDirection.sent,
-        ));
-        notifyListeners();
+      try {
+        while (true) {
+          final chunk = await raf.read(_chunkSize);
+          if (chunk.isEmpty) break;
+
+          final encrypted = _cryptoService.encryptChunk(
+            chunk,
+            _derivedKey!,
+            chunkIndex,
+          );
+
+          _ackCompleter = Completer<int>();
+          _channel!.sink.add(encrypted);
+
+          // Wait for peer to ACK this chunk
+          await _ackCompleter!.future.timeout(const Duration(seconds: 15));
+          _ackCompleter = null;
+
+          transferred += chunk.length;
+          chunkIndex++;
+
+          _progressController.add(TransferProgress(
+            fileName: fileName,
+            totalBytes: fileSize,
+            transferredBytes: transferred,
+            totalChunks: totalChunks,
+            completedChunks: chunkIndex,
+            direction: TransferDirection.sent,
+          ));
+          notifyListeners();
+        }
+      } finally {
+        await raf.close();
       }
+
+      // Record transfer as completed
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await _dbService.insertTransfer(Transfer(
+        id: _uuid.v4(),
+        fileName: fileName,
+        size: fileSize,
+        direction: TransferDirection.sent,
+        status: TransferStatus.completed,
+        completedAt: now,
+      ));
+
+      _completionController.add(fileName);
+      _progressController.add(null);
+      notifyListeners();
+    } catch (e) {
+      // Record transfer as failed
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await _dbService.insertTransfer(Transfer(
+        id: _uuid.v4(),
+        fileName: fileName,
+        size: fileSize,
+        direction: TransferDirection.sent,
+        status: TransferStatus.failed,
+        completedAt: now,
+      ));
+      _errorController.add('Transfer failed: $e');
+      _progressController.add(null);
+      notifyListeners();
+      rethrow;
     } finally {
-      await raf.close();
+      _isSending = false;
+      _readyCompleter = null;
+      _ackCompleter = null;
     }
-
-    // Record transfer
-    final now = DateTime.now().millisecondsSinceEpoch;
-    await _dbService.insertTransfer(Transfer(
-      id: _uuid.v4(),
-      fileName: fileName,
-      size: fileSize,
-      direction: TransferDirection.sent,
-      status: TransferStatus.completed,
-      completedAt: now,
-    ));
-
-    _completionController.add(fileName);
-    _progressController.add(null);
-    notifyListeners();
   }
 
   /// Set the target folder for incoming files
@@ -428,8 +495,30 @@ class TransferService extends ChangeNotifier {
     _channel = null;
     _derivedKey = null;
     _currentSessionId = null;
-    _tempSink = null;
-    _tempFile = null;
+
+    if (_readyCompleter != null && !_readyCompleter!.isCompleted) {
+      _readyCompleter!.completeError(StateError('Disconnected'));
+    }
+    if (_ackCompleter != null && !_ackCompleter!.isCompleted) {
+      _ackCompleter!.completeError(StateError('Disconnected'));
+    }
+    _readyCompleter = null;
+    _ackCompleter = null;
+    _isSending = false;
+
+    if (_tempSink != null || _tempFile != null) {
+      try {
+        await _tempSink?.close();
+      } catch (_) {}
+      if (_tempFile != null && await _tempFile!.exists()) {
+        try {
+          await _tempFile!.delete();
+        } catch (_) {}
+      }
+      _tempSink = null;
+      _tempFile = null;
+    }
+
     _status = ConnectionStatus.disconnected;
     _connectionStatusController.add(ConnectionStatus.disconnected);
     _progressController.add(null);

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:math';
 import 'package:pointycastle/export.dart';
@@ -5,9 +6,9 @@ import 'package:pointycastle/export.dart';
 class CryptoService {
   /// Derive a 256-bit key from session ID using HKDF with SHA-256
   Uint8List deriveKey(String sessionId) {
-    final ikm = Uint8List.fromList(sessionId.codeUnits);
-    final salt = Uint8List.fromList('labbridge-v2'.codeUnits);
-    final info = Uint8List.fromList('file-transfer'.codeUnits);
+    final ikm = Uint8List.fromList(utf8.encode(sessionId));
+    final salt = Uint8List.fromList(utf8.encode('labbridge-v2'));
+    final info = Uint8List.fromList(utf8.encode('file-transfer'));
 
     // HKDF-Extract
     final hmacExtract = HMac(SHA256Digest(), 64)..init(KeyParameter(salt));
@@ -84,6 +85,11 @@ class CryptoService {
   Uint8List decryptChunk(Uint8List combined, Uint8List key, int chunkIndex) {
     final iv = combined.sublist(0, 12);
     final ciphertextWithTag = combined.sublist(12);
+
+    final expectedIndex = ((iv[8] & 0xFF) << 24) | ((iv[9] & 0xFF) << 16) | ((iv[10] & 0xFF) << 8) | (iv[11] & 0xFF);
+    if (expectedIndex != chunkIndex) {
+      throw ArgumentError('Decrypted chunk index ($expectedIndex) does not match expected ($chunkIndex)');
+    }
 
     final cipher = GCMBlockCipher(AESEngine())
       ..init(

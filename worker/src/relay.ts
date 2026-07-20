@@ -25,12 +25,24 @@ export function getOtherSocket(
   return null;
 }
 
-/** Minimal validation: the parsed JSON must be a non-null object with a `type` string. */
+const ALLOWED_MESSAGE_TYPES = new Set([
+  "waiting",
+  "paired",
+  "folder_request",
+  "folders",
+  "ready",
+  "transfer_init",
+  "ack",
+  "cancelled",
+  "disconnected",
+  "error",
+]);
+
+/** Minimal validation: the parsed JSON must be a non-null object with a valid `type` string. */
 export function isValidSessionMessage(data: unknown): data is { type: string } {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "type" in data &&
-    typeof (data as Record<string, unknown>).type === "string"
-  );
+  if (typeof data !== "object" || data === null || !("type" in data)) {
+    return false;
+  }
+  const typeVal = (data as Record<string, unknown>).type;
+  return typeof typeVal === "string" && ALLOWED_MESSAGE_TYPES.has(typeVal);
 }

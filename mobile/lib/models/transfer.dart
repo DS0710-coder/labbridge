@@ -37,14 +37,16 @@ class Transfer {
 
   factory Transfer.fromMap(Map<String, dynamic> map) {
     return Transfer(
-      id: map['id'] as String,
-      fileName: map['file_name'] as String,
-      size: map['size'] as int,
+      id: map['id'] as String? ?? '',
+      fileName: map['file_name'] as String? ?? 'Unknown',
+      size: map['size'] as int? ?? 0,
       direction: TransferDirection.values.firstWhere(
         (d) => d.name == map['direction'],
+        orElse: () => TransferDirection.received,
       ),
       status: TransferStatus.values.firstWhere(
         (s) => s.name == map['status'],
+        orElse: () => TransferStatus.failed,
       ),
       folderId: map['folder_id'] as String?,
       completedAt: map['completed_at'] as int?,

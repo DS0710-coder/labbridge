@@ -31,11 +31,8 @@ class _TransferScreenState extends State<TransferScreen> {
 
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
   TransferProgress? _currentProgress;
-  List<Folder> _folders = [];
   List<Folder> _currentFolderChildren = [];
   List<Folder> _folderBreadcrumbs = [];
-  // ignore: unused_field
-  String? _selectedFolderId;
   final List<String> _completedFiles = [];
   String? _error;
   double _speed = 0;
@@ -53,10 +50,6 @@ class _TransferScreenState extends State<TransferScreen> {
   }
 
   Future<void> _init() async {
-    // Load folders
-    _folders = await _dbService.getAllFolders();
-    if (mounted) setState(() {});
-
     // Set up listeners
     _statusSub = _transferService.connectionStatus.listen((status) {
       if (mounted) {
@@ -100,7 +93,6 @@ class _TransferScreenState extends State<TransferScreen> {
     if (mounted) {
       setState(() {
         _currentFolderChildren = children;
-        _selectedFolderId = parentId; // selecting a folder = saving here
         _transferService.setTargetFolder(parentId);
       });
     }
@@ -117,15 +109,10 @@ class _TransferScreenState extends State<TransferScreen> {
     // Get worker URL from settings (for now, use default)
     final workerUrl = AppConfig.workerWsUrl;
     await _transferService.connect(widget.sessionId!, workerUrl);
-
-    // Send folder tree to PC
-    if (_transferService.currentStatus == ConnectionStatus.connected) {
-      _transferService.sendFolderTree(_folders);
-    }
   }
 
   Future<void> _pickAndSendFile() async {
-    final result = await FilePicker.platform.pickFiles();
+    final result = await FilePicker.pickFiles();
     if (result == null || result.files.isEmpty) return;
 
     final filePath = result.files.single.path;

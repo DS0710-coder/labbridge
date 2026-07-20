@@ -154,6 +154,8 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
       ),
     );
 
+    if (!mounted) return;
+
     if (destId != null) {
       final targetFolderId = destId == '__root__' ? null : destId;
       for (final id in selectedFolderIds) {
@@ -167,7 +169,9 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
         }
       }
       for (final id in selectedFileIds) {
-        final f = files.firstWhere((item) => item.id == id);
+        final matches = files.where((item) => item.id == id);
+        if (matches.isEmpty) continue;
+        final f = matches.first;
         await dbService.updateFile(
           targetFolderId == null
               ? f.copyWith(clearFolderId: true)
@@ -273,6 +277,8 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
       ),
     );
 
+    if (!mounted) return;
+
     if (confirmUnpack == true) {
       final parentFolderId = breadcrumbs.length > 1 ? breadcrumbs[breadcrumbs.length - 2].id : null;
       for (final id in selectedFolderIds) {
@@ -286,7 +292,9 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
         }
       }
       for (final id in selectedFileIds) {
-        final f = files.firstWhere((item) => item.id == id);
+        final matches = files.where((item) => item.id == id);
+        if (matches.isEmpty) continue;
+        final f = matches.first;
         await dbService.updateFile(
           parentFolderId == null
               ? f.copyWith(clearFolderId: true)

@@ -36,13 +36,13 @@ class FileItem {
 
   factory FileItem.fromMap(Map<String, dynamic> map) {
     return FileItem(
-      id: map['id'] as String,
-      name: map['name'] as String,
-      localPath: map['local_path'] as String,
-      size: map['size'] as int,
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? 'Unknown File',
+      localPath: map['local_path'] as String? ?? '',
+      size: map['size'] as int? ?? 0,
       mimeType: map['mime_type'] as String?,
       folderId: map['folder_id'] as String?,
-      receivedAt: map['received_at'] as int,
+      receivedAt: map['received_at'] as int? ?? DateTime.now().millisecondsSinceEpoch,
       tags: (map['tags'] as String?) ?? '',
     );
   }

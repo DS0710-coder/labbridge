@@ -58,7 +58,7 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname;
-    const ip = request.headers.get("CF-Connecting-IP") ?? request.headers.get("X-Forwarded-For") ?? "unknown";
+    const ip = request.headers.get("CF-Connecting-IP") ?? "local/unknown";
 
     // ── GET /session/new ──────────────────────────────────────────────
     if (path === "/session/new" && request.method === "GET") {
@@ -88,6 +88,10 @@ export default {
     // ── GET /session/:id/pc  or  /session/:id/phone ──────────────────
     const wsMatch = path.match(/^\/session\/([a-zA-Z0-9]{12})\/(pc|phone)$/);
     if (wsMatch && request.method === "GET") {
+      if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+        return corsResponse("Expected WebSocket upgrade", { status: 426 });
+      }
+
       if (!checkRateLimit(`ws:${ip}`, 60, 60 * 1000)) {
         return corsResponse("Rate limit exceeded", { status: 429 });
       }
@@ -99,7 +103,13 @@ export default {
       // Forward the upgrade request directly to the Durable Object
       const doUrl = new URL(request.url);
       doUrl.pathname = `/${role}`;
-      return stub.fetch(doUrl.toString(), request);
+      const res = await stub.fetch(doUrl.toString(), request);
+
+      if (res.status === 101) {
+        return res;
+      }
+      const errBody = await res.text();
+      return corsResponse(errBody, { status: res.status, headers: res.headers });
     }
 
     // ── Fallback ──────────────────────────────────────────────────────

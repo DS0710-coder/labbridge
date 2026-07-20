@@ -160,7 +160,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: Icons.upload_file_rounded,
                                 label: 'Transfer Files to PC',
                                 onTap: () async {
-                                  final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+                                  final result = await FilePicker.pickFiles(allowMultiple: true);
                                   if (result != null && result.files.isNotEmpty) {
                                     for (final f in result.files) {
                                       if (f.path != null) {

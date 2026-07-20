@@ -4,7 +4,6 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
 import '../core/config.dart';
-import '../services/db_service.dart';
 import '../services/transfer_service.dart';
 
 class ScannerScreen extends StatefulWidget {
@@ -46,6 +45,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         }
 
         // Valid QR - connect and navigate back to dashboard
+        _hasNavigated = true;
         await _connectAndReturn(sessionId);
         return;
       } catch (_) {
@@ -55,13 +55,12 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   Future<void> _connectAndReturn(String sessionId) async {
-    _hasNavigated = true;
     final transferService = Provider.of<TransferService>(context, listen: false);
     await transferService.connect(sessionId, AppConfig.workerWsUrl);
+    
+    if (!mounted) return;
+    
     if (transferService.currentStatus == ConnectionStatus.connected) {
-      final allFolders = await DbService().getAllFolders();
-      transferService.sendFolderTree(allFolders);
-      if (!mounted) return;
       Navigator.of(context).pop();
     } else {
       _hasNavigated = false;

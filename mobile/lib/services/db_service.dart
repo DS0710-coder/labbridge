@@ -51,6 +51,10 @@ class DbService {
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    await _createTables(db);
+  }
+
+  Future<void> _createTables(DatabaseExecutor db) async {
     await db.execute('''
       CREATE TABLE folders (
         id TEXT PRIMARY KEY,
@@ -153,7 +157,7 @@ class DbService {
 
   String _sanitizeFolderName(String raw) {
     var clean = raw.trim().replaceAll(RegExp(r'[\\/]+'), '');
-    if (clean == '.' || clean == '..') clean = 'Folder';
+    if (clean.isEmpty || clean == '.' || clean == '..') clean = 'Folder';
     if (clean.length > 100) clean = clean.substring(0, 100);
     return clean;
   }
@@ -172,17 +176,18 @@ class DbService {
 
   Future<void> deleteFolder(String id) async {
     final db = await database;
-    // Move children to parent of deleted folder
     final folder = await getFolder(id);
-    if (folder != null) {
-      await db.update(
-        'folders',
-        {'parent_id': folder.parentId},
-        where: 'parent_id = ?',
-        whereArgs: [id],
-      );
-    }
-    await db.delete('folders', where: 'id = ?', whereArgs: [id]);
+    await db.transaction((txn) async {
+      if (folder != null) {
+        await txn.update(
+          'folders',
+          {'parent_id': folder.parentId},
+          where: 'parent_id = ?',
+          whereArgs: [id],
+        );
+      }
+      await txn.delete('folders', where: 'id = ?', whereArgs: [id]);
+    });
   }
 
   Future<List<Map<String, dynamic>>> getFolderTree() async {
@@ -314,11 +319,11 @@ class DbService {
       }
     } catch (_) {}
 
-    await db.delete('transfers');
-    await db.delete('files');
-    await db.delete('folders');
-
-    // Re-seed default folders
-    await _onCreate(db, 1);
+    await db.transaction((txn) async {
+      await txn.delete('transfers');
+      await txn.delete('files');
+      await txn.delete('folders');
+      await _createTables(txn);
+    });
   }
 }

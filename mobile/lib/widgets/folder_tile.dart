@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/constants.dart';
 import '../models/folder.dart';
 
 class FolderTile extends StatelessWidget {
@@ -17,14 +18,9 @@ class FolderTile extends StatelessWidget {
     this.selectionMode = false,
   });
 
-  Color _parseColor(String hex) {
-    final hexCode = hex.replaceAll('#', '');
-    return Color(int.parse('FF$hexCode', radix: 16));
-  }
-
   @override
   Widget build(BuildContext context) {
-    final folderColor = _parseColor(folder.color);
+    final folderColor = AppColors.fromHex(folder.color);
 
     return Card(
       color: isSelected ? const Color(0xFF6C63FF).withValues(alpha: 0.08) : const Color(0xFF111118),

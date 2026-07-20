@@ -110,7 +110,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
 
   String _sanitizeFolderName(String raw) {
     var clean = raw.trim().replaceAll(RegExp(r'[\\/]+'), '');
-    if (clean == '.' || clean == '..') clean = 'Folder';
+    if (clean.isEmpty || clean == '.' || clean == '..') clean = 'Folder';
     if (clean.length > 100) clean = clean.substring(0, 100);
     return clean;
   }
@@ -158,6 +158,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
       ),
     );
 
+    if (!mounted) return;
     if (name != null) {
       final cleanName = _sanitizeFolderName(name);
       if (cleanName.isNotEmpty) {
@@ -283,6 +284,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
       ),
     );
 
+    if (!mounted) return;
     if (name != null) {
       final cleanName = _sanitizeFolderName(name);
       if (cleanName.isNotEmpty) {
@@ -382,6 +384,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
       ),
     );
 
+    if (!mounted) return;
     if (confirm == true) {
       await _dbService.deleteFolder(folder.id);
       _loadFolder(_currentFolderId);
@@ -513,6 +516,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
       ),
     );
 
+    if (!mounted) return;
     if (selectedId != null) {
       final newFolderId = selectedId == '__root__' ? null : selectedId;
       await _dbService.updateFile(
@@ -561,6 +565,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
       ),
     );
 
+    if (!mounted) return;
     if (tags != null) {
       await _dbService.updateFile(file.copyWith(tags: tags));
       _loadFolder(_currentFolderId);
@@ -591,6 +596,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
       ),
     );
 
+    if (!mounted) return;
     if (confirm == true) {
       await _dbService.deleteFile(file.id);
       _loadFolder(_currentFolderId);

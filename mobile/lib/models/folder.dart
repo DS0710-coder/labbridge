@@ -28,12 +28,12 @@ class Folder {
 
   factory Folder.fromMap(Map<String, dynamic> map) {
     return Folder(
-      id: map['id'] as String,
-      name: map['name'] as String,
+      id: map['id'] as String? ?? '',
+      name: map['name'] as String? ?? 'Folder',
       parentId: map['parent_id'] as String?,
       color: (map['color'] as String?) ?? '#6C63FF',
       sortOrder: (map['sort_order'] as int?) ?? 0,
-      createdAt: map['created_at'] as int,
+      createdAt: map['created_at'] as int? ?? DateTime.now().millisecondsSinceEpoch,
     );
   }
 

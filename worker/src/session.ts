@@ -173,13 +173,28 @@ export class Session extends DurableObject {
         return;
       }
       if (parsed.type === "transfer_init") {
-        const size = typeof (parsed as Record<string, unknown>).size === "number" ? ((parsed as Record<string, unknown>).size as number) : 0;
-        const totalChunks = typeof (parsed as Record<string, unknown>).total_chunks === "number" ? ((parsed as Record<string, unknown>).total_chunks as number) : 0;
-        if (size > MAX_FILE_SIZE_BYTES || totalChunks > Math.ceil(MAX_FILE_SIZE_BYTES / (512 * 1024))) {
+        const record = parsed as Record<string, unknown>;
+        if (
+          typeof record.size !== "number" ||
+          typeof record.total_chunks !== "number" ||
+          record.size < 0 ||
+          record.total_chunks < 0
+        ) {
+          ws.send(JSON.stringify({ type: "error", message: "Invalid transfer size or chunk count" }));
+          return;
+        }
+        if (record.size > MAX_FILE_SIZE_BYTES || record.total_chunks > Math.ceil(MAX_FILE_SIZE_BYTES / (512 * 1024))) {
           ws.close(1008, "Transfer size exceeds 500MB limit");
           other.close(1008, "Transfer size exceeds 500MB limit");
           return;
         }
+        const cumulative = ((await this.ctx.storage.get<number>("cumulative_transferred")) ?? 0) + record.size;
+        if (cumulative > MAX_FILE_SIZE_BYTES * 4) {
+          ws.close(1008, "Session cumulative transfer limit exceeded");
+          other.close(1008, "Session cumulative transfer limit exceeded");
+          return;
+        }
+        await this.ctx.storage.put("cumulative_transferred", cumulative);
         await this.ctx.storage.put("bytes_transferred", 0);
       }
       other.send(message);
@@ -204,6 +219,9 @@ export class Session extends DurableObject {
         // Already closed — ignore
       }
     }
+    if (this.ctx.getWebSockets().length === 0) {
+      await this.ctx.storage.deleteAll();
+    }
   }
 
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
@@ -215,6 +233,9 @@ export class Session extends DurableObject {
       } catch {
         // Already closed — ignore
       }
+    }
+    if (this.ctx.getWebSockets().length === 0) {
+      await this.ctx.storage.deleteAll();
     }
   }
 
