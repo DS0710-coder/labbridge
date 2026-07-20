@@ -239,6 +239,13 @@
     <h2>Connect to PC Session</h2>
     <p>Scan the QR code displayed on your PC screen or enter the 12-character session ID manually.</p>
     
+    <div id="url-warning-banner" style="display:none; padding:10px; background:rgba(239,68,68,0.15); border:1px solid var(--danger); border-radius:8px; margin-top:14px; font-size:13px; color:#FCA5A5;"></div>
+
+    <div style="margin-top: 16px;">
+      <label style="font-size: 12px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 6px;">Server URL (Worker):</label>
+      <input type="text" id="worker-url-input" placeholder="e.g. http://192.168.1.5:8787" style="width:100%;" />
+    </div>
+
     <div class="input-group">
       <input type="text" id="session-input" placeholder="e.g. a1b2c3d4e5f6" maxlength="12" />
       <button onclick="connectManual()">Connect</button>
@@ -303,15 +310,40 @@
     // Initialize from URL query parameters if opened via QR scan
     window.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
-      const s = params.get('s');
+      let s = params.get('s');
+      const pathMatch = window.location.pathname.match(/\/session\/([a-zA-Z0-9]{12})\/phone/);
+      if (!s && pathMatch) {
+        s = pathMatch[1];
+      }
       const w = params.get('w');
       
+      const savedUrl = localStorage.getItem('labbridge_worker_url');
       if (w) {
         state.workerHttpUrl = w;
+      } else if (savedUrl) {
+        state.workerHttpUrl = savedUrl;
       } else {
         state.workerHttpUrl = window.location.origin.includes('localhost') 
           ? 'http://localhost:8787' 
           : 'https://labbridge-worker.YOUR_SUBDOMAIN.workers.dev';
+      }
+
+      const urlInput = document.getElementById('worker-url-input');
+      if (urlInput) urlInput.value = state.workerHttpUrl;
+
+      // Check if running on phone while URL points to localhost or placeholder
+      const warningBanner = document.getElementById('url-warning-banner');
+      const isLocalhostUrl = state.workerHttpUrl.includes('localhost') || state.workerHttpUrl.includes('127.0.0.1');
+      const isPlaceholder = state.workerHttpUrl.includes('YOUR_SUBDOMAIN');
+      const isPhoneBrowser = !window.location.hostname.includes('localhost') && !window.location.hostname.includes('127.0.0.1');
+
+      if ((isLocalhostUrl || isPlaceholder) && isPhoneBrowser && warningBanner) {
+        warningBanner.style.display = 'block';
+        if (isLocalhostUrl) {
+          warningBanner.innerHTML = `⚠️ <strong>Localhost URL Detected:</strong> 'localhost' on a phone refers to the phone itself, not your PC! Please change the Server URL below to your PC's Wi-Fi IP address (e.g. <code>http://192.168.1.15:8787</code>) and tap Connect.`;
+        } else {
+          warningBanner.innerHTML = `⚠️ <strong>Placeholder URL Detected:</strong> Please replace <code>YOUR_SUBDOMAIN</code> below with your actual Cloudflare Worker domain or local Wi-Fi IP address.`;
+        }
       }
 
       if (s && s.length === 12) {
@@ -383,6 +415,12 @@
 
     async function connectToSession(sessionId) {
       state.sessionId = sessionId;
+      const urlInput = document.getElementById('worker-url-input');
+      if (urlInput && urlInput.value.trim()) {
+        state.workerHttpUrl = urlInput.value.trim();
+        localStorage.setItem('labbridge_worker_url', state.workerHttpUrl);
+      }
+
       if (state.scanner) {
         try { await state.scanner.stop(); } catch(e){}
         document.getElementById('qr-reader').style.display = 'none';
@@ -396,8 +434,10 @@
 
       const ws = new WebSocket(socketUrl);
       ws.binaryType = 'arraybuffer';
+      let opened = false;
 
       ws.onopen = () => {
+        opened = true;
         state.ws = ws;
         setStatus(true, 'Connected to PC');
         document.getElementById('section-connect').style.display = 'none';
@@ -418,6 +458,13 @@
         setStatus(false, 'Disconnected');
         document.getElementById('section-connect').style.display = 'block';
         document.getElementById('section-dashboard').style.display = 'none';
+        if (!opened) {
+          const banner = document.getElementById('url-warning-banner');
+          if (banner) {
+            banner.style.display = 'block';
+            banner.innerHTML = `❌ <strong>Could not connect to ${socketUrl}</strong>.<br/>Please verify that the Server URL above is correct and reachable from your phone, and that your PC session is active.`;
+          }
+        }
       };
 
       ws.onerror = () => {

@@ -231,7 +231,7 @@
 
         const qrEl = document.getElementById('qrcode');
         qrEl.innerHTML = '';
-        const pwaUrl = new URL('phone.html', window.location.href);
+        const pwaUrl = new URL('/phone.html', HTTP_URL);
         pwaUrl.searchParams.set('s', data.session_id);
         if (data.expires_at) pwaUrl.searchParams.set('e', new Date(data.expires_at).getTime());
         pwaUrl.searchParams.set('w', HTTP_URL);

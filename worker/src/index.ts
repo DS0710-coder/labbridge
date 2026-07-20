@@ -6,6 +6,10 @@
  */
 
 import { generateSessionId } from "./relay";
+import { INDEX_HTML } from "./index_html";
+import { PHONE_HTML } from "./phone_html";
+import { MANIFEST_JSON } from "./manifest_json";
+import { SW_JS } from "./sw_js";
 
 // Re-export the Durable Object class so wrangler can discover it
 export { Session } from "./session";
@@ -60,6 +64,22 @@ export default {
     const path = url.pathname;
     const ip = request.headers.get("CF-Connecting-IP") ?? "local/unknown";
 
+    // ── Static Web & PWA Routes ───────────────────────────────────────
+    if (request.method === "GET") {
+      if (path === "/" || path === "/index.html") {
+        return corsResponse(INDEX_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+      }
+      if (path === "/phone.html" || path === "/pwa") {
+        return corsResponse(PHONE_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+      }
+      if (path === "/manifest.json") {
+        return corsResponse(MANIFEST_JSON, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8" } });
+      }
+      if (path === "/sw.js") {
+        return corsResponse(SW_JS, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8" } });
+      }
+    }
+
     // ── GET /session/new ──────────────────────────────────────────────
     if (path === "/session/new" && request.method === "GET") {
       if (!checkRateLimit(`new:${ip}`, 20, 60 * 1000)) {
@@ -89,6 +109,10 @@ export default {
     const wsMatch = path.match(/^\/session\/([a-zA-Z0-9]{12})\/(pc|phone)$/);
     if (wsMatch && request.method === "GET") {
       if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
+        const [, , role] = wsMatch;
+        if (role === "phone") {
+          return corsResponse(PHONE_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+        }
         return corsResponse("Expected WebSocket upgrade", { status: 426 });
       }
 
