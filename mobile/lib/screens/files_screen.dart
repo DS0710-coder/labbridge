@@ -133,6 +133,13 @@ class _FilesScreenState extends State<FilesScreen> {
     _loadFolder(folderId);
   }
 
+  String _sanitizeFolderName(String raw) {
+    var clean = raw.trim().replaceAll(RegExp(r'[\\/]+'), '');
+    if (clean == '.' || clean == '..') clean = 'Folder';
+    if (clean.length > 100) clean = clean.substring(0, 100);
+    return clean;
+  }
+
   Future<void> _showCreateFolderDialog() async {
     final controller = TextEditingController();
     final name = await showDialog<String>(
@@ -147,10 +154,12 @@ class _FilesScreenState extends State<FilesScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
+          maxLength: 100,
           style: const TextStyle(color: Color(0xFFE8E8F0)),
           decoration: InputDecoration(
             hintText: 'Folder name',
             hintStyle: const TextStyle(color: Color(0xFF6B6B80)),
+            counterStyle: const TextStyle(color: Color(0xFF6B6B80), fontSize: 10),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
@@ -174,15 +183,18 @@ class _FilesScreenState extends State<FilesScreen> {
       ),
     );
 
-    if (name != null && name.isNotEmpty) {
-      final folder = Folder(
-        id: _uuid.v4(),
-        name: name,
-        parentId: _currentFolderId,
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-      );
-      await _dbService.insertFolder(folder);
-      _loadFolder(_currentFolderId);
+    if (name != null) {
+      final cleanName = _sanitizeFolderName(name);
+      if (cleanName.isNotEmpty) {
+        final folder = Folder(
+          id: _uuid.v4(),
+          name: cleanName,
+          parentId: _currentFolderId,
+          createdAt: DateTime.now().millisecondsSinceEpoch,
+        );
+        await _dbService.insertFolder(folder);
+        _loadFolder(_currentFolderId);
+      }
     }
   }
 
@@ -269,8 +281,10 @@ class _FilesScreenState extends State<FilesScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
+          maxLength: 100,
           style: const TextStyle(color: Color(0xFFE8E8F0)),
           decoration: InputDecoration(
+            counterStyle: const TextStyle(color: Color(0xFF6B6B80), fontSize: 10),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
@@ -294,9 +308,12 @@ class _FilesScreenState extends State<FilesScreen> {
       ),
     );
 
-    if (name != null && name.isNotEmpty) {
-      await _dbService.updateFolder(folder.copyWith(name: name));
-      _loadFolder(_currentFolderId);
+    if (name != null) {
+      final cleanName = _sanitizeFolderName(name);
+      if (cleanName.isNotEmpty) {
+        await _dbService.updateFolder(folder.copyWith(name: cleanName));
+        _loadFolder(_currentFolderId);
+      }
     }
   }
 

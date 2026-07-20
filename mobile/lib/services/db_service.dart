@@ -151,14 +151,23 @@ class DbService {
     return Folder.fromMap(maps.first);
   }
 
+  String _sanitizeFolderName(String raw) {
+    var clean = raw.trim().replaceAll(RegExp(r'[\\/]+'), '');
+    if (clean == '.' || clean == '..') clean = 'Folder';
+    if (clean.length > 100) clean = clean.substring(0, 100);
+    return clean;
+  }
+
   Future<void> insertFolder(Folder folder) async {
     final db = await database;
-    await db.insert('folders', folder.toMap());
+    final sanitized = folder.copyWith(name: _sanitizeFolderName(folder.name));
+    await db.insert('folders', sanitized.toMap());
   }
 
   Future<void> updateFolder(Folder folder) async {
     final db = await database;
-    await db.update('folders', folder.toMap(), where: 'id = ?', whereArgs: [folder.id]);
+    final sanitized = folder.copyWith(name: _sanitizeFolderName(folder.name));
+    await db.update('folders', sanitized.toMap(), where: 'id = ?', whereArgs: [folder.id]);
   }
 
   Future<void> deleteFolder(String id) async {
