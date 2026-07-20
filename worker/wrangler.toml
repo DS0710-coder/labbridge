@@ -1,6 +1,9 @@
 name = "labbridge-worker"
 main = "src/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-01-01"
+
+# Uncomment and set your account ID before deploying
+# account_id = "YOUR_CLOUDFLARE_ACCOUNT_ID"
 
 [[durable_objects.bindings]]
 name = "SESSIONS"
@@ -9,3 +12,11 @@ class_name = "Session"
 [[migrations]]
 tag = "v1"
 new_classes = ["Session"]
+
+[vars]
+MAX_SESSION_MINUTES = "5"
+MAX_FILE_SIZE_MB = "500"
+
+# No logs of file data
+[observability]
+enabled = false

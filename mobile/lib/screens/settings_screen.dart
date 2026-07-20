@@ -12,6 +12,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final DbService _dbService = DbService();
+  final TextEditingController _urlController = TextEditingController();
 
   int _filesCount = 0;
   int _foldersCount = 0;
@@ -22,10 +23,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadStats();
+    _loadWorkerUrl();
+  }
+
+  Future<void> _loadWorkerUrl() async {
+    final url = await AppConfig.getWorkerUrl();
+    if (mounted) {
+      setState(() => _urlController.text = url);
+    }
   }
 
   @override
   void dispose() {
+    _urlController.dispose();
     super.dispose();
   }
 
@@ -114,49 +124,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   // Worker URL
                   _buildSectionTitle('Worker URL'),
                   const SizedBox(height: 10),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF111118),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFF1E1E2E)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.link_rounded, color: Color(0xFF6C63FF), size: 18),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            AppConfig.workerWsUrl,
-                            style: const TextStyle(
-                              color: Color(0xFFE8E8F0),
-                              fontSize: 13,
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E1E2E),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Read-only',
-                            style: TextStyle(color: Color(0xFF6B6B80), fontSize: 10),
-                          ),
-                        ),
-                      ],
+                  TextField(
+                    controller: _urlController,
+                    style: const TextStyle(color: Color(0xFFE8E8F0), fontSize: 13, fontFamily: 'monospace'),
+                    decoration: InputDecoration(
+                      hintText: 'wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev',
+                      hintStyle: const TextStyle(color: Color(0xFF6B6B80), fontSize: 13),
+                      filled: true,
+                      fillColor: const Color(0xFF111118),
+                      prefixIcon: const Icon(Icons.link_rounded, color: Color(0xFF6C63FF), size: 18),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Configured via compile-time environment (WORKER_WS_URL)',
-                    style: TextStyle(color: Color(0xFF6B6B80), fontSize: 11),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () async {
+                        final url = _urlController.text.trim();
+                        if (url.isEmpty) return;
+                        await AppConfig.setWorkerUrl(url);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Worker URL saved'),
+                            backgroundColor: const Color(0xFF22C55E),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        backgroundColor: const Color(0xFF6C63FF).withValues(alpha: 0.15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text(
+                        'Save URL',
+                        style: TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 32),
 

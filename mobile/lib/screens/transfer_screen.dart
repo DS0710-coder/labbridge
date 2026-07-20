@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../core/config.dart';
 import '../models/folder.dart';
 import '../services/db_service.dart';
 import '../services/transfer_service.dart';
@@ -106,9 +105,7 @@ class _TransferScreenState extends State<TransferScreen> {
       _connectionStatus = ConnectionStatus.connecting;
     });
 
-    // Get worker URL from settings (for now, use default)
-    final workerUrl = AppConfig.workerWsUrl;
-    await _transferService.connect(widget.sessionId!, workerUrl);
+    await _transferService.connect(widget.sessionId!);
   }
 
   Future<void> _pickAndSendFile() async {

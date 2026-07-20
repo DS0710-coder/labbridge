@@ -1,83 +1,77 @@
-# LabBridge v2
+# LabBridge
 
-Instant cross-platform file transfer for college students. No accounts, no cloud storage, no installation on lab PCs.
+Secure file transfer for students. Scan a QR on any lab PC to send files directly to your phone.
 
-## How It Works
-
-```
-Open labbridge.app on lab PC → QR appears
-Scan QR with LabBridge app → PC shows your folders
-Drag file onto folder → File lands on your phone
-Send files from phone → Files appear in browser for download
-```
+No accounts. No cloud storage. Files go straight to your phone.
 
 ## Architecture
 
-| Component | Tech | What It Does |
-| :--- | :--- | :--- |
-| `worker/` | Cloudflare Worker + Durable Objects | Encrypted-chunk relay. Stores nothing. Rate-limited per IP. |
-| `webapp/` | Single HTML file, vanilla JS | PC browser interface. Streamed Blob downloads, XSS-safe rendering. |
-| `mobile/` | Flutter (Android + iOS) | Phone app with local SQLite organiser, batch file management. |
+- `worker/` — Cloudflare Worker (session relay, free tier)
+- `webapp/` — PC browser app (single HTML file, no framework)
+- `mobile/` — Flutter app (Android + iOS)
 
-## Development
+## Setup
 
-### Worker (local relay server)
+### 1. Deploy the Worker
+
 ```bash
 cd worker
 npm install
-npx wrangler dev    # localhost:8787
-```
-
-### Webapp (no build step)
-Open `webapp/index.html` in a browser. Update `WORKER_URL` at top of file to point to your local worker.
-
-### Mobile
-```bash
-cd mobile
-flutter pub get
-flutter run
-# Custom worker URL:
-flutter run --dart-define=WORKER_WS_URL=ws://localhost:8787
-```
-
-## Deployment
-
-### Worker → Cloudflare (free)
-```bash
-cd worker
 npx wrangler login
 npx wrangler deploy
 ```
 
-### Webapp → Cloudflare Pages (free)
-Upload `webapp/` folder to Cloudflare Pages dashboard. Update `WORKER_URL` at the top of `index.html` to your deployed worker URL.
+Note your worker URL: `wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev`
 
-### Mobile → App Stores
-```bash
-flutter build apk    # Android
-flutter build ios    # iOS (requires Mac)
+### 2. Set Worker URL in webapp
+
+Edit `webapp/index.html` line 1:
+```javascript
+const WORKER_URL = 'wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev';
 ```
 
-## Security
+### 3. Build Android APK
 
-- All file chunks encrypted client-side with **AES-256-GCM** before transmission
-- Encryption key derived from session ID via **HKDF-SHA256** — the QR code IS the shared secret
-- Mobile and web client use identical UTF-8 encoding for key derivation (no encoding mismatch)
-- Chunk index is embedded in the GCM IV and verified on decryption to prevent replay/reorder attacks
-- Worker relays raw ciphertext — never sees plaintext
-- Sessions expire after 5 minutes; Durable Object self-destructs via alarm
-- Per-IP rate limiting on session creation (Cloudflare `CF-Connecting-IP`, not spoofable)
-- Binary relay only forwards whitelisted message types
-- No accounts, no passwords, no data stored on server ever
+```bash
+cd mobile
 
-## Mobile Data Model
+# First time only — generate release keystore
+cd android && bash create_keystore.sh && cd ..
 
-Files and folders are stored in a local SQLite database with FK enforcement (`PRAGMA foreign_keys = ON`). Deleting a folder re-parents both its sub-folders and its directly contained files one level up — nothing is ever silently orphaned.
+# Set env vars
+export KEYSTORE_FILE=android/labbridge.keystore
+export KEYSTORE_PASSWORD=your_password
+export KEY_ALIAS=labbridge
+export KEY_PASSWORD=your_password
 
-## Platform Support
+# Build
+flutter build apk --release
+# Output: build/app/outputs/flutter-apk/app-release.apk
+```
 
-| Platform | Status |
-| :--- | :--- |
-| Android | ✅ Supported |
-| iOS | ✅ Supported |
-| Linux / Windows / macOS desktop | ❌ Not supported |
+### 4. Build iOS IPA (requires Mac + Xcode)
+
+```bash
+cd mobile
+flutter build ios --release
+# Then archive in Xcode → Product → Archive
+```
+
+### 5. Run in Development
+
+```bash
+# Terminal 1 — Worker
+cd worker && npx wrangler dev
+
+# Terminal 2 — Mobile app
+cd mobile && flutter run
+```
+
+Open `webapp/index.html` in Chrome for the PC side.
+
+## Releasing
+
+- Android: Upload `app-release.apk` to Google Play Console
+- iOS: Archive in Xcode → distribute via App Store Connect
+- Worker: Already live on Cloudflare (free forever)
+- Webapp: Deploy `webapp/` to Cloudflare Pages (free forever)

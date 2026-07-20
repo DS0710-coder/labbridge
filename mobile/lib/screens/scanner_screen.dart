@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
 
-import '../core/config.dart';
 import '../services/transfer_service.dart';
 
 class ScannerScreen extends StatefulWidget {
@@ -65,7 +64,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
 
   Future<void> _connectAndReturn(String sessionId) async {
     final transferService = Provider.of<TransferService>(context, listen: false);
-    await transferService.connect(sessionId, AppConfig.workerWsUrl);
+    await transferService.connect(sessionId);
     
     if (!mounted) return;
     

@@ -26,9 +26,9 @@ class LabBridgeApp extends StatelessWidget {
         title: 'LabBridge',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          colorScheme: ColorScheme.dark(
-            primary: const Color(0xFF6C63FF),
-            surface: const Color(0xFF111118),
+          colorScheme: const ColorScheme.dark(
+            primary: Color(0xFF6C63FF),
+            surface: Color(0xFF111118),
           ),
           scaffoldBackgroundColor: const Color(0xFF0A0A0F),
           useMaterial3: true,

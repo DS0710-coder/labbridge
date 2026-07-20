@@ -1,22 +1,31 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AppConfig {
-  // Change this to your deployed Cloudflare Worker URL before building for production.
-  // Local dev (Android emulator): ws://10.0.2.2:8787
-  // Local dev (physical device on same WiFi): ws://YOUR_MACHINE_IP:8787
-  // Production: wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev
-  static String get workerWsUrl {
-    const envUrl = String.fromEnvironment('WORKER_WS_URL');
-    if (envUrl.isNotEmpty) return envUrl;
-    if (!kIsWeb && Platform.isAndroid) return 'ws://10.0.2.2:8787';
-    return 'ws://localhost:8787';
+  static const String _workerUrlKey = 'worker_ws_url';
+
+  // Production worker URL — update this before building for release
+  static const String defaultWorkerUrl =
+      'wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev';
+
+  // Dev fallbacks
+  static const String androidEmulatorUrl = 'ws://10.0.2.2:8787';
+  static const String iosSimulatorUrl = 'ws://localhost:8787';
+
+  static Future<String> getWorkerUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_workerUrlKey) ?? defaultWorkerUrl;
   }
 
-  static String get workerHttpUrl {
-    const envUrl = String.fromEnvironment('WORKER_HTTP_URL');
-    if (envUrl.isNotEmpty) return envUrl;
-    if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:8787';
-    return 'http://localhost:8787';
+  static Future<void> setWorkerUrl(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_workerUrlKey, url);
   }
+
+  static Future<void> resetWorkerUrl() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_workerUrlKey);
+  }
+
+  // Sync getter for compile-time contexts — use getWorkerUrl() when possible
+  static String get workerWsUrl => defaultWorkerUrl;
 }

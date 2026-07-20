@@ -1,0 +1,6 @@
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Content-Security-Policy: default-src 'self'; connect-src 'self' wss://*.workers.dev ws://localhost:*; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'

@@ -11,6 +11,7 @@ import 'package:path/path.dart' as p;
 
 import '../models/file_item.dart';
 import '../models/transfer.dart';
+import '../core/config.dart';
 import 'crypto_service.dart';
 import 'db_service.dart';
 
@@ -79,13 +80,14 @@ class TransferService extends ChangeNotifier {
   ConnectionStatus get currentStatus => _status;
 
   /// Connect to the Worker WebSocket
-  Future<void> connect(String sessionId, String workerUrl) async {
+  Future<void> connect(String sessionId, [String? workerUrlOverride]) async {
     _status = ConnectionStatus.connecting;
     _connectionStatusController.add(ConnectionStatus.connecting);
     notifyListeners();
     _currentSessionId = sessionId;
 
     try {
+      final workerUrl = workerUrlOverride ?? await AppConfig.getWorkerUrl();
       // Derive encryption key
       _derivedKey = _cryptoService.deriveKey(sessionId);
 

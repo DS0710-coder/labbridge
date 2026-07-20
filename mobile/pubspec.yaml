@@ -1,5 +1,5 @@
-name: mobile
-description: "A new Flutter project."
+name: labbridge
+description: "Secure file transfer and academic organizer for students."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -49,6 +49,7 @@ dependencies:
   path: ^1.9.1
   sqflite_common_ffi: ^2.3.4+4
   archive: ^4.0.9
+  shared_preferences: ^2.3.5
 
 dev_dependencies:
   flutter_test:
