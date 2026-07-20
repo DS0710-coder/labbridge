@@ -11,9 +11,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final DbService _dbService = DbService();
-  final TextEditingController _urlController = TextEditingController(
-    text: AppConfig.workerWsUrl,
-  );
 
   int _filesCount = 0;
   int _foldersCount = 0;
@@ -28,7 +25,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
-    _urlController.dispose();
     super.dispose();
   }
 
@@ -127,36 +123,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   _buildSectionTitle('Worker URL'),
                   const SizedBox(height: 10),
                   Container(
-                    padding: const EdgeInsets.all(4),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF111118),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: const Color(0xFF1E1E2E)),
                     ),
-                    child: TextField(
-                      controller: _urlController,
-                      style: const TextStyle(
-                        color: Color(0xFFE8E8F0),
-                        fontSize: 13,
-                        fontFamily: 'monospace',
-                      ),
-                      decoration: const InputDecoration(
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 12,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.link_rounded, color: Color(0xFF6C63FF), size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            AppConfig.workerWsUrl,
+                            style: const TextStyle(
+                              color: Color(0xFFE8E8F0),
+                              fontSize: 13,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
                         ),
-                        border: InputBorder.none,
-                        hintText: 'wss://labbridge-worker.example.workers.dev',
-                        hintStyle: TextStyle(
-                          color: Color(0xFF6B6B80),
-                          fontSize: 13,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E1E2E),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Read-only',
+                            style: TextStyle(color: Color(0xFF6B6B80), fontSize: 10),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    'Use ws://10.0.2.2:8787 for Android emulator, ws://localhost:8787 for iOS simulator',
+                    'Configured via compile-time environment (WORKER_WS_URL)',
                     style: TextStyle(color: Color(0xFF6B6B80), fontSize: 11),
                   ),
                   const SizedBox(height: 32),
