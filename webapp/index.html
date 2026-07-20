@@ -531,7 +531,17 @@
 
     function queueFiles(files) {
       if (state.phase !== 'paired' && state.phase !== 'transferring') return;
-      state.sendQueue.push(...files);
+      const validFiles = files.filter(f => {
+        if (f.size > 500 * 1024 * 1024) {
+          console.warn(`File ${f.name} is too large. Maximum size is 500MB.`);
+          alert(`File ${f.name} is too large. Maximum size is 500MB.`);
+          return false;
+        }
+        return true;
+      });
+      if (validFiles.length === 0) return;
+      
+      state.sendQueue.push(...validFiles);
       if (state.phase === 'paired' && !state.currentTransfer) {
         processNextInQueue();
       } else {

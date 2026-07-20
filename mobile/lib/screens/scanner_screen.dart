@@ -16,6 +16,7 @@ class ScannerScreen extends StatefulWidget {
 class _ScannerScreenState extends State<ScannerScreen> {
   final MobileScannerController _scannerController = MobileScannerController();
   bool _hasNavigated = false;
+  bool _isProcessing = false;
 
   @override
   void dispose() {
@@ -24,32 +25,40 @@ class _ScannerScreenState extends State<ScannerScreen> {
   }
 
   void _onDetect(BarcodeCapture capture) async {
-    if (_hasNavigated) return;
+    if (_hasNavigated || _isProcessing) return;
+    _isProcessing = true;
 
-    for (final barcode in capture.barcodes) {
-      final value = barcode.rawValue;
-      if (value == null) continue;
+    try {
+      for (final barcode in capture.barcodes) {
+        final value = barcode.rawValue;
+        if (value == null) continue;
 
-      try {
-        final data = json.decode(value) as Map<String, dynamic>;
-        final sessionId = data['s'] as String?;
-        final expiry = data['e'] as int?;
+        try {
+          final data = json.decode(value) as Map<String, dynamic>;
+          final sessionId = data['s'] as String?;
+          final expiry = data['e'] as int?;
 
-        if (sessionId == null || expiry == null) continue;
+          if (sessionId == null || expiry == null) continue;
 
-        // Check expiry (expiry is stored as milliseconds epoch)
-        final now = DateTime.now().millisecondsSinceEpoch;
-        if (now > expiry) {
-          _showError('QR has expired, refresh the PC page');
+          // Check expiry (expiry is stored as milliseconds epoch)
+          final now = DateTime.now().millisecondsSinceEpoch;
+          if (now > expiry) {
+            _showError('QR has expired, refresh the PC page');
+            return;
+          }
+
+          // Valid QR - connect and navigate back to dashboard
+          _hasNavigated = true;
+          await _connectAndReturn(sessionId);
           return;
+        } catch (_) {
+          // Not a valid LabBridge QR, ignore
         }
-
-        // Valid QR - connect and navigate back to dashboard
-        _hasNavigated = true;
-        await _connectAndReturn(sessionId);
-        return;
-      } catch (_) {
-        // Not a valid LabBridge QR, ignore
+      }
+    } finally {
+      if (mounted && !_hasNavigated) {
+        await Future.delayed(const Duration(seconds: 2));
+        _isProcessing = false;
       }
     }
   }
@@ -68,8 +77,14 @@ class _ScannerScreenState extends State<ScannerScreen> {
     }
   }
 
+  int _lastErrorTime = 0;
+
   void _showError(String message) {
     if (!mounted) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastErrorTime < 2000) return;
+    _lastErrorTime = now;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),

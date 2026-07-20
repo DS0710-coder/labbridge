@@ -219,9 +219,7 @@ export class Session extends DurableObject {
         // Already closed — ignore
       }
     }
-    if (this.ctx.getWebSockets().length === 0) {
-      await this.ctx.storage.deleteAll();
-    }
+    await this.ctx.storage.deleteAll();
   }
 
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
@@ -234,9 +232,7 @@ export class Session extends DurableObject {
         // Already closed — ignore
       }
     }
-    if (this.ctx.getWebSockets().length === 0) {
-      await this.ctx.storage.deleteAll();
-    }
+    await this.ctx.storage.deleteAll();
   }
 
   /* ------------------------------------------------------------------ */

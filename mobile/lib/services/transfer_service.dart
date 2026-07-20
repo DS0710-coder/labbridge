@@ -362,7 +362,6 @@ class TransferService extends ChangeNotifier {
     }
   }
 
-  /// Send a file to the PC browser
   Future<void> sendFile(File file) async {
     if (_channel == null || _derivedKey == null) {
       _errorController.add('Not connected');
@@ -372,10 +371,16 @@ class TransferService extends ChangeNotifier {
       _errorController.add('A file transfer is already in progress');
       return;
     }
+    
+    final fileSize = await file.length();
+    if (fileSize > 500 * 1024 * 1024) {
+      _errorController.add('File exceeds 500MB limit');
+      return;
+    }
+
     _isSending = true;
 
     final fileName = p.basename(file.path);
-    final fileSize = await file.length();
     final totalChunks = fileSize == 0 ? 1 : (fileSize / _chunkSize).ceil();
 
     _readyCompleter = Completer<void>();
