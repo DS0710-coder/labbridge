@@ -562,7 +562,7 @@
 
     function initiateSendFile(file) {
       if (state.phase !== 'paired' && state.phase !== 'transferring') return;
-      const totalChunks = Math.ceil(file.size / (512 * 1024));
+      const totalChunks = Math.max(1, Math.ceil(file.size / (512 * 1024)));
       
       state.currentTransfer = {
         direction: 'sending',

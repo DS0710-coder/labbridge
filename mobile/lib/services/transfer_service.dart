@@ -376,7 +376,7 @@ class TransferService extends ChangeNotifier {
 
     final fileName = p.basename(file.path);
     final fileSize = await file.length();
-    final totalChunks = (fileSize / _chunkSize).ceil();
+    final totalChunks = fileSize == 0 ? 1 : (fileSize / _chunkSize).ceil();
 
     _readyCompleter = Completer<void>();
 
@@ -401,35 +401,57 @@ class TransferService extends ChangeNotifier {
       int transferred = 0;
 
       try {
-        while (true) {
-          final chunk = await raf.read(_chunkSize);
-          if (chunk.isEmpty) break;
-
+        if (fileSize == 0) {
           final encrypted = _cryptoService.encryptChunk(
-            chunk,
+            Uint8List(0),
             _derivedKey!,
-            chunkIndex,
+            0,
           );
-
           _ackCompleter = Completer<int>();
           _channel!.sink.add(encrypted);
-
-          // Wait for peer to ACK this chunk
           await _ackCompleter!.future.timeout(const Duration(seconds: 15));
           _ackCompleter = null;
-
-          transferred += chunk.length;
-          chunkIndex++;
-
+          
           _progressController.add(TransferProgress(
             fileName: fileName,
-            totalBytes: fileSize,
-            transferredBytes: transferred,
-            totalChunks: totalChunks,
-            completedChunks: chunkIndex,
+            totalBytes: 0,
+            transferredBytes: 0,
+            totalChunks: 1,
+            completedChunks: 1,
             direction: TransferDirection.sent,
           ));
           notifyListeners();
+        } else {
+          while (true) {
+            final chunk = await raf.read(_chunkSize);
+            if (chunk.isEmpty) break;
+
+            final encrypted = _cryptoService.encryptChunk(
+              chunk,
+              _derivedKey!,
+              chunkIndex,
+            );
+
+            _ackCompleter = Completer<int>();
+            _channel!.sink.add(encrypted);
+
+            // Wait for peer to ACK this chunk
+            await _ackCompleter!.future.timeout(const Duration(seconds: 15));
+            _ackCompleter = null;
+
+            transferred += chunk.length;
+            chunkIndex++;
+
+            _progressController.add(TransferProgress(
+              fileName: fileName,
+              totalBytes: fileSize,
+              transferredBytes: transferred,
+              totalChunks: totalChunks,
+              completedChunks: chunkIndex,
+              direction: TransferDirection.sent,
+            ));
+            notifyListeners();
+          }
         }
       } finally {
         await raf.close();
