@@ -11,6 +11,7 @@ interface SocketAttachment {
 
 const SESSION_TTL_MS = 2 * 60 * 1000; // 2 minutes (120 seconds)
 const MAX_SESSION_LIFETIME_MS = 60 * 60 * 1000; // 1 hour hard maximum limit
+const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB max limit per transfer
 
 /**
  * A single LabBridge relay session.
@@ -151,6 +152,14 @@ export class Session extends DurableObject {
         other.close(1000, "Session expired (max lifetime reached)");
         return;
       }
+      let bytesTransferred = (await this.ctx.storage.get<number>("bytes_transferred")) ?? 0;
+      bytesTransferred += message.byteLength;
+      if (bytesTransferred > MAX_FILE_SIZE_BYTES) {
+        ws.close(1008, "Transfer size exceeds 500MB limit");
+        other.close(1008, "Transfer size exceeds 500MB limit");
+        return;
+      }
+      await this.ctx.storage.put("bytes_transferred", bytesTransferred);
       await this.extendAlarm(4 * 60 * 1000);
       other.send(message);
       return;
@@ -162,6 +171,16 @@ export class Session extends DurableObject {
       if (!isValidSessionMessage(parsed)) {
         ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
         return;
+      }
+      if (parsed.type === "transfer_init") {
+        const size = typeof (parsed as Record<string, unknown>).size === "number" ? ((parsed as Record<string, unknown>).size as number) : 0;
+        const totalChunks = typeof (parsed as Record<string, unknown>).total_chunks === "number" ? ((parsed as Record<string, unknown>).total_chunks as number) : 0;
+        if (size > MAX_FILE_SIZE_BYTES || totalChunks > Math.ceil(MAX_FILE_SIZE_BYTES / (512 * 1024))) {
+          ws.close(1008, "Transfer size exceeds 500MB limit");
+          other.close(1008, "Transfer size exceeds 500MB limit");
+          return;
+        }
+        await this.ctx.storage.put("bytes_transferred", 0);
       }
       other.send(message);
     } catch {

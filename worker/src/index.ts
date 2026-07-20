@@ -20,6 +20,27 @@ const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Headers": "*",
 };
 
+const ipRequests = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  const record = ipRequests.get(ip);
+  if (!record || now > record.resetAt) {
+    ipRequests.set(ip, { count: 1, resetAt: now + windowMs });
+    if (ipRequests.size > 10000) {
+      for (const [key, val] of ipRequests.entries()) {
+        if (now > val.resetAt) ipRequests.delete(key);
+      }
+    }
+    return true;
+  }
+  if (record.count >= limit) {
+    return false;
+  }
+  record.count++;
+  return true;
+}
+
 function corsResponse(body: string | null, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);
   for (const [k, v] of Object.entries(CORS_HEADERS)) {
@@ -37,9 +58,17 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname;
+    const ip = request.headers.get("CF-Connecting-IP") ?? request.headers.get("X-Forwarded-For") ?? "unknown";
 
     // ── GET /session/new ──────────────────────────────────────────────
     if (path === "/session/new" && request.method === "GET") {
+      if (!checkRateLimit(`new:${ip}`, 20, 60 * 1000)) {
+        return corsResponse(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
+          status: 429,
+          headers: { "Content-Type": "application/json", "Retry-After": "60" },
+        });
+      }
+
       const sessionId = generateSessionId();
       const doId = env.SESSIONS.idFromName(sessionId);
       const stub = env.SESSIONS.get(doId);
@@ -59,6 +88,10 @@ export default {
     // ── GET /session/:id/pc  or  /session/:id/phone ──────────────────
     const wsMatch = path.match(/^\/session\/([a-zA-Z0-9]{12})\/(pc|phone)$/);
     if (wsMatch && request.method === "GET") {
+      if (!checkRateLimit(`ws:${ip}`, 60, 60 * 1000)) {
+        return corsResponse("Rate limit exceeded", { status: 429 });
+      }
+
       const [, sessionId, role] = wsMatch;
       const doId = env.SESSIONS.idFromName(sessionId);
       const stub = env.SESSIONS.get(doId);
