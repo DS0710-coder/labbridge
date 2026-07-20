@@ -135,6 +135,7 @@ export class Session extends DurableObject {
 
     // Binary frames: relay as-is (encrypted file chunks)
     if (message instanceof ArrayBuffer) {
+      await this.ctx.storage.setAlarm(Date.now() + 4 * 60 * 1000);
       other.send(message);
       return;
     }

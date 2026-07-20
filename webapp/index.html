@@ -154,7 +154,6 @@
       receivedFiles: []
     };
 
-    // Initialize on page load
     window.addEventListener('DOMContentLoaded', () => {
       createSession();
       setupDropzone();
@@ -162,7 +161,15 @@
 
     async function createSession() {
       clearInterval(state.timerInterval);
-      if (state.ws) state.ws.close();
+      if (state.ws) {
+        if (state.ws.readyState === WebSocket.OPEN && state.phase !== 'waiting') {
+          state.ws.send(JSON.stringify({ type: 'cancelled' }));
+        }
+        state.ws.close();
+      }
+      if (state.receivedFiles) {
+        state.receivedFiles.forEach(f => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
+      }
       state.expirySeconds = 120;
       state.sendQueue = [];
       state.receivedFiles = [];
@@ -182,7 +189,6 @@
         }
         updateTimerDisplay();
 
-        // Render QR Code
         const qrEl = document.getElementById('qrcode');
         qrEl.innerHTML = '';
         new QRCode(qrEl, {
@@ -194,22 +200,31 @@
           correctLevel: QRCode.CorrectLevel.M
         });
 
-        // Start Countdown Timer
         state.timerInterval = setInterval(() => {
           state.expirySeconds--;
           updateTimerDisplay();
           if (state.expirySeconds <= 0) {
             if (state.phase !== 'waiting') {
-              alert('Session expired after 240 seconds. Please rescan the new QR code below to continue transferring files.');
+              alert('Session expired. Please rescan.');
             }
-            createSession(); // Auto-refresh after scanner (120s) or transfer (240s) limit
+            createSession();
           }
         }, 1000);
 
         connectWebSocket();
       } catch (err) {
-        console.error('Failed to create session:', err);
-        document.getElementById('status-text').innerText = 'Connection Error (Make sure Worker is running on port 8787)';
+        setStatus(false, 'Error creating session');
+        console.error(err);
+      }
+    }
+
+    function handlePeerDisconnected() {
+      if (state.phase !== 'waiting') {
+        setStatus(false, 'Disconnected by phone');
+        document.getElementById('btn-disconnect').style.display = 'none';
+        clearInterval(state.timerInterval);
+        setPhase('waiting');
+        createSession();
       }
     }
 
@@ -241,13 +256,7 @@
       };
 
       ws.onclose = () => {
-        if (state.phase !== 'waiting') {
-          setStatus(false, 'Disconnected by phone');
-          document.getElementById('btn-disconnect').style.display = 'none';
-          clearInterval(state.timerInterval);
-          setPhase('waiting');
-          createSession();
-        }
+        handlePeerDisconnected();
       };
     }
 
@@ -255,7 +264,7 @@
       if (msg.type === 'waiting') {
         setStatus(false, 'Waiting for phone...');
       } else if (msg.type === 'paired') {
-        state.expirySeconds = 240; // Reset file transfer timer to 240 seconds!
+        state.expirySeconds = 240;
         updateTimerDisplay();
         state.connectedDevice = msg.device || 'Phone App';
         setStatus(true, `Connected: ${state.connectedDevice} (${state.expirySeconds}s left)`);
@@ -274,7 +283,6 @@
           handleAck(msg.chunk_index);
         }
       } else if (msg.type === 'transfer_init') {
-        // Phone initiated transfer to PC
         state.currentTransfer = {
           direction: 'receiving',
           filename: msg.filename,
@@ -291,11 +299,7 @@
         alert('Transfer cancelled by phone');
         setPhase('paired');
       } else if (msg.type === 'disconnected') {
-        setStatus(false, 'Disconnected by phone');
-        document.getElementById('btn-disconnect').style.display = 'none';
-        clearInterval(state.timerInterval);
-        setPhase('waiting');
-        createSession();
+        handlePeerDisconnected();
       }
     }
 
@@ -547,6 +551,9 @@
       const transfer = state.currentTransfer;
       if (!transfer || transfer.direction !== 'sending') return;
       
+      state.expirySeconds = 240;
+      updateTimerDisplay();
+
       transfer.sentChunks++;
       const pct = Math.round((transfer.sentChunks / transfer.total_chunks) * 100);
       updateProgressDisplay(transfer.filename, transfer.size, pct);
@@ -559,6 +566,9 @@
     async function handleIncomingBinaryChunk(buffer) {
       const transfer = state.currentTransfer;
       if (!transfer || transfer.direction !== 'receiving') return;
+
+      state.expirySeconds = 240;
+      updateTimerDisplay();
 
       const chunkIndex = transfer.receivedChunks;
       try {
@@ -614,26 +624,42 @@
         return;
       }
       section.style.display = 'block';
-      list.innerHTML = state.receivedFiles.map(f => `
-        <div class="received-item" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-top: 8px;">
-          <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 65%;">
-            <strong style="font-size: 14px; color: var(--text);">${f.filename}</strong><br/>
-            <span style="font-size: 12px; color: var(--muted);">${(f.size / (1024 * 1024)).toFixed(2)} MB</span>
-          </div>
-          <a href="${f.blobUrl}" download="${f.filename}" style="background: var(--primary); color: white; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;">📥 Download</a>
-        </div>
-      `).join('');
+      list.innerHTML = '';
+      state.receivedFiles.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'received-item';
+        item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-top: 8px;';
+
+        const info = document.createElement('div');
+        info.style.cssText = 'overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 65%;';
+        const strong = document.createElement('strong');
+        strong.style.cssText = 'font-size: 14px; color: var(--text);';
+        strong.textContent = f.filename;
+        const br = document.createElement('br');
+        const span = document.createElement('span');
+        span.style.cssText = 'font-size: 12px; color: var(--muted);';
+        span.textContent = `${(f.size / (1024 * 1024)).toFixed(2)} MB`;
+        info.appendChild(strong);
+        info.appendChild(br);
+        info.appendChild(span);
+
+        const a = document.createElement('a');
+        a.href = f.blobUrl;
+        a.download = f.filename;
+        a.style.cssText = 'background: var(--primary); color: white; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;';
+        a.textContent = '📥 Download';
+
+        item.appendChild(info);
+        item.appendChild(a);
+        list.appendChild(item);
+      });
     }
 
     function cancelTransfer() {
-      if (state.ws) state.ws.send(JSON.stringify({ type: 'cancelled' }));
-      state.currentTransfer = null;
-      if (state.sendQueue.length > 0) {
-        processNextInQueue();
-      } else {
-        setPhase('paired');
-        updateQueueDisplay();
+      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+        state.ws.send(JSON.stringify({ type: 'cancelled' }));
       }
+      resetToPaired();
     }
 
     function resetToPaired() {

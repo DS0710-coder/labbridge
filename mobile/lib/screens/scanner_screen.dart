@@ -46,19 +46,26 @@ class _ScannerScreenState extends State<ScannerScreen> {
         }
 
         // Valid QR - connect and navigate back to dashboard
-        _hasNavigated = true;
-        final transferService = Provider.of<TransferService>(context, listen: false);
-        await transferService.connect(sessionId, AppConfig.workerWsUrl);
-        if (transferService.currentStatus == ConnectionStatus.connected) {
-          final allFolders = await DbService().getAllFolders();
-          transferService.sendFolderTree(allFolders);
-        }
-        if (!mounted) return;
-        Navigator.of(context).pop();
+        await _connectAndReturn(sessionId);
         return;
       } catch (_) {
         // Not a valid LabBridge QR, ignore
       }
+    }
+  }
+
+  Future<void> _connectAndReturn(String sessionId) async {
+    _hasNavigated = true;
+    final transferService = Provider.of<TransferService>(context, listen: false);
+    await transferService.connect(sessionId, AppConfig.workerWsUrl);
+    if (transferService.currentStatus == ConnectionStatus.connected) {
+      final allFolders = await DbService().getAllFolders();
+      transferService.sendFolderTree(allFolders);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } else {
+      _hasNavigated = false;
+      _showError('Failed to connect to session');
     }
   }
 
@@ -122,15 +129,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
               final id = controller.text.trim();
               if (id.isNotEmpty) {
                 Navigator.pop(context);
-                _hasNavigated = true;
-                final transferService = Provider.of<TransferService>(this.context, listen: false);
-                await transferService.connect(id, AppConfig.workerWsUrl);
-                if (transferService.currentStatus == ConnectionStatus.connected) {
-                  final allFolders = await DbService().getAllFolders();
-                  transferService.sendFolderTree(allFolders);
-                }
-                if (!mounted) return;
-                Navigator.of(this.context).pop();
+                await _connectAndReturn(id);
               }
             },
             child: const Text('Connect', style: TextStyle(color: Color(0xFF6C63FF))),

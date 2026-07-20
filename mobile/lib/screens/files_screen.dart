@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
@@ -13,6 +14,8 @@ import '../services/db_service.dart';
 import '../services/transfer_service.dart';
 import '../widgets/folder_tile.dart';
 import '../widgets/file_tile.dart';
+
+Archive _decodeZipBytes(List<int> bytes) => ZipDecoder().decodeBytes(bytes);
 
 class FilesScreen extends StatefulWidget {
   const FilesScreen({super.key});
@@ -641,6 +644,19 @@ class _FilesScreenState extends State<FilesScreen> {
     }
   }
 
+  bool _isDescendantOfSelected(Folder folder, List<Folder> allFolders) {
+    String? currentId = folder.parentId;
+    while (currentId != null) {
+      if (_selectedFolderIds.contains(currentId)) return true;
+      final parent = allFolders.cast<Folder?>().firstWhere(
+        (f) => f?.id == currentId,
+        orElse: () => null,
+      );
+      currentId = parent?.parentId;
+    }
+    return false;
+  }
+
   Future<void> _batchMoveSelected() async {
     final count = _selectedFolderIds.length + _selectedFileIds.length;
     if (count == 0) return;
@@ -665,7 +681,7 @@ class _FilesScreenState extends State<FilesScreen> {
                 onTap: () => Navigator.pop(context, '__root__'),
               ),
               ...allFolders
-                  .where((f) => !_selectedFolderIds.contains(f.id)) // prevent moving into self
+                  .where((f) => !_selectedFolderIds.contains(f.id) && !_isDescendantOfSelected(f, allFolders))
                   .map((f) => ListTile(
                         leading: Icon(
                           Icons.folder_rounded,
@@ -742,8 +758,8 @@ class _FilesScreenState extends State<FilesScreen> {
         int extractedCount = 0;
         for (final z in zipFiles) {
           try {
-            final bytes = File(z.localPath).readAsBytesSync();
-            final archive = ZipDecoder().decodeBytes(bytes);
+            final bytes = await File(z.localPath).readAsBytes();
+            final archive = await compute(_decodeZipBytes, bytes);
             for (final file in archive) {
               if (file.isFile) {
                 final data = file.content as List<int>;
@@ -751,7 +767,7 @@ class _FilesScreenState extends State<FilesScreen> {
                 if (cleanName.isEmpty) continue;
                 final parentDir = File(z.localPath).parent;
                 final destPath = '${parentDir.path}/lb_ext_${_uuid.v4()}_$cleanName';
-                File(destPath).writeAsBytesSync(data);
+                await File(destPath).writeAsBytes(data);
 
                 await _dbService.insertFile(FileItem(
                   id: _uuid.v4(),

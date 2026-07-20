@@ -268,7 +268,11 @@ class TransferService extends ChangeNotifier {
         await labBridgeDir.create(recursive: true);
       }
 
-      final targetPath = p.join(labBridgeDir.path, fileName);
+      final safeFileName = p.basename(fileName.replaceAll(RegExp(r'[\\/]+'), '_'));
+      final targetPath = p.join(labBridgeDir.path, safeFileName);
+      if (!p.isWithin(labBridgeDir.path, targetPath)) {
+        throw Exception('Invalid file target path');
+      }
       final targetFile = await file.copy(targetPath);
       if (await file.exists()) {
         await file.delete();
@@ -280,7 +284,7 @@ class TransferService extends ChangeNotifier {
 
       await _dbService.insertFile(FileItem(
         id: fileId,
-        name: fileName,
+        name: safeFileName,
         localPath: targetFile.path,
         size: fileSize,
         folderId: folderId,
