@@ -119,7 +119,7 @@ class _TransferScreenState extends State<TransferScreen> {
     if (filePath == null) return;
 
     final file = File(filePath);
-    await _transferService.sendFile(file, widget.sessionId ?? '');
+    await _transferService.sendFile(file);
   }
 
   @override

@@ -160,14 +160,21 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: Icons.upload_file_rounded,
                                 label: 'Transfer Files to PC',
                                 onTap: () async {
+                                  final messenger = ScaffoldMessenger.of(context);
                                   final result = await FilePicker.pickFiles(allowMultiple: true);
                                   if (result != null && result.files.isNotEmpty) {
                                     for (final f in result.files) {
                                       if (f.path != null) {
-                                        await transferService.sendFile(
-                                          File(f.path!),
-                                          transferService.currentSessionId ?? '',
-                                        );
+                                        try {
+                                          await transferService.sendFile(File(f.path!));
+                                        } catch (e) {
+                                          messenger.showSnackBar(SnackBar(
+                                            content: Text('Failed to send ${f.name}: $e'),
+                                            backgroundColor: const Color(0xFFEF4444),
+                                            behavior: SnackBarBehavior.floating,
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                          ));
+                                        }
                                       }
                                     }
                                   }

@@ -361,7 +361,7 @@ class TransferService extends ChangeNotifier {
   }
 
   /// Send a file to the PC browser
-  Future<void> sendFile(File file, String sessionId) async {
+  Future<void> sendFile(File file) async {
     if (_channel == null || _derivedKey == null) {
       _errorController.add('Not connected');
       return;
