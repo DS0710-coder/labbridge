@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/db_service.dart';
+import '../core/config.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -11,7 +12,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final DbService _dbService = DbService();
   final TextEditingController _urlController = TextEditingController(
-    text: 'ws://10.0.2.2:8787',
+    text: AppConfig.workerWsUrl,
   );
 
   int _filesCount = 0;

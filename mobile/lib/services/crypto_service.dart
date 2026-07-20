@@ -67,12 +67,13 @@ class CryptoService {
 
     final ciphertext = Uint8List(cipher.getOutputSize(plaintext.length));
     final len = cipher.processBytes(plaintext, 0, plaintext.length, ciphertext, 0);
-    cipher.doFinal(ciphertext, len);
+    final finalLen = cipher.doFinal(ciphertext, len);
+    final actualCiphertext = ciphertext.sublist(0, len + finalLen);
 
     // Combine: IV + ciphertext (includes auth tag from GCM)
-    final result = Uint8List(12 + ciphertext.length);
+    final result = Uint8List(12 + actualCiphertext.length);
     result.setRange(0, 12, iv);
-    result.setRange(12, result.length, ciphertext);
+    result.setRange(12, result.length, actualCiphertext);
 
     return result;
   }
@@ -103,8 +104,8 @@ class CryptoService {
       plaintext,
       0,
     );
-    cipher.doFinal(plaintext, len);
+    final finalLen = cipher.doFinal(plaintext, len);
 
-    return plaintext;
+    return plaintext.sublist(0, len + finalLen);
   }
 }

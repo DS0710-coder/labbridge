@@ -41,7 +41,7 @@ class _TransferScreenState extends State<TransferScreen> {
   double _speed = 0;
 
   StreamSubscription<ConnectionStatus>? _statusSub;
-  StreamSubscription<TransferProgress>? _progressSub;
+  StreamSubscription<TransferProgress?>? _progressSub;
   StreamSubscription<String>? _errorSub;
   StreamSubscription<String>? _completionSub;
 

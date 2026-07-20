@@ -1,8 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:provider/provider.dart';
 
-import 'transfer_screen.dart';
+import '../core/config.dart';
+import '../services/db_service.dart';
+import '../services/transfer_service.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -21,7 +24,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
     super.dispose();
   }
 
-  void _onDetect(BarcodeCapture capture) {
+  void _onDetect(BarcodeCapture capture) async {
     if (_hasNavigated) return;
 
     for (final barcode in capture.barcodes) {
@@ -42,17 +45,27 @@ class _ScannerScreenState extends State<ScannerScreen> {
           return;
         }
 
-        // Valid QR - navigate to transfer
-        _hasNavigated = true;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => TransferScreen(sessionId: sessionId),
-          ),
-        );
+        // Valid QR - connect and navigate back to dashboard
+        await _connectAndReturn(sessionId);
         return;
       } catch (_) {
         // Not a valid LabBridge QR, ignore
       }
+    }
+  }
+
+  Future<void> _connectAndReturn(String sessionId) async {
+    _hasNavigated = true;
+    final transferService = Provider.of<TransferService>(context, listen: false);
+    await transferService.connect(sessionId, AppConfig.workerWsUrl);
+    if (transferService.currentStatus == ConnectionStatus.connected) {
+      final allFolders = await DbService().getAllFolders();
+      transferService.sendFolderTree(allFolders);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } else {
+      _hasNavigated = false;
+      _showError('Failed to connect to session');
     }
   }
 
@@ -112,16 +125,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
             child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               final id = controller.text.trim();
               if (id.isNotEmpty) {
                 Navigator.pop(context);
-                _hasNavigated = true;
-                Navigator.of(this.context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (_) => TransferScreen(sessionId: id),
-                  ),
-                );
+                await _connectAndReturn(id);
               }
             },
             child: const Text('Connect', style: TextStyle(color: Color(0xFF6C63FF))),
