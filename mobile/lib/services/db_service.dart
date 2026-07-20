@@ -46,6 +46,10 @@ class DbService {
     return await openDatabase(
       path,
       version: 1,
+      onConfigure: (db) async {
+        // Enable FK enforcement so ON DELETE SET NULL / CASCADE fire correctly.
+        await db.execute('PRAGMA foreign_keys = ON');
+      },
       onCreate: _onCreate,
     );
   }
@@ -177,13 +181,39 @@ class DbService {
   Future<void> deleteFolder(String id) async {
     final db = await database;
     final folder = await getFolder(id);
+    final targetParentId = folder?.parentId; // null → root
     await db.transaction((txn) async {
+      // Re-parent direct child folders up one level
       if (folder != null) {
+        if (targetParentId != null) {
+          await txn.update(
+            'folders',
+            {'parent_id': targetParentId},
+            where: 'parent_id = ?',
+            whereArgs: [id],
+          );
+        } else {
+          // Moving to root — parent_id must be NULL, not a string
+          await txn.rawUpdate(
+            'UPDATE folders SET parent_id = NULL WHERE parent_id = ?',
+            [id],
+          );
+        }
+      }
+      // Re-parent files contained directly in this folder to the same destination.
+      // This is necessary because PRAGMA foreign_keys only fires on new connections
+      // and SQLite's ON DELETE SET NULL would not retroactively fix existing orphans.
+      if (targetParentId != null) {
         await txn.update(
-          'folders',
-          {'parent_id': folder.parentId},
-          where: 'parent_id = ?',
+          'files',
+          {'folder_id': targetParentId},
+          where: 'folder_id = ?',
           whereArgs: [id],
+        );
+      } else {
+        await txn.rawUpdate(
+          'UPDATE files SET folder_id = NULL WHERE folder_id = ?',
+          [id],
         );
       }
       await txn.delete('folders', where: 'id = ?', whereArgs: [id]);
