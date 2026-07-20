@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import '../models/folder.dart';
 import '../models/file_item.dart';
@@ -226,6 +227,18 @@ class DbService {
 
   Future<void> deleteFile(String id) async {
     final db = await database;
+    final maps = await db.query('files', where: 'id = ?', whereArgs: [id]);
+    if (maps.isNotEmpty) {
+      final localPath = maps.first['local_path'] as String?;
+      if (localPath != null && localPath.isNotEmpty) {
+        try {
+          final file = File(localPath);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (_) {}
+      }
+    }
     await db.delete('files', where: 'id = ?', whereArgs: [id]);
   }
 
@@ -269,6 +282,29 @@ class DbService {
 
   Future<void> clearAllData() async {
     final db = await database;
+    final allFiles = await db.query('files');
+    for (final map in allFiles) {
+      final localPath = map['local_path'] as String?;
+      if (localPath != null && localPath.isNotEmpty) {
+        try {
+          final file = File(localPath);
+          if (await file.exists()) {
+            await file.delete();
+          }
+        } catch (_) {}
+      }
+    }
+    try {
+      if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+        final docsDir = await getApplicationDocumentsDirectory();
+        final labBridgeDir = Directory(p.join(docsDir.path, 'LabBridge'));
+        if (await labBridgeDir.exists()) {
+          await labBridgeDir.delete(recursive: true);
+          await labBridgeDir.create();
+        }
+      }
+    } catch (_) {}
+
     await db.delete('transfers');
     await db.delete('files');
     await db.delete('folders');

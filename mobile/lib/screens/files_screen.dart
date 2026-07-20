@@ -6,6 +6,7 @@ import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
+import 'package:path/path.dart' as p;
 import 'package:archive/archive_io.dart';
 
 import '../models/folder.dart';
@@ -15,7 +16,44 @@ import '../services/transfer_service.dart';
 import '../widgets/folder_tile.dart';
 import '../widgets/file_tile.dart';
 
-Archive _decodeZipBytes(List<int> bytes) => ZipDecoder().decodeBytes(bytes);
+Future<List<Map<String, dynamic>>> _extractZipStream(Map<String, String> args) async {
+  final zipPath = args['zipPath']!;
+  final parentDirPath = args['parentDirPath']!;
+  final folderId = args['folderId']!;
+  final results = <Map<String, dynamic>>[];
+
+  final inputStream = InputFileStream(zipPath);
+  try {
+    final archive = ZipDecoder().decodeStream(inputStream);
+    for (final file in archive) {
+      if (file.isFile) {
+        final safeName = p.basename(file.name.replaceAll(RegExp(r'[\\/]+'), '_'));
+        if (safeName.isEmpty || safeName == '_' || safeName == '.') continue;
+
+        final destPath = p.join(parentDirPath, 'lb_ext_${const Uuid().v4()}_$safeName');
+        if (!p.isWithin(parentDirPath, destPath)) continue;
+
+        final outputStream = OutputFileStream(destPath);
+        try {
+          file.writeContent(outputStream);
+        } finally {
+          outputStream.close();
+        }
+
+        final fileStat = await File(destPath).stat();
+        results.add({
+          'name': safeName,
+          'localPath': destPath,
+          'size': fileStat.size,
+          'folderId': folderId,
+        });
+      }
+    }
+  } finally {
+    inputStream.close();
+  }
+  return results;
+}
 
 class FilesScreen extends StatefulWidget {
   const FilesScreen({super.key});
@@ -758,27 +796,23 @@ class _FilesScreenState extends State<FilesScreen> {
         int extractedCount = 0;
         for (final z in zipFiles) {
           try {
-            final bytes = await File(z.localPath).readAsBytes();
-            final archive = await compute(_decodeZipBytes, bytes);
-            for (final file in archive) {
-              if (file.isFile) {
-                final data = file.content as List<int>;
-                final cleanName = file.name.split('/').last;
-                if (cleanName.isEmpty) continue;
-                final parentDir = File(z.localPath).parent;
-                final destPath = '${parentDir.path}/lb_ext_${_uuid.v4()}_$cleanName';
-                await File(destPath).writeAsBytes(data);
-
-                await _dbService.insertFile(FileItem(
-                  id: _uuid.v4(),
-                  name: cleanName,
-                  localPath: destPath,
-                  size: data.length,
-                  folderId: _currentFolderId,
-                  receivedAt: DateTime.now().millisecondsSinceEpoch,
-                ));
-                extractedCount++;
-              }
+            final parentDir = File(z.localPath).parent;
+            final extracted = await compute(_extractZipStream, {
+              'zipPath': z.localPath,
+              'parentDirPath': parentDir.path,
+              'folderId': _currentFolderId ?? '',
+            });
+            for (final item in extracted) {
+              final folderIdStr = item['folderId'] as String;
+              await _dbService.insertFile(FileItem(
+                id: _uuid.v4(),
+                name: item['name'] as String,
+                localPath: item['localPath'] as String,
+                size: item['size'] as int,
+                folderId: folderIdStr.isEmpty ? null : folderIdStr,
+                receivedAt: DateTime.now().millisecondsSinceEpoch,
+              ));
+              extractedCount++;
             }
           } catch (e) {
             debugPrint('Error extracting zip: $e');
