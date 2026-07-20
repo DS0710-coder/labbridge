@@ -10,6 +10,7 @@ interface SocketAttachment {
 }
 
 const SESSION_TTL_MS = 2 * 60 * 1000; // 2 minutes (120 seconds)
+const MAX_SESSION_LIFETIME_MS = 60 * 60 * 1000; // 1 hour hard maximum limit
 
 /**
  * A single LabBridge relay session.
@@ -18,6 +19,12 @@ const SESSION_TTL_MS = 2 * 60 * 1000; // 2 minutes (120 seconds)
  * messages and only wake when data arrives or the alarm fires.
  */
 export class Session extends DurableObject {
+  private async extendAlarm(durationMs = 4 * 60 * 1000): Promise<void> {
+    const maxExpiresAt = (await this.ctx.storage.get<number>("max_expires_at")) ?? (Date.now() + MAX_SESSION_LIFETIME_MS);
+    const nextAlarm = Math.min(Date.now() + durationMs, maxExpiresAt);
+    await this.ctx.storage.setAlarm(nextAlarm);
+  }
+
   /* ------------------------------------------------------------------ */
   /*  HTTP / WebSocket upgrade handler                                   */
   /* ------------------------------------------------------------------ */
@@ -31,7 +38,10 @@ export class Session extends DurableObject {
       // Extract session_id that was set by the edge worker
       const sessionId = url.searchParams.get("id") ?? "unknown";
 
-      const expiryMs = Date.now() + SESSION_TTL_MS;
+      const now = Date.now();
+      const expiryMs = now + SESSION_TTL_MS;
+      const maxExpiryMs = now + MAX_SESSION_LIFETIME_MS;
+      await this.ctx.storage.put("max_expires_at", maxExpiryMs);
       await this.ctx.storage.setAlarm(expiryMs);
 
       const expiresAt = new Date(expiryMs).toISOString();
@@ -111,7 +121,7 @@ export class Session extends DurableObject {
       existing.some((ws) => (ws.deserializeAttachment() as SocketAttachment | null)?.role === "phone");
 
     if (hasPc && hasPhone) {
-      await this.ctx.storage.setAlarm(Date.now() + 4 * 60 * 1000);
+      await this.extendAlarm(4 * 60 * 1000);
     }
 
     return new Response(null, { status: 101, webSocket: client });
@@ -135,7 +145,13 @@ export class Session extends DurableObject {
 
     // Binary frames: relay as-is (encrypted file chunks)
     if (message instanceof ArrayBuffer) {
-      await this.ctx.storage.setAlarm(Date.now() + 4 * 60 * 1000);
+      const maxExpiresAt = (await this.ctx.storage.get<number>("max_expires_at")) ?? (Date.now() + MAX_SESSION_LIFETIME_MS);
+      if (Date.now() >= maxExpiresAt) {
+        ws.close(1000, "Session expired (max lifetime reached)");
+        other.close(1000, "Session expired (max lifetime reached)");
+        return;
+      }
+      await this.extendAlarm(4 * 60 * 1000);
       other.send(message);
       return;
     }

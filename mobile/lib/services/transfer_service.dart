@@ -351,37 +351,39 @@ class TransferService extends ChangeNotifier {
 
     _transferStartTime = DateTime.now();
 
-    // Read and send chunks
-    final bytes = await file.readAsBytes();
-    int offset = 0;
+    // Read and send chunks using RandomAccessFile to prevent high memory usage
+    final raf = await file.open(mode: FileMode.read);
     int chunkIndex = 0;
     int transferred = 0;
 
-    while (offset < bytes.length) {
-      final end = (offset + _chunkSize > bytes.length) ? bytes.length : offset + _chunkSize;
-      final chunk = bytes.sublist(offset, end);
+    try {
+      while (true) {
+        final chunk = await raf.read(_chunkSize);
+        if (chunk.isEmpty) break;
 
-      final encrypted = _cryptoService.encryptChunk(
-        Uint8List.fromList(chunk),
-        _derivedKey!,
-        chunkIndex,
-      );
+        final encrypted = _cryptoService.encryptChunk(
+          chunk,
+          _derivedKey!,
+          chunkIndex,
+        );
 
-      _channel!.sink.add(encrypted);
+        _channel!.sink.add(encrypted);
 
-      transferred += chunk.length;
-      chunkIndex++;
-      offset = end;
+        transferred += chunk.length;
+        chunkIndex++;
 
-      _progressController.add(TransferProgress(
-        fileName: fileName,
-        totalBytes: fileSize,
-        transferredBytes: transferred,
-        totalChunks: totalChunks,
-        completedChunks: chunkIndex,
-        direction: TransferDirection.sent,
-      ));
-      notifyListeners();
+        _progressController.add(TransferProgress(
+          fileName: fileName,
+          totalBytes: fileSize,
+          transferredBytes: transferred,
+          totalChunks: totalChunks,
+          completedChunks: chunkIndex,
+          direction: TransferDirection.sent,
+        ));
+        notifyListeners();
+      }
+    } finally {
+      await raf.close();
     }
 
     // Record transfer
