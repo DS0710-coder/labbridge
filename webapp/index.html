@@ -81,7 +81,14 @@
       <div class="qr-box">
         <div id="qrcode"></div>
       </div>
-      <p style="font-size: 16px; font-weight: 500;">Scan with LabBridge Mobile App</p>
+      <p style="font-size: 16px; font-weight: 600; color: #FFF; margin-bottom: 4px;">Scan with Camera or Android App</p>
+      <p style="font-size: 13px; color: var(--muted); text-align: center; max-width: 280px; line-height: 1.5;">
+        📱 <strong>iPhone:</strong> Scan with Camera app (opens PWA directly)<br/>
+        🤖 <strong>Android:</strong> Scan inside the LabBridge app
+      </p>
+      <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">
+        Session ID: <span id="display-session-id" style="font-family: monospace; color: var(--primary); font-weight: 700; font-size: 14px;">---</span>
+      </div>
       <div class="timer">Session refreshes in <span id="timer-sec">240s</span></div>
     </div>
 
@@ -212,6 +219,8 @@
         const res = await fetch(`${HTTP_URL}/session/new`);
         const data = await res.json();
         state.sessionId = data.session_id;
+        const dispEl = document.getElementById('display-session-id');
+        if (dispEl) dispEl.innerText = data.session_id;
 
         if (data.expires_at) {
           state.expirySeconds = Math.max(0, Math.floor((new Date(data.expires_at).getTime() - Date.now()) / 1000));
@@ -222,8 +231,13 @@
 
         const qrEl = document.getElementById('qrcode');
         qrEl.innerHTML = '';
+        const pwaUrl = new URL('phone.html', window.location.href);
+        pwaUrl.searchParams.set('s', data.session_id);
+        if (data.expires_at) pwaUrl.searchParams.set('e', new Date(data.expires_at).getTime());
+        pwaUrl.searchParams.set('w', HTTP_URL);
+
         new QRCode(qrEl, {
-          text: data.qr_payload,
+          text: pwaUrl.toString(),
           width: 220,
           height: 220,
           colorDark: "#0A0A0F",

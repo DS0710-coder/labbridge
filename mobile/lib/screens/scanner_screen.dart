@@ -32,27 +32,40 @@ class _ScannerScreenState extends State<ScannerScreen> {
         final value = barcode.rawValue;
         if (value == null) continue;
 
+        String? sessionId;
+        int? expiry;
+
         try {
+          // Try parsing as JSON first: {"s":"abc...","e":...}
           final data = json.decode(value) as Map<String, dynamic>;
-          final sessionId = data['s'] as String?;
-          final expiry = data['e'] as int?;
+          sessionId = data['s'] as String?;
+          expiry = data['e'] as int?;
+        } catch (_) {
+          // Try parsing as URL: https://.../phone.html?s=abc...&e=...
+          final uri = Uri.tryParse(value);
+          if (uri != null && uri.queryParameters.containsKey('s')) {
+            sessionId = uri.queryParameters['s'];
+            final expiryStr = uri.queryParameters['e'];
+            if (expiryStr != null) {
+              expiry = int.tryParse(expiryStr);
+            }
+          }
+        }
 
-          if (sessionId == null || expiry == null) continue;
+        if (sessionId == null) continue;
 
-          // Check expiry (expiry is stored as milliseconds epoch)
+        if (expiry != null) {
           final now = DateTime.now().millisecondsSinceEpoch;
           if (now > expiry) {
             _showError('QR has expired, refresh the PC page');
             return;
           }
-
-          // Valid QR - connect and navigate back to dashboard
-          _hasNavigated = true;
-          await _connectAndReturn(sessionId);
-          return;
-        } catch (_) {
-          // Not a valid LabBridge QR, ignore
         }
+
+        // Valid QR - connect and navigate back to dashboard
+        _hasNavigated = true;
+        await _connectAndReturn(sessionId);
+        return;
       }
     } finally {
       if (mounted && !_hasNavigated) {
