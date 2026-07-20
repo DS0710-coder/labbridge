@@ -1,3 +1,5 @@
+import '../core/formatters.dart';
+
 enum TransferDirection { received, sent }
 
 enum TransferStatus { completed, failed, cancelled }
@@ -69,14 +71,7 @@ class Transfer {
     );
   }
 
-  String get formattedSize {
-    if (size < 1024) return '$size B';
-    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
-    if (size < 1024 * 1024 * 1024) {
-      return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-  }
+  String get formattedSize => Formatters.formatBytes(size);
 
   @override
   String toString() => 'Transfer(id: $id, fileName: $fileName, status: ${status.name})';

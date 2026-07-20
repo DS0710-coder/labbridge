@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 
+import '../core/formatters.dart';
 import '../models/file_item.dart';
 import '../models/folder.dart';
 import '../services/db_service.dart';
@@ -59,15 +60,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _loading = false;
       });
     }
-  }
-
-  String _formatStorage(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
   @override
@@ -413,7 +405,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                _formatStorage(_storageUsed),
+                                Formatters.formatStorage(_storageUsed),
                                 style: const TextStyle(
                                   color: Color(0xFFE8E8F0),
                                   fontSize: 16,

@@ -1,3 +1,5 @@
+import '../core/formatters.dart';
+
 class FileItem {
   final String id;
   final String name;
@@ -71,14 +73,7 @@ class FileItem {
   List<String> get tagList =>
       tags.isEmpty ? [] : tags.split(',').map((t) => t.trim()).where((t) => t.isNotEmpty).toList();
 
-  String get formattedSize {
-    if (size < 1024) return '$size B';
-    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
-    if (size < 1024 * 1024 * 1024) {
-      return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-  }
+  String get formattedSize => Formatters.formatBytes(size);
 
   @override
   String toString() => 'FileItem(id: $id, name: $name, size: $size)';

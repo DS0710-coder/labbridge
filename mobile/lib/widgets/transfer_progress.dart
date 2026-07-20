@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/formatters.dart';
 import '../models/transfer.dart';
 import '../services/transfer_service.dart';
 
@@ -11,24 +12,6 @@ class TransferProgressWidget extends StatelessWidget {
     required this.transferProgress,
     this.speed,
   });
-
-  String _formatSpeed(double? bytesPerSec) {
-    if (bytesPerSec == null || bytesPerSec == 0) return '';
-    if (bytesPerSec < 1024) return '${bytesPerSec.toStringAsFixed(0)} B/s';
-    if (bytesPerSec < 1024 * 1024) {
-      return '${(bytesPerSec / 1024).toStringAsFixed(1)} KB/s';
-    }
-    return '${(bytesPerSec / (1024 * 1024)).toStringAsFixed(1)} MB/s';
-  }
-
-  String _formatBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +86,7 @@ class TransferProgressWidget extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '${_formatBytes(transferProgress.transferredBytes)} / ${_formatBytes(transferProgress.totalBytes)}',
+                  '${Formatters.formatBytes(transferProgress.transferredBytes)} / ${Formatters.formatBytes(transferProgress.totalBytes)}',
                   style: const TextStyle(
                     color: Color(0xFF6B6B80),
                     fontSize: 12,
@@ -111,7 +94,7 @@ class TransferProgressWidget extends StatelessWidget {
                 ),
                 if (speed != null && speed! > 0)
                   Text(
-                    _formatSpeed(speed),
+                    Formatters.formatSpeed(speed),
                     style: TextStyle(
                       color: progressColor.withValues(alpha: 0.8),
                       fontSize: 12,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/db_service.dart';
 import '../core/config.dart';
+import '../core/formatters.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -41,15 +42,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _loading = false;
       });
     }
-  }
-
-  String _formatStorage(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
   Future<void> _clearAllData() async {
@@ -177,7 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 10),
                       Expanded(child: _buildStatCard('Folders', '$_foldersCount', Icons.folder_rounded)),
                       const SizedBox(width: 10),
-                      Expanded(child: _buildStatCard('Size', _formatStorage(_storageUsed), Icons.storage_rounded)),
+                      Expanded(child: _buildStatCard('Size', Formatters.formatStorage(_storageUsed), Icons.storage_rounded)),
                     ],
                   ),
                   const SizedBox(height: 32),
