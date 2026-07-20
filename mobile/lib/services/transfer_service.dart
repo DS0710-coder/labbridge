@@ -50,12 +50,12 @@ class TransferService extends ChangeNotifier {
 
   // Stream controllers for UI updates
   final _connectionStatusController = StreamController<ConnectionStatus>.broadcast();
-  final _progressController = StreamController<TransferProgress>.broadcast();
+  final _progressController = StreamController<TransferProgress?>.broadcast();
   final _errorController = StreamController<String>.broadcast();
   final _completionController = StreamController<String>.broadcast();
 
   Stream<ConnectionStatus> get connectionStatus => _connectionStatusController.stream;
-  Stream<TransferProgress> get progress => _progressController.stream;
+  Stream<TransferProgress?> get progress => _progressController.stream;
   Stream<String> get errors => _errorController.stream;
   Stream<String> get completions => _completionController.stream;
 
@@ -140,6 +140,9 @@ class TransferService extends ChangeNotifier {
         case 'ack':
           // Acknowledgment of chunk received by server
           break;
+        case 'disconnected':
+          disconnect(sendSignal: false);
+          break;
         case 'error':
           _errorController.add(data['message'] as String? ?? 'Unknown error');
           break;
@@ -190,38 +193,72 @@ class TransferService extends ChangeNotifier {
       _receivedChunks++;
       _transferredBytes += decrypted.length;
 
-      // Send ack
-      _channel?.sink.add(json.encode({
-        'type': 'ack',
-        'chunk_index': _receivedChunks - 1,
-      }));
-
-      // Update progress
-      _progressController.add(TransferProgress(
-        fileName: _currentFileName,
-        totalBytes: _currentFileSize,
-        transferredBytes: _transferredBytes,
-        totalChunks: _totalChunks,
-        completedChunks: _receivedChunks,
-        direction: TransferDirection.received,
-      ));
-      notifyListeners();
-
-      // Check if all chunks received
       if (_receivedChunks >= _totalChunks) {
-        await _finalizeReceive();
+        final sinkToClose = _tempSink;
+        final fileToSave = _tempFile;
+        final fileNameToSave = _currentFileName;
+        final fileSizeToSave = _currentFileSize;
+        final folderIdToSave = _targetFolderId;
+
+        _tempSink = null;
+        _tempFile = null;
+
+        // Send ack right after detaching
+        _channel?.sink.add(json.encode({
+          'type': 'ack',
+          'chunk_index': _receivedChunks - 1,
+        }));
+
+        _progressController.add(TransferProgress(
+          fileName: fileNameToSave,
+          totalBytes: fileSizeToSave,
+          transferredBytes: _transferredBytes,
+          totalChunks: _totalChunks,
+          completedChunks: _receivedChunks,
+          direction: TransferDirection.received,
+        ));
+        notifyListeners();
+
+        await _finalizeReceive(
+          sink: sinkToClose,
+          file: fileToSave,
+          fileName: fileNameToSave,
+          fileSize: fileSizeToSave,
+          folderId: folderIdToSave,
+        );
+      } else {
+        // Send ack for non-final chunks
+        _channel?.sink.add(json.encode({
+          'type': 'ack',
+          'chunk_index': _receivedChunks - 1,
+        }));
+
+        _progressController.add(TransferProgress(
+          fileName: _currentFileName,
+          totalBytes: _currentFileSize,
+          transferredBytes: _transferredBytes,
+          totalChunks: _totalChunks,
+          completedChunks: _receivedChunks,
+          direction: TransferDirection.received,
+        ));
+        notifyListeners();
       }
     } catch (e) {
       _errorController.add('Decryption failed: $e');
     }
   }
 
-  Future<void> _finalizeReceive() async {
-    await _tempSink?.flush();
-    await _tempSink?.close();
-    _tempSink = null;
+  Future<void> _finalizeReceive({
+    IOSink? sink,
+    File? file,
+    required String fileName,
+    required int fileSize,
+    String? folderId,
+  }) async {
+    await sink?.flush();
+    await sink?.close();
 
-    if (_tempFile == null) return;
+    if (file == null) return;
 
     try {
       // Move to app documents directory
@@ -231,9 +268,11 @@ class TransferService extends ChangeNotifier {
         await labBridgeDir.create(recursive: true);
       }
 
-      final targetPath = p.join(labBridgeDir.path, _currentFileName);
-      final targetFile = await _tempFile!.copy(targetPath);
-      await _tempFile!.delete();
+      final targetPath = p.join(labBridgeDir.path, fileName);
+      final targetFile = await file.copy(targetPath);
+      if (await file.exists()) {
+        await file.delete();
+      }
 
       // Save to database
       final fileId = _uuid.v4();
@@ -241,27 +280,29 @@ class TransferService extends ChangeNotifier {
 
       await _dbService.insertFile(FileItem(
         id: fileId,
-        name: _currentFileName,
+        name: fileName,
         localPath: targetFile.path,
-        size: _currentFileSize,
-        folderId: _targetFolderId,
+        size: fileSize,
+        folderId: folderId,
         receivedAt: now,
       ));
 
       await _dbService.insertTransfer(Transfer(
         id: _uuid.v4(),
-        fileName: _currentFileName,
-        size: _currentFileSize,
+        fileName: fileName,
+        size: fileSize,
         direction: TransferDirection.received,
         status: TransferStatus.completed,
-        folderId: _targetFolderId,
+        folderId: folderId,
         completedAt: now,
       ));
 
-      _completionController.add(_currentFileName);
+      _completionController.add(fileName);
+      _progressController.add(null);
       notifyListeners();
     } catch (e) {
       _errorController.add('Failed to save file: $e');
+      _progressController.add(null);
     }
   }
 
@@ -351,6 +392,7 @@ class TransferService extends ChangeNotifier {
     ));
 
     _completionController.add(fileName);
+    _progressController.add(null);
     notifyListeners();
   }
 
@@ -368,7 +410,12 @@ class TransferService extends ChangeNotifier {
   }
 
   /// Disconnect from WebSocket
-  Future<void> disconnect() async {
+  Future<void> disconnect({bool sendSignal = true}) async {
+    if (sendSignal && _channel != null) {
+      try {
+        _channel!.sink.add(json.encode({'type': 'disconnected'}));
+      } catch (_) {}
+    }
     await _subscription?.cancel();
     _subscription = null;
     await _channel?.sink.close();
@@ -379,6 +426,7 @@ class TransferService extends ChangeNotifier {
     _tempFile = null;
     _status = ConnectionStatus.disconnected;
     _connectionStatusController.add(ConnectionStatus.disconnected);
+    _progressController.add(null);
     notifyListeners();
   }
 

@@ -5,12 +5,16 @@ class FolderTile extends StatelessWidget {
   final Folder folder;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+  final bool isSelected;
+  final bool selectionMode;
 
   const FolderTile({
     super.key,
     required this.folder,
     required this.onTap,
     this.onLongPress,
+    this.isSelected = false,
+    this.selectionMode = false,
   });
 
   Color _parseColor(String hex) {
@@ -23,10 +27,13 @@ class FolderTile extends StatelessWidget {
     final folderColor = _parseColor(folder.color);
 
     return Card(
-      color: const Color(0xFF111118),
+      color: isSelected ? const Color(0xFF6C63FF).withValues(alpha: 0.08) : const Color(0xFF111118),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFF1E1E2E), width: 1),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFF6C63FF) : const Color(0xFF1E1E2E),
+          width: isSelected ? 2 : 1,
+        ),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: InkWell(
@@ -62,11 +69,28 @@ class FolderTile extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: Color(0xFF6B6B80),
-                size: 22,
-              ),
+              if (selectionMode)
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF6C63FF) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF6C63FF) : const Color(0xFF6B6B80),
+                      width: 2,
+                    ),
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
+                      : null,
+                )
+              else
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: Color(0xFF6B6B80),
+                  size: 22,
+                ),
             ],
           ),
         ),

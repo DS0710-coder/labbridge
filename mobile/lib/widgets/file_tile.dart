@@ -6,12 +6,16 @@ class FileTile extends StatelessWidget {
   final FileItem file;
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
+  final bool isSelected;
+  final bool selectionMode;
 
   const FileTile({
     super.key,
     required this.file,
     required this.onTap,
     this.onLongPress,
+    this.isSelected = false,
+    this.selectionMode = false,
   });
 
   IconData _getFileIcon(String name) {
@@ -109,10 +113,13 @@ class FileTile extends StatelessWidget {
     final tags = file.tagList;
 
     return Card(
-      color: const Color(0xFF111118),
+      color: isSelected ? const Color(0xFF6C63FF).withValues(alpha: 0.08) : const Color(0xFF111118),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFF1E1E2E), width: 1),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFF6C63FF) : const Color(0xFF1E1E2E),
+          width: isSelected ? 2 : 1,
+        ),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: InkWell(
@@ -185,6 +192,23 @@ class FileTile extends StatelessWidget {
                   ],
                 ),
               ),
+              if (selectionMode)
+                Container(
+                  width: 24,
+                  height: 24,
+                  margin: const EdgeInsets.only(left: 12),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFF6C63FF) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isSelected ? const Color(0xFF6C63FF) : const Color(0xFF6B6B80),
+                      width: 2,
+                    ),
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
+                      : null,
+                ),
             ],
           ),
         ),

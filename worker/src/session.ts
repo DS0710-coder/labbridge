@@ -9,7 +9,7 @@ interface SocketAttachment {
   role: "pc" | "phone";
 }
 
-const SESSION_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const SESSION_TTL_MS = 2 * 60 * 1000; // 2 minutes (120 seconds)
 
 /**
  * A single LabBridge relay session.
@@ -100,6 +100,18 @@ export class Session extends DurableObject {
           ws.send(JSON.stringify({ type: "paired", device: "phone" }));
         }
       }
+    }
+
+    // If both PC and phone are now paired, reset/extend the session alarm to 240 seconds (4 minutes)
+    const hasPc =
+      role === "pc" ||
+      existing.some((ws) => (ws.deserializeAttachment() as SocketAttachment | null)?.role === "pc");
+    const hasPhone =
+      role === "phone" ||
+      existing.some((ws) => (ws.deserializeAttachment() as SocketAttachment | null)?.role === "phone");
+
+    if (hasPc && hasPhone) {
+      await this.ctx.storage.setAlarm(Date.now() + 4 * 60 * 1000);
     }
 
     return new Response(null, { status: 101, webSocket: client });

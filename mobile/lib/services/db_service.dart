@@ -1,5 +1,7 @@
 import 'dart:io';
+// ignore: unnecessary_import
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 import '../models/folder.dart';
@@ -28,6 +30,10 @@ class DbService {
   }
 
   Future<Database> _initDatabase() async {
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
     String path;
     if (Platform.environment.containsKey('FLUTTER_TEST')) {
       path = inMemoryDatabasePath;

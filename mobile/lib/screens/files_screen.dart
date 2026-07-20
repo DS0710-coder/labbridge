@@ -1,11 +1,16 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
+import 'package:provider/provider.dart';
+import 'package:archive/archive_io.dart';
 
 import '../models/folder.dart';
 import '../models/file_item.dart';
 import '../services/db_service.dart';
+import '../services/transfer_service.dart';
 import '../widgets/folder_tile.dart';
 import '../widgets/file_tile.dart';
 
@@ -19,6 +24,7 @@ class FilesScreen extends StatefulWidget {
 class _FilesScreenState extends State<FilesScreen> {
   final DbService _dbService = DbService();
   static const _uuid = Uuid();
+  StreamSubscription<String>? _completionSub;
 
   List<Folder> _folders = [];
   List<FileItem> _files = [];
@@ -26,10 +32,27 @@ class _FilesScreenState extends State<FilesScreen> {
   String? _currentFolderId;
   bool _loading = true;
 
+  bool _selectionMode = false;
+  final Set<String> _selectedFolderIds = {};
+  final Set<String> _selectedFileIds = {};
+
   @override
   void initState() {
     super.initState();
     _loadFolder(null);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final transferService = Provider.of<TransferService>(context, listen: false);
+      _completionSub = transferService.completions.listen((_) {
+        if (mounted) _loadFolder(_currentFolderId);
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _completionSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadFolder(String? folderId) async {
@@ -58,6 +81,9 @@ class _FilesScreenState extends State<FilesScreen> {
         _files = files;
         _breadcrumbs = crumbs;
         _loading = false;
+        _selectedFolderIds.clear();
+        _selectedFileIds.clear();
+        _selectionMode = false;
       });
     }
   }
@@ -148,6 +174,17 @@ class _FilesScreenState extends State<FilesScreen> {
               ),
             ),
             const SizedBox(height: 16),
+            _buildSheetOption(
+              Icons.checklist_rounded,
+              'Select',
+              () {
+                Navigator.pop(context);
+                setState(() {
+                  _selectionMode = true;
+                  _selectedFolderIds.add(folder.id);
+                });
+              },
+            ),
             _buildSheetOption(
               Icons.edit_rounded,
               'Rename',
@@ -349,6 +386,17 @@ class _FilesScreenState extends State<FilesScreen> {
             ),
             const SizedBox(height: 16),
             _buildSheetOption(
+              Icons.checklist_rounded,
+              'Select',
+              () {
+                Navigator.pop(context);
+                setState(() {
+                  _selectionMode = true;
+                  _selectedFileIds.add(file.id);
+                });
+              },
+            ),
+            _buildSheetOption(
               Icons.open_in_new_rounded,
               'Open',
               () {
@@ -516,6 +564,272 @@ class _FilesScreenState extends State<FilesScreen> {
     }
   }
 
+  void _toggleFolderSelection(Folder folder) {
+    setState(() {
+      if (_selectedFolderIds.contains(folder.id)) {
+        _selectedFolderIds.remove(folder.id);
+      } else {
+        _selectedFolderIds.add(folder.id);
+      }
+      if (_selectedFolderIds.isEmpty && _selectedFileIds.isEmpty) {
+        _selectionMode = false;
+      }
+    });
+  }
+
+  void _toggleFileSelection(FileItem file) {
+    setState(() {
+      if (_selectedFileIds.contains(file.id)) {
+        _selectedFileIds.remove(file.id);
+      } else {
+        _selectedFileIds.add(file.id);
+      }
+      if (_selectedFolderIds.isEmpty && _selectedFileIds.isEmpty) {
+        _selectionMode = false;
+      }
+    });
+  }
+
+  void _selectAll() {
+    setState(() {
+      if (_selectedFolderIds.length + _selectedFileIds.length == _folders.length + _files.length) {
+        _selectedFolderIds.clear();
+        _selectedFileIds.clear();
+        _selectionMode = false;
+      } else {
+        _selectedFolderIds.addAll(_folders.map((f) => f.id));
+        _selectedFileIds.addAll(_files.map((f) => f.id));
+      }
+    });
+  }
+
+  Future<void> _batchDeleteSelected() async {
+    final count = _selectedFolderIds.length + _selectedFileIds.length;
+    if (count == 0) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF111118),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Selected Items?', style: TextStyle(color: Color(0xFFE8E8F0))),
+        content: Text(
+          'Are you sure you want to delete $count selected item(s)? Sub-folders will be moved up.',
+          style: const TextStyle(color: Color(0xFF6B6B80)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      for (final id in _selectedFolderIds) {
+        await _dbService.deleteFolder(id);
+      }
+      for (final id in _selectedFileIds) {
+        await _dbService.deleteFile(id);
+      }
+      _loadFolder(_currentFolderId);
+    }
+  }
+
+  Future<void> _batchMoveSelected() async {
+    final count = _selectedFolderIds.length + _selectedFileIds.length;
+    if (count == 0) return;
+
+    final allFolders = await _dbService.getAllFolders();
+    if (!mounted) return;
+
+    final destId = await showDialog<String?>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF111118),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Move Selected to Folder', style: TextStyle(color: Color(0xFFE8E8F0))),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.folder_rounded, color: Color(0xFF6B6B80)),
+                title: const Text('Root', style: TextStyle(color: Color(0xFFE8E8F0))),
+                onTap: () => Navigator.pop(context, '__root__'),
+              ),
+              ...allFolders
+                  .where((f) => !_selectedFolderIds.contains(f.id)) // prevent moving into self
+                  .map((f) => ListTile(
+                        leading: Icon(
+                          Icons.folder_rounded,
+                          color: Color(
+                            int.parse('FF${f.color.replaceAll('#', '')}', radix: 16),
+                          ),
+                        ),
+                        title: Text(f.name, style: const TextStyle(color: Color(0xFFE8E8F0))),
+                        onTap: () => Navigator.pop(context, f.id),
+                      )),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (destId != null) {
+      final targetFolderId = destId == '__root__' ? null : destId;
+      for (final id in _selectedFolderIds) {
+        final f = await _dbService.getFolder(id);
+        if (f != null) {
+          await _dbService.updateFolder(
+            targetFolderId == null
+                ? f.copyWith(clearParentId: true)
+                : f.copyWith(parentId: targetFolderId),
+          );
+        }
+      }
+      for (final id in _selectedFileIds) {
+        final f = _files.firstWhere((item) => item.id == id);
+        await _dbService.updateFile(
+          targetFolderId == null
+              ? f.copyWith(clearFolderId: true)
+              : f.copyWith(folderId: targetFolderId),
+        );
+      }
+      _loadFolder(_currentFolderId);
+    }
+  }
+
+  Future<void> _batchExtractSelected() async {
+    final count = _selectedFolderIds.length + _selectedFileIds.length;
+    if (count == 0) return;
+
+    final zipFiles = _files.where((f) => _selectedFileIds.contains(f.id) && f.name.toLowerCase().endsWith('.zip')).toList();
+
+    if (zipFiles.isNotEmpty) {
+      final confirmZip = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: const Color(0xFF111118),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Extract Zip Archive(s)?', style: TextStyle(color: Color(0xFFE8E8F0))),
+          content: Text(
+            'Extract ${zipFiles.length} Zip archive(s) into the current folder?',
+            style: const TextStyle(color: Color(0xFF6B6B80)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Extract', style: TextStyle(color: Color(0xFF6C63FF))),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmZip == true) {
+        if (!mounted) return;
+        final messenger = ScaffoldMessenger.of(context);
+        int extractedCount = 0;
+        for (final z in zipFiles) {
+          try {
+            final bytes = File(z.localPath).readAsBytesSync();
+            final archive = ZipDecoder().decodeBytes(bytes);
+            for (final file in archive) {
+              if (file.isFile) {
+                final data = file.content as List<int>;
+                final cleanName = file.name.split('/').last;
+                if (cleanName.isEmpty) continue;
+                final parentDir = File(z.localPath).parent;
+                final destPath = '${parentDir.path}/lb_ext_${_uuid.v4()}_$cleanName';
+                File(destPath).writeAsBytesSync(data);
+
+                await _dbService.insertFile(FileItem(
+                  id: _uuid.v4(),
+                  name: cleanName,
+                  localPath: destPath,
+                  size: data.length,
+                  folderId: _currentFolderId,
+                  receivedAt: DateTime.now().millisecondsSinceEpoch,
+                ));
+                extractedCount++;
+              }
+            }
+          } catch (e) {
+            debugPrint('Error extracting zip: $e');
+          }
+        }
+        if (extractedCount > 0) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text('Successfully extracted $extractedCount file(s)!'),
+              backgroundColor: const Color(0xFF22C55E),
+            ),
+          );
+        }
+        _loadFolder(_currentFolderId);
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    // Unpack to parent folder logic
+    final confirmUnpack = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF111118),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Unpack / Extract to Parent Directory?', style: TextStyle(color: Color(0xFFE8E8F0))),
+        content: Text(
+          'Move $count selected item(s) up to the parent directory (${_breadcrumbs.length > 1 ? _breadcrumbs[_breadcrumbs.length - 2].name : 'Root'})?',
+          style: const TextStyle(color: Color(0xFF6B6B80)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Unpack', style: TextStyle(color: Color(0xFF6C63FF))),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmUnpack == true) {
+      final parentFolderId = _breadcrumbs.length > 1 ? _breadcrumbs[_breadcrumbs.length - 2].id : null;
+      for (final id in _selectedFolderIds) {
+        final f = await _dbService.getFolder(id);
+        if (f != null) {
+          await _dbService.updateFolder(
+            parentFolderId == null
+                ? f.copyWith(clearParentId: true)
+                : f.copyWith(parentId: parentFolderId),
+          );
+        }
+      }
+      for (final id in _selectedFileIds) {
+        final f = _files.firstWhere((item) => item.id == id);
+        await _dbService.updateFile(
+          parentFolderId == null
+              ? f.copyWith(clearFolderId: true)
+              : f.copyWith(folderId: parentFolderId),
+        );
+      }
+      _loadFolder(_currentFolderId);
+    }
+  }
+
   Widget _buildSheetOption(IconData icon, String label, VoidCallback onTap,
       {Color? color}) {
     return ListTile(
@@ -531,30 +845,148 @@ class _FilesScreenState extends State<FilesScreen> {
     );
   }
 
+  Widget _buildBatchActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color ?? const Color(0xFF6C63FF), size: 24),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color ?? const Color(0xFFE8E8F0),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF6C63FF),
-        onPressed: _showCreateFolderDialog,
-        child: const Icon(Icons.create_new_folder_rounded, color: Colors.white),
-      ),
+      floatingActionButton: !_selectionMode
+          ? FloatingActionButton(
+              backgroundColor: const Color(0xFF6C63FF),
+              onPressed: _showCreateFolderDialog,
+              child: const Icon(Icons.create_new_folder_rounded, color: Colors.white),
+            )
+          : null,
+      bottomNavigationBar: _selectionMode && (_selectedFolderIds.isNotEmpty || _selectedFileIds.isNotEmpty)
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: Color(0xFF111118),
+                border: Border(top: BorderSide(color: Color(0xFF1E1E2E))),
+              ),
+              child: SafeArea(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildBatchActionButton(
+                      icon: Icons.folder_shared_rounded,
+                      label: 'Move / Shift',
+                      onTap: _batchMoveSelected,
+                    ),
+                    _buildBatchActionButton(
+                      icon: Icons.unarchive_rounded,
+                      label: 'Extract',
+                      onTap: _batchExtractSelected,
+                    ),
+                    _buildBatchActionButton(
+                      icon: Icons.delete_rounded,
+                      label: 'Delete',
+                      color: const Color(0xFFEF4444),
+                      onTap: _batchDeleteSelected,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Text(
-                'Files',
-                style: TextStyle(
-                  color: Color(0xFFE8E8F0),
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: !_selectionMode
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Files',
+                          style: TextStyle(
+                            color: Color(0xFFE8E8F0),
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (_folders.isNotEmpty || _files.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.checklist_rounded, color: Color(0xFF6C63FF), size: 26),
+                            tooltip: 'Select multiple items',
+                            onPressed: () {
+                              setState(() {
+                                _selectionMode = true;
+                              });
+                            },
+                          ),
+                      ],
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, color: Color(0xFFE8E8F0)),
+                              onPressed: () {
+                                setState(() {
+                                  _selectionMode = false;
+                                  _selectedFolderIds.clear();
+                                  _selectedFileIds.clear();
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_selectedFolderIds.length + _selectedFileIds.length} Selected',
+                              style: const TextStyle(
+                                color: Color(0xFFE8E8F0),
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        TextButton.icon(
+                          onPressed: _selectAll,
+                          icon: const Icon(Icons.select_all_rounded, color: Color(0xFF6C63FF), size: 20),
+                          label: Text(
+                            _selectedFolderIds.length + _selectedFileIds.length == _folders.length + _files.length
+                                ? 'Deselect All'
+                                : 'Select All',
+                            style: const TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
             const SizedBox(height: 12),
 
@@ -637,25 +1069,58 @@ class _FilesScreenState extends State<FilesScreen> {
                             ],
                           ),
                         )
-                      : ListView(
-                          padding: const EdgeInsets.only(bottom: 80),
-                          children: [
-                            ..._folders.map((folder) => FolderTile(
-                                  folder: folder,
-                                  onTap: () => _navigateToFolder(folder.id),
-                                  onLongPress: () => _showFolderOptions(folder),
-                                )),
-                            if (_folders.isNotEmpty && _files.isNotEmpty)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                                child: Divider(color: Color(0xFF1E1E2E), height: 1),
-                              ),
-                            ..._files.map((file) => FileTile(
-                                  file: file,
-                                  onTap: () => OpenFile.open(file.localPath),
-                                  onLongPress: () => _showFileOptions(file),
-                                )),
-                          ],
+                      : RefreshIndicator(
+                          color: const Color(0xFF6C63FF),
+                          backgroundColor: const Color(0xFF111118),
+                          onRefresh: () => _loadFolder(_currentFolderId),
+                          child: ListView(
+                            padding: const EdgeInsets.only(bottom: 80),
+                            children: [
+                              ..._folders.map((folder) => FolderTile(
+                                    folder: folder,
+                                    isSelected: _selectedFolderIds.contains(folder.id),
+                                    selectionMode: _selectionMode,
+                                    onTap: () {
+                                      if (_selectionMode) {
+                                        _toggleFolderSelection(folder);
+                                      } else {
+                                        _navigateToFolder(folder.id);
+                                      }
+                                    },
+                                    onLongPress: () {
+                                      if (!_selectionMode) {
+                                        _showFolderOptions(folder);
+                                      } else {
+                                        _toggleFolderSelection(folder);
+                                      }
+                                    },
+                                  )),
+                              if (_folders.isNotEmpty && _files.isNotEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                  child: Divider(color: Color(0xFF1E1E2E), height: 1),
+                                ),
+                              ..._files.map((file) => FileTile(
+                                    file: file,
+                                    isSelected: _selectedFileIds.contains(file.id),
+                                    selectionMode: _selectionMode,
+                                    onTap: () {
+                                      if (_selectionMode) {
+                                        _toggleFileSelection(file);
+                                      } else {
+                                        OpenFile.open(file.localPath);
+                                      }
+                                    },
+                                    onLongPress: () {
+                                      if (!_selectionMode) {
+                                        _showFileOptions(file);
+                                      } else {
+                                        _toggleFileSelection(file);
+                                      }
+                                    },
+                                  )),
+                            ],
+                          ),
                         ),
             ),
           ],
