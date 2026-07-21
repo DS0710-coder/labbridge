@@ -212,8 +212,8 @@
   </div>
 
   <script>
-    // Change to wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev for production
-    const WORKER_URL = window.LABBRIDGE_WORKER_URL || 'ws://localhost:8787';
+    const isFileOrLocal = window.location.protocol === 'file:';
+    const WORKER_URL = window.LABBRIDGE_WORKER_URL || (isFileOrLocal ? 'ws://localhost:8787' : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
     const HTTP_URL = WORKER_URL.replace('ws://', 'http://').replace('wss://', 'https://');
 
     const state = {
