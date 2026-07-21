@@ -48,7 +48,7 @@ async function deriveAndDecrypt(sessionId: string, encryptedBuffer: ArrayBuffer)
   );
 }
 
-const SESSION_TTL_MS = 2 * 60 * 1000; // 2 minutes (120 seconds)
+const SESSION_TTL_MS = 4 * 60 * 1000; // 4 minutes (240 seconds)
 const MAX_SESSION_LIFETIME_MS = 60 * 60 * 1000; // 1 hour hard maximum limit
 const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB max limit per transfer
 

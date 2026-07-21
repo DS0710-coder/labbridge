@@ -35,9 +35,12 @@
     
     /* Phase 1: Waiting */
     #phase-waiting { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding: 20px 0; }
-    .qr-box { background: #E8E8F0; padding: 16px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-width: 252px; min-height: 252px; }
-    #qrcode { width: 220px; height: 220px; }
-    .timer { font-size: 14px; color: var(--muted); }
+    .qr-box { background: #E8E8F0; padding: 16px; border-radius: 12px; display: flex; align-items: center; justify-content: center; min-width: 252px; min-height: 252px; position: relative; overflow: hidden; }
+    #qrcode { width: 220px; height: 220px; transition: opacity 0.2s; }
+    .qr-expired-overlay { display: none; position: absolute; inset: 0; background: rgba(232, 232, 240, 0.96); border-radius: 12px; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; color: #0A0A0F; z-index: 10; backdrop-filter: blur(4px); }
+    .btn-refresh-qr { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(108,99,255,0.4); display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; }
+    .btn-refresh-qr:hover { background: #5B52E0; transform: translateY(-1px); }
+    .timer { font-size: 14px; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 10px; }
     .timer span { color: var(--primary); font-weight: 600; }
 
     /* Phase 2: Paired & Folders */
@@ -86,6 +89,11 @@
     <div id="phase-waiting">
       <div class="qr-box">
         <div id="qrcode"></div>
+        <div id="qr-expired-overlay" class="qr-expired-overlay">
+          <div style="font-size: 26px;">⌛</div>
+          <div style="font-weight: 700; font-size: 15px;">QR Code Expired</div>
+          <button onclick="createSession()" class="btn-refresh-qr">🔄 Generate Fresh QR</button>
+        </div>
       </div>
       <p style="font-size: 16px; font-weight: 600; color: #FFF; margin-bottom: 4px;">Scan with Camera or Android App</p>
       <p style="font-size: 13px; color: var(--muted); text-align: center; max-width: 280px; line-height: 1.5;">
@@ -95,11 +103,19 @@
       <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">
         Session ID: <span id="display-session-id" style="font-family: monospace; color: var(--primary); font-weight: 700; font-size: 14px;">---</span>
       </div>
-      <div class="timer">Session refreshes in <span id="timer-sec">240s</span></div>
+      <div class="timer">
+        <span>Session expires in <span id="timer-sec">240s</span></span>
+        <button id="btn-refresh-waiting" onclick="createSession()" style="background: transparent; border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; transition: all 0.15s;">🔄 Refresh Now</button>
+      </div>
     </div>
 
     <!-- Phase 2: Paired & Browsing -->
     <div id="phase-paired">
+      <div id="received-files-section" style="display:none; margin-bottom: 20px; padding: 16px; background: rgba(108, 99, 255, 0.12); border: 2px solid #6C63FF; border-radius: 12px; box-shadow: 0 4px 20px rgba(108, 99, 255, 0.2);">
+        <p style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">📥 Received from Phone:</p>
+        <div id="received-files-list"></div>
+      </div>
+
       <div>
         <p style="font-size: 13px; color: var(--muted); margin-bottom: 6px;">Target Folder on Phone:</p>
         <div id="breadcrumb" class="breadcrumb">
@@ -119,11 +135,6 @@
         <input type="file" id="file-input" multiple />
         <p>Drop files here or click to browse</p>
         <span id="queue-status">Will be saved directly to the selected folder above</span>
-      </div>
-
-      <div id="received-files-section" style="display:none; margin-top: 16px;">
-        <p style="font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 8px;">Received from Phone:</p>
-        <div id="received-files-list"></div>
       </div>
     </div>
 
@@ -225,7 +236,7 @@
       currentFolderPath: [],
       phase: 'waiting',
       timerInterval: null,
-      expirySeconds: 120,
+      expirySeconds: 240,
       connectedDevice: null,
       currentTransfer: null,
       sendQueue: [],
@@ -289,11 +300,17 @@
       if (state.receivedFiles) {
         state.receivedFiles.forEach(f => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
       }
-      state.expirySeconds = 120;
+      state.expirySeconds = 240;
       state.sendQueue = [];
       state.receivedFiles = [];
       state.currentTransfer = null;
       setPhase('waiting');
+      
+      const overlay = document.getElementById('qr-expired-overlay');
+      if (overlay) overlay.style.display = 'none';
+      const qrcodeEl = document.getElementById('qrcode');
+      if (qrcodeEl) qrcodeEl.style.opacity = '1';
+      
       updateTimerDisplay();
 
       try {
@@ -306,13 +323,13 @@
         if (data.expires_at) {
           state.expirySeconds = Math.max(0, Math.floor((new Date(data.expires_at).getTime() - Date.now()) / 1000));
         } else {
-          state.expirySeconds = 120;
+          state.expirySeconds = 240;
         }
         updateTimerDisplay();
 
         const qrEl = document.getElementById('qrcode');
         qrEl.innerHTML = '';
-        const expiryMs = data.expires_at ? new Date(data.expires_at).getTime() : Date.now() + 120000;
+        const expiryMs = data.expires_at ? new Date(data.expires_at).getTime() : Date.now() + 240000;
         const pwaBase = HTTP_URL.replace('ws://', 'http://').replace('wss://', 'https://');
         const qrPayload = `${pwaBase}/phone.html?s=${data.session_id}&e=${expiryMs}`;
 
@@ -329,10 +346,24 @@
           state.expirySeconds--;
           updateTimerDisplay();
           if (state.expirySeconds <= 0) {
-            if (state.phase !== 'waiting') {
-              console.warn('Session expired. Please rescan.');
+            clearInterval(state.timerInterval);
+            if (state.ws) {
+              const oldWs = state.ws;
+              state.ws = null;
+              oldWs.onclose = null;
+              try { oldWs.close(); } catch (e) {}
             }
-            createSession();
+            if (state.phase === 'waiting') {
+              const overlay = document.getElementById('qr-expired-overlay');
+              if (overlay) overlay.style.display = 'flex';
+              const qEl = document.getElementById('qrcode');
+              if (qEl) qEl.style.opacity = '0.25';
+              const secEl = document.getElementById('timer-sec');
+              if (secEl) secEl.innerText = '0s';
+              setStatus(false, 'QR Code Expired (Click Refresh)');
+            } else {
+              console.warn('Session expired.');
+            }
           }
         }, 1000);
 
@@ -385,8 +416,10 @@
         if (typeof event.data === 'string') {
           const msg = JSON.parse(event.data);
           handleTextMessage(msg);
-        } else if (event.data instanceof ArrayBuffer) {
-          handleIncomingBinaryChunk(event.data);
+        } else {
+          let buffer = event.data;
+          if (buffer instanceof Blob) buffer = await buffer.arrayBuffer();
+          await handleIncomingBinaryChunk(buffer);
         }
       };
 
@@ -595,20 +628,15 @@
     async function decryptChunk(combinedBuffer, key, chunkIndex) {
       const combined = new Uint8Array(combinedBuffer);
       const iv = combined.slice(0, 12);
-      
       const view = new DataView(iv.buffer, iv.byteOffset, iv.byteLength);
       const extractedIndex = view.getUint32(8, false);
-      if (extractedIndex !== chunkIndex) {
-        throw new Error(`Chunk index mismatch: expected ${chunkIndex}, got ${extractedIndex}`);
-      }
-      
       const ciphertext = combined.slice(12);
-
-      return await crypto.subtle.decrypt(
+      const plaintext = await crypto.subtle.decrypt(
         { name: 'AES-GCM', iv },
         key,
         ciphertext
       );
+      return { chunkIndex: extractedIndex, plaintext };
     }
 
     // File Drop & Sending
@@ -754,40 +782,45 @@
       state.expirySeconds = 240;
       updateTimerDisplay();
 
-      const chunkIndex = transfer.receivedChunks;
       try {
-        const decrypted = await decryptChunk(buffer, state.cryptoKey, chunkIndex);
-        // Wrap decrypted chunk in a Blob immediately so browser can page/spill off heap
-        transfer.chunksData[chunkIndex] = new Blob([decrypted]);
-        transfer.receivedChunks++;
+        const result = await decryptChunk(buffer, state.cryptoKey, transfer.receivedChunks);
+        const idx = typeof result.chunkIndex === 'number' ? result.chunkIndex : transfer.receivedChunks;
+        transfer.chunksData[idx] = new Blob([result.plaintext]);
+        
+        let receivedCount = 0;
+        for (let i = 0; i < transfer.total_chunks; i++) {
+          if (transfer.chunksData[i] != null) receivedCount++;
+        }
+        transfer.receivedChunks = receivedCount;
 
-        const pct = Math.round((transfer.receivedChunks / transfer.total_chunks) * 100);
+        const pct = Math.round((receivedCount / transfer.total_chunks) * 100);
         updateProgressDisplay(transfer.filename, transfer.size, pct);
 
         if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: chunkIndex }));
+          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
         }
 
-        if (transfer.receivedChunks >= transfer.total_chunks) {
+        if (receivedCount >= transfer.total_chunks) {
           const finalBlob = new Blob(transfer.chunksData, { type: transfer.mime_type });
-          // Release references to intermediate chunks immediately to free memory
           transfer.chunksData = null;
           const blobUrl = URL.createObjectURL(finalBlob);
           state.receivedFiles = state.receivedFiles || [];
           state.receivedFiles.push({
             filename: transfer.filename,
             size: transfer.size,
+            mimeType: transfer.mime_type,
             blobUrl: blobUrl
           });
           renderReceivedFiles();
 
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = transfer.filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+          try {
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = transfer.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } catch (e) {}
 
           state.currentTransfer = null;
           if (state.sendQueue.length > 0) {
@@ -796,10 +829,15 @@
             setPhase('paired');
             updateQueueDisplay();
             setStatus(true, `Connected: ${state.connectedDevice} (Received: ${transfer.filename})`);
+            const sec = document.getElementById('received-files-section');
+            if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         }
       } catch (err) {
         console.error('Failed to decrypt incoming chunk:', err);
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: transfer.receivedChunks }));
+        }
       }
     }
 
@@ -816,29 +854,29 @@
       state.receivedFiles.forEach(f => {
         const item = document.createElement('div');
         item.className = 'received-item';
-        item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-top: 8px;';
+        item.style.cssText = 'padding: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; margin-top: 10px;';
 
-        const info = document.createElement('div');
-        info.style.cssText = 'overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 65%;';
-        const strong = document.createElement('strong');
-        strong.style.cssText = 'font-size: 14px; color: var(--text);';
-        strong.textContent = f.filename;
-        const br = document.createElement('br');
-        const span = document.createElement('span');
-        span.style.cssText = 'font-size: 12px; color: var(--muted);';
-        span.textContent = `${(f.size / (1024 * 1024)).toFixed(2)} MB`;
-        info.appendChild(strong);
-        info.appendChild(br);
-        info.appendChild(span);
+        const isImage = (f.mimeType && f.mimeType.startsWith('image/')) || f.filename.match(/\.(jpg|jpeg|png|gif|webp|heic|bmp)$/i);
+        let imgHtml = '';
+        if (isImage) {
+          imgHtml = `<div style="margin-bottom: 12px; text-align: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px;">
+            <img src="${f.blobUrl}" alt="${f.filename}" style="max-height: 240px; max-width: 100%; border-radius: 6px; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.4);" />
+          </div>`;
+        }
 
-        const a = document.createElement('a');
-        a.href = f.blobUrl;
-        a.download = f.filename;
-        a.style.cssText = 'background: var(--primary); color: white; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 600; white-space: nowrap;';
-        a.textContent = '📥 Download';
-
-        item.appendChild(info);
-        item.appendChild(a);
+        item.innerHTML = `
+          ${imgHtml}
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
+              <strong style="font-size: 15px; color: #fff;">${f.filename}</strong><br />
+              <span style="font-size: 13px; color: #aaa;">${(f.size / (1024 * 1024)).toFixed(2)} MB</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <a href="${f.blobUrl}" target="_blank" style="background: rgba(255,255,255,0.15); color: white; text-decoration: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; white-space: nowrap;">👁️ Preview</a>
+              <a href="${f.blobUrl}" download="${f.filename}" style="background: #6C63FF; color: white; text-decoration: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; white-space: nowrap; box-shadow: 0 2px 8px rgba(108,99,255,0.4);">📥 Download</a>
+            </div>
+          </div>
+        `;
         list.appendChild(item);
       });
     }
@@ -1050,8 +1088,10 @@
         if (typeof event.data === 'string') {
           const msg = JSON.parse(event.data);
           phoneHandleTextMessage(msg);
-        } else if (event.data instanceof ArrayBuffer) {
-          phoneHandleIncomingBinaryChunk(event.data);
+        } else {
+          let buffer = event.data;
+          if (buffer instanceof Blob) buffer = await buffer.arrayBuffer();
+          await phoneHandleIncomingBinaryChunk(buffer);
         }
       };
 
@@ -1107,31 +1147,37 @@
       const transfer = phoneState.currentTransfer;
       if (!transfer || transfer.direction !== 'receiving') return;
 
-      const chunkIndex = transfer.receivedChunks;
       try {
-        const decrypted = await decryptChunk(buffer, phoneState.cryptoKey, chunkIndex);
-        transfer.chunksData[chunkIndex] = new Blob([decrypted]);
-        transfer.receivedChunks++;
+        const result = await decryptChunk(buffer, phoneState.cryptoKey, transfer.receivedChunks);
+        const idx = typeof result.chunkIndex === 'number' ? result.chunkIndex : transfer.receivedChunks;
+        transfer.chunksData[idx] = new Blob([result.plaintext]);
+        
+        let receivedCount = 0;
+        for (let i = 0; i < transfer.total_chunks; i++) {
+          if (transfer.chunksData[i] != null) receivedCount++;
+        }
+        transfer.receivedChunks = receivedCount;
 
-        const pct = Math.round((transfer.receivedChunks / transfer.total_chunks) * 100);
+        const pct = Math.round((receivedCount / transfer.total_chunks) * 100);
         phoneUpdateProgressDisplay(transfer.filename, transfer.size, pct);
 
         if (phoneState.ws && phoneState.ws.readyState === WebSocket.OPEN) {
-          phoneState.ws.send(JSON.stringify({ type: 'ack', chunk_index: chunkIndex }));
+          phoneState.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
         }
 
-        if (transfer.receivedChunks >= transfer.total_chunks) {
+        if (receivedCount >= transfer.total_chunks) {
           const finalBlob = new Blob(transfer.chunksData, { type: transfer.mime_type });
           transfer.chunksData = null;
           const blobUrl = URL.createObjectURL(finalBlob);
 
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = transfer.filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+          try {
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = transfer.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } catch (e) {}
 
           phoneState.currentTransfer = null;
           phoneShowScreen('done');
@@ -1140,6 +1186,9 @@
         }
       } catch (err) {
         console.error('Failed to decrypt incoming chunk on phone:', err);
+        if (phoneState.ws && phoneState.ws.readyState === WebSocket.OPEN) {
+          phoneState.ws.send(JSON.stringify({ type: 'ack', chunk_index: transfer.receivedChunks }));
+        }
       }
     }
 
