@@ -239,7 +239,9 @@ class TransferService extends ChangeNotifier {
 
     try {
       // Decrypt chunk
-      final decrypted = _cryptoService.decryptChunk(data, _derivedKey!, _receivedChunks);
+      final result = _cryptoService.decryptChunk(data, _derivedKey!, _receivedChunks);
+      final decrypted = result.plaintext;
+      final chunkIndex = result.chunkIndex;
 
       // Write to temp file
       _tempSink!.add(decrypted);
@@ -259,7 +261,7 @@ class TransferService extends ChangeNotifier {
         // Send ack right after detaching
         _channel?.sink.add(json.encode({
           'type': 'ack',
-          'chunk_index': _receivedChunks - 1,
+          'chunk_index': chunkIndex,
         }));
 
         _progressController.add(TransferProgress(
@@ -283,7 +285,7 @@ class TransferService extends ChangeNotifier {
         // Send ack for non-final chunks
         _channel?.sink.add(json.encode({
           'type': 'ack',
-          'chunk_index': _receivedChunks - 1,
+          'chunk_index': chunkIndex,
         }));
 
         _progressController.add(TransferProgress(

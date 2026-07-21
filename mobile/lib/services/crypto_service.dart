@@ -3,6 +3,12 @@ import 'dart:typed_data';
 import 'dart:math';
 import 'package:pointycastle/export.dart';
 
+class DecryptedChunkResult {
+  final Uint8List plaintext;
+  final int chunkIndex;
+  DecryptedChunkResult(this.plaintext, this.chunkIndex);
+}
+
 class CryptoService {
   /// Derive a 256-bit key from session ID using HKDF with SHA-256
   Uint8List deriveKey(String sessionId) {
@@ -81,15 +87,13 @@ class CryptoService {
 
   /// Decrypt a chunk using AES-256-GCM
   /// Input: IV (12) + ciphertext + authTag (16) concatenated
-  /// Returns plaintext bytes
-  Uint8List decryptChunk(Uint8List combined, Uint8List key, int chunkIndex) {
+  /// Returns DecryptedChunkResult containing plaintext bytes and chunkIndex from IV
+  DecryptedChunkResult decryptChunk(Uint8List combined, Uint8List key, int fallbackIndex) {
     final iv = combined.sublist(0, 12);
     final ciphertextWithTag = combined.sublist(12);
 
-    final expectedIndex = ((iv[8] & 0xFF) << 24) | ((iv[9] & 0xFF) << 16) | ((iv[10] & 0xFF) << 8) | (iv[11] & 0xFF);
-    if (expectedIndex != chunkIndex) {
-      throw ArgumentError('Decrypted chunk index ($expectedIndex) does not match expected ($chunkIndex)');
-    }
+    final extractedIndex = ((iv[8] & 0xFF) << 24) | ((iv[9] & 0xFF) << 16) | ((iv[10] & 0xFF) << 8) | (iv[11] & 0xFF);
+    final chunkIndex = (extractedIndex >= 0) ? extractedIndex : fallbackIndex;
 
     final cipher = GCMBlockCipher(AESEngine())
       ..init(
@@ -112,6 +116,6 @@ class CryptoService {
     );
     final finalLen = cipher.doFinal(plaintext, len);
 
-    return plaintext.sublist(0, len + finalLen);
+    return DecryptedChunkResult(plaintext.sublist(0, len + finalLen), chunkIndex);
   }
 }
