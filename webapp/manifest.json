@@ -1,7 +1,7 @@
 {
   "name": "LabBridge",
   "short_name": "LabBridge",
-  "start_url": "/?mode=phone",
+  "start_url": "/phone.html",
   "display": "standalone",
   "background_color": "#0A0A0F",
   "theme_color": "#6C63FF",
