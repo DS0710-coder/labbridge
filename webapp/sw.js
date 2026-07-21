@@ -1,10 +1,12 @@
-const CACHE_NAME = 'labbridge-pwa-v4';
+const CACHE_NAME = 'labbridge-pwa-v5';
 const ASSETS = [
   '/',
   '/index.html',
   '/phone.html',
   '/manifest.json',
   '/icon.png',
+  '/icon-192.png',
+  '/icon-512.png',
   '/qr.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js',
   'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
