@@ -11,7 +11,7 @@ class_name = "Session"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["Session"]
+new_sqlite_classes = ["Session"]
 
 [vars]
 MAX_SESSION_MINUTES = "5"
