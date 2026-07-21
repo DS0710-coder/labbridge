@@ -1,7 +1,11 @@
-const CACHE_NAME = 'labbridge-pwa-v1';
+const CACHE_NAME = 'labbridge-pwa-v2';
 const ASSETS = [
-  'phone.html',
-  'manifest.json'
+  '/',
+  '/index.html',
+  '/phone.html',
+  '/manifest.json',
+  '/qr.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js'
 ];
 
 self.addEventListener('install', (event) => {
