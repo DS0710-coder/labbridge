@@ -276,113 +276,116 @@ export class Session extends DurableObject {
     const sockets = this.ctx.getWebSockets();
     const other = getOtherSocket(sockets, ws);
 
-    // Binary frames: relay as-is or buffer for iOS Shortcut
-    if (message instanceof ArrayBuffer) {
-      const maxExpiresAt = (await this.ctx.storage.get<number>("max_expires_at")) ?? (Date.now() + MAX_SESSION_LIFETIME_MS);
-      if (Date.now() >= maxExpiresAt) {
-        ws.close(1000, "Session expired (max lifetime reached)");
-        other?.close(1000, "Session expired (max lifetime reached)");
-        return;
-      }
-      let bytesTransferred = (await this.ctx.storage.get<number>("bytes_transferred")) ?? 0;
-      bytesTransferred += message.byteLength;
-      if (bytesTransferred > MAX_FILE_SIZE_BYTES) {
-        ws.close(1008, "Transfer size exceeds 500MB limit");
-        other?.close(1008, "Transfer size exceeds 500MB limit");
-        return;
-      }
-      await this.ctx.storage.put("bytes_transferred", bytesTransferred);
+      // Check if sender is PC and peer is not a WebSocket phone (i.e. iOS Shortcut polling mode)
+      const senderAtt = ws.deserializeAttachment() as SocketAttachment | null;
+      const isFromPc = senderAtt?.role === "pc";
 
-      // Check if we are in shortcut buffering mode
-      const pending = await this.ctx.storage.get<PendingFile>("pending_file");
-      if (pending?.shortcutMode) {
-        // Buffer this chunk in storage for the Shortcut to fetch
-        const chunkIndex = pending.receivedChunks;
-        await this.ctx.storage.put(`chunk_${chunkIndex}`, message);
-        pending.receivedChunks++;
-        await this.ctx.storage.put("pending_file", pending);
-
-        // ACK each chunk back to PC so it keeps sending
-        ws.send(JSON.stringify({ type: "ack", chunk_index: chunkIndex }));
-
-        await this.extendAlarm(4 * 60 * 1000);
-        return;
-      }
-
-      if (!other) {
-        return;
-      }
-
-      // Normal relay mode — forward to other peer
-      await this.extendAlarm(4 * 60 * 1000);
-      other.send(message);
-      return;
-    }
-
-    // Text frames: validate minimally, then forward
-    try {
-      const parsed: unknown = JSON.parse(message);
-      if (!isValidSessionMessage(parsed)) {
-        ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
-        return;
-      }
-
-      if (parsed.type === "transfer_init") {
-        const record = parsed as Record<string, unknown>;
-        if (
-          typeof record.size !== "number" ||
-          typeof record.total_chunks !== "number" ||
-          record.size < 0 ||
-          record.total_chunks < 0
-        ) {
-          ws.send(JSON.stringify({ type: "error", message: "Invalid transfer size or chunk count" }));
+      if (message instanceof ArrayBuffer) {
+        const maxExpiresAt = (await this.ctx.storage.get<number>("max_expires_at")) ?? (Date.now() + MAX_SESSION_LIFETIME_MS);
+        if (Date.now() >= maxExpiresAt) {
+          ws.close(1000, "Session expired (max lifetime reached)");
+          other?.close(1000, "Session expired (max lifetime reached)");
           return;
         }
-        if (record.size > MAX_FILE_SIZE_BYTES || record.total_chunks > Math.ceil(MAX_FILE_SIZE_BYTES / (512 * 1024))) {
+        let bytesTransferred = (await this.ctx.storage.get<number>("bytes_transferred")) ?? 0;
+        bytesTransferred += message.byteLength;
+        if (bytesTransferred > MAX_FILE_SIZE_BYTES) {
           ws.close(1008, "Transfer size exceeds 500MB limit");
           other?.close(1008, "Transfer size exceeds 500MB limit");
           return;
         }
+        await this.ctx.storage.put("bytes_transferred", bytesTransferred);
 
-        // Check if peer is a WebSocket phone or a Shortcut (no phone WS connected)
-        const phoneSocket = sockets.find(s => {
-          const att = s.deserializeAttachment() as SocketAttachment | null;
-          return att?.role === "phone" && s !== ws;
-        });
+        // Check if we are in shortcut buffering mode (ONLY when PC sends chunks to iOS Shortcut)
+        const pending = await this.ctx.storage.get<PendingFile>("pending_file");
+        if (isFromPc && pending?.shortcutMode) {
+          // Buffer this chunk in storage for the Shortcut to fetch
+          const chunkIndex = pending.receivedChunks;
+          await this.ctx.storage.put(`chunk_${chunkIndex}`, message);
+          pending.receivedChunks++;
+          await this.ctx.storage.put("pending_file", pending);
 
-        const shortcutMode = !phoneSocket;
+          // ACK each chunk back to PC so it keeps sending
+          ws.send(JSON.stringify({ type: "ack", chunk_index: chunkIndex }));
 
-        if (shortcutMode) {
-          // Store transfer metadata — chunks will be stored as they arrive
-          const pendingFile: PendingFile = {
-            filename: String(record.filename ?? "file"),
-            mimeType: String(record.mime_type ?? "application/octet-stream"),
-            totalChunks: record.total_chunks as number,
-            size: record.size as number,
-            receivedChunks: 0,
-            shortcutMode: true,
-          };
-          await this.ctx.storage.put("pending_file", pendingFile);
-          await this.ctx.storage.put("bytes_transferred", 0);
-          // Tell PC to start sending — shortcut will poll for completion
-          ws.send(JSON.stringify({ type: "ready" }));
-        } else {
-          if (!other) {
-            ws.send(JSON.stringify({ type: "error", message: "No peer connected" }));
-            return;
-          }
-          // Normal WebSocket relay path — existing behavior
-          const cumulative = ((await this.ctx.storage.get<number>("cumulative_transferred")) ?? 0) + (record.size as number);
-          if (cumulative > MAX_FILE_SIZE_BYTES * 4) {
-            ws.close(1008, "Session cumulative transfer limit exceeded");
-            other.close(1008, "Session cumulative transfer limit exceeded");
-            return;
-          }
-          await this.ctx.storage.put("cumulative_transferred", cumulative);
-          await this.ctx.storage.put("bytes_transferred", 0);
-          other.send(message);
+          await this.extendAlarm(4 * 60 * 1000);
+          return;
         }
+
+        if (!other) {
+          return;
+        }
+
+        // Normal relay mode — forward to other peer
+        await this.extendAlarm(4 * 60 * 1000);
+        other.send(message);
         return;
+      }
+
+      // Text frames: validate minimally, then forward
+      try {
+        const parsed: unknown = JSON.parse(message);
+        if (!isValidSessionMessage(parsed)) {
+          ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
+          return;
+        }
+
+        if (parsed.type === "transfer_init") {
+          const record = parsed as Record<string, unknown>;
+          if (
+            typeof record.size !== "number" ||
+            typeof record.total_chunks !== "number" ||
+            record.size < 0 ||
+            record.total_chunks < 0
+          ) {
+            ws.send(JSON.stringify({ type: "error", message: "Invalid transfer size or chunk count" }));
+            return;
+          }
+          if (record.size > MAX_FILE_SIZE_BYTES || record.total_chunks > Math.ceil(MAX_FILE_SIZE_BYTES / (512 * 1024))) {
+            ws.close(1008, "Transfer size exceeds 500MB limit");
+            other?.close(1008, "Transfer size exceeds 500MB limit");
+            return;
+          }
+
+          // Check if PC is sending to an iOS Shortcut (no WebSocket phone connected)
+          const phoneSocket = sockets.find(s => {
+            const att = s.deserializeAttachment() as SocketAttachment | null;
+            return att?.role === "phone" && s !== ws;
+          });
+
+          const shortcutMode = isFromPc && !phoneSocket;
+
+          if (shortcutMode) {
+            // Store transfer metadata — chunks will be stored as they arrive
+            const pendingFile: PendingFile = {
+              filename: String(record.filename ?? "file"),
+              mimeType: String(record.mime_type ?? "application/octet-stream"),
+              totalChunks: record.total_chunks as number,
+              size: record.size as number,
+              receivedChunks: 0,
+              shortcutMode: true,
+            };
+            await this.ctx.storage.put("pending_file", pendingFile);
+            await this.ctx.storage.put("bytes_transferred", 0);
+            // Tell PC to start sending — shortcut will poll for completion
+            ws.send(JSON.stringify({ type: "ready" }));
+          } else {
+            if (!other) {
+              ws.send(JSON.stringify({ type: "error", message: "No peer connected" }));
+              return;
+            }
+            // Normal WebSocket relay path — forward to peer
+            const cumulative = ((await this.ctx.storage.get<number>("cumulative_transferred")) ?? 0) + (record.size as number);
+            if (cumulative > MAX_FILE_SIZE_BYTES * 4) {
+              ws.close(1008, "Session cumulative transfer limit exceeded");
+              other.close(1008, "Session cumulative transfer limit exceeded");
+              return;
+            }
+            await this.ctx.storage.put("cumulative_transferred", cumulative);
+            await this.ctx.storage.put("bytes_transferred", 0);
+            other.send(message);
+          }
+          return;
       }
 
       if (parsed.type === "folders") {
