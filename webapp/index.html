@@ -4,7 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>LabBridge v2 — PC Terminal</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0A0A0F">
   <script src="qr.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
   <style>
     :root {
       --bg: #0A0A0F;
@@ -66,7 +71,8 @@
   </style>
 </head>
 <body>
-  <div class="container">
+  <!-- PC Mode Container (Unchanged UI) -->
+  <div id="pc-mode-container" class="container">
     <header>
       <h1>LabBridge v2</h1>
       <div class="status-badge">
@@ -144,6 +150,67 @@
     </div>
   </div>
 
+  <!-- Phone Mode Container (Three-Screen State Machine) -->
+  <div id="phone-mode-container" class="container" style="display: none;">
+    <header>
+      <h1>⚡ LabBridge Phone</h1>
+      <div class="status-badge">
+        <div id="phone-status-dot" class="status-dot"></div>
+        <span id="phone-status-text">Disconnected</span>
+      </div>
+    </header>
+
+    <!-- Screen 1: Scanner -->
+    <div id="phone-screen-scanner" style="display: flex; flex-direction: column; gap: 16px;">
+      <p style="font-size: 14px; color: var(--muted); text-align: center;">Point camera at PC screen QR code to connect</p>
+      <div style="background: #000; border-radius: 12px; overflow: hidden; position: relative; min-height: 260px; display: flex; align-items: center; justify-content: center;">
+        <video id="phone-video" playsinline autoplay muted style="width: 100%; height: auto; display: block;"></video>
+        <div id="phone-camera-msg" style="position: absolute; color: var(--muted); font-size: 13px; text-align: center; padding: 20px;">Requesting camera access...</div>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 8px;">
+        <input type="text" id="phone-manual-id" placeholder="Or enter 12-char ID manually" maxlength="12" style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 8px; font-size: 14px;" />
+        <button onclick="phoneConnectManual()" style="background: var(--primary); border: none; color: white; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">Connect</button>
+      </div>
+    </div>
+
+    <!-- Screen 2: Connected -->
+    <div id="phone-screen-connected" style="display: none; flex-direction: column; gap: 20px;">
+      <div style="padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px;">
+        <p style="font-size: 14px; color: var(--text); font-weight: 600;">Connected to PC Session</p>
+        <p id="phone-session-info" style="font-size: 13px; color: var(--muted); margin-top: 4px;">Session ID: ---</p>
+      </div>
+
+      <!-- Send Dropzone -->
+      <div id="phone-dropzone" class="dropzone" style="border-color: var(--primary); background: rgba(108, 99, 255, 0.04);">
+        <input type="file" id="phone-file-input" multiple onchange="phoneHandleFilesSelected(event)" />
+        <div style="font-size: 32px; margin-bottom: 8px;">📤</div>
+        <p style="font-weight: 600; font-size: 16px;">Tap to Send Files to PC</p>
+        <span>Choose from Photos, Files, or iCloud</span>
+      </div>
+
+      <!-- Active Transfer Progress -->
+      <div id="phone-transfer-area" style="display: none; flex-direction: column; gap: 10px; padding: 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px;">
+        <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 600;">
+          <span id="phone-transfer-title">Transferring...</span>
+          <span id="phone-transfer-pct">0%</span>
+        </div>
+        <div style="font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="phone-transfer-filename">file.pdf</div>
+        <progress id="phone-transfer-progress" value="0" max="100" style="width: 100%; height: 14px; accent-color: var(--primary);"></progress>
+        <button onclick="phoneCancelTransfer()" style="background: transparent; border: 1px solid var(--border); color: var(--error); padding: 8px; border-radius: 6px; font-size: 13px; cursor: pointer; margin-top: 4px;">Cancel Transfer</button>
+      </div>
+    </div>
+
+    <!-- Screen 3: Done -->
+    <div id="phone-screen-done" style="display: none; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding: 20px 0;">
+      <div class="done-icon">✓</div>
+      <div>
+        <p id="phone-done-message" style="font-size: 18px; font-weight: 600; margin-bottom: 4px;">Transfer Completed!</p>
+        <p id="phone-done-subtext" style="font-size: 14px; color: var(--muted); word-break: break-all;">File.pdf</p>
+      </div>
+      <button class="btn-reset" onclick="phoneResetToConnected()">Transfer Another</button>
+    </div>
+  </div>
+
   <script>
     // Change to wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev for production
     const WORKER_URL = window.LABBRIDGE_WORKER_URL || 'ws://localhost:8787';
@@ -165,10 +232,24 @@
       receivedFiles: []
     };
 
-    window.addEventListener('DOMContentLoaded', () => {
+    const PHONE_MODE = new URLSearchParams(window.location.search).get('mode') === 'phone'
+      || (navigator.maxTouchPoints > 1 && window.innerWidth <= 768);
+
+    if (PHONE_MODE) {
+      document.title = 'LabBridge — Phone';
+      window.addEventListener('DOMContentLoaded', initPhoneMode);
+    } else {
+      window.addEventListener('DOMContentLoaded', initPCMode);
+    }
+
+    function initPCMode() {
+      const pcEl = document.getElementById('pc-mode-container');
+      const phoneEl = document.getElementById('phone-mode-container');
+      if (pcEl) pcEl.style.display = 'flex';
+      if (phoneEl) phoneEl.style.display = 'none';
       createSession();
       setupDropzone();
-    });
+    }
 
     function escapeHtml(str) {
       const div = document.createElement('div');
@@ -231,13 +312,11 @@
 
         const qrEl = document.getElementById('qrcode');
         qrEl.innerHTML = '';
-        const pwaUrl = new URL('/phone.html', HTTP_URL);
-        pwaUrl.searchParams.set('s', data.session_id);
-        if (data.expires_at) pwaUrl.searchParams.set('e', new Date(data.expires_at).getTime());
-        pwaUrl.searchParams.set('w', HTTP_URL);
+        const expiryMs = data.expires_at ? new Date(data.expires_at).getTime() : Date.now() + 120000;
+        const qrPayload = JSON.stringify({ s: data.session_id, e: expiryMs });
 
         new QRCode(qrEl, {
-          text: pwaUrl.toString(),
+          text: qrPayload,
           width: 220,
           height: 220,
           colorDark: "#0A0A0F",
@@ -792,6 +871,389 @@
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
       return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    // ==========================================
+    // Phone PWA Mode (Three-Screen State Machine)
+    // ==========================================
+    const phoneState = {
+      sessionId: null,
+      ws: null,
+      cryptoKey: null,
+      currentTransfer: null,
+      sendQueue: [],
+      receivedFiles: [],
+      videoStream: null,
+      scanFrameId: null
+    };
+
+    function initPhoneMode() {
+      const pcEl = document.getElementById('pc-mode-container');
+      const phoneEl = document.getElementById('phone-mode-container');
+      if (pcEl) pcEl.style.display = 'none';
+      if (phoneEl) phoneEl.style.display = 'flex';
+
+      const params = new URLSearchParams(window.location.search);
+      const s = params.get('s');
+      const e = params.get('e');
+      if (s && /^[a-zA-Z0-9]{12}$/.test(s)) {
+        if (e && parseInt(e, 10) < Date.now()) {
+          alert("QR/Link expired. Please scan a fresh QR code from PC.");
+          phoneShowScreen('scanner');
+          phoneStartCamera();
+          return;
+        }
+        phoneProceedToConnected(s);
+      } else {
+        phoneShowScreen('scanner');
+        phoneStartCamera();
+      }
+    }
+
+    function phoneShowScreen(screenName) {
+      const sc = document.getElementById('phone-screen-scanner');
+      const co = document.getElementById('phone-screen-connected');
+      const dn = document.getElementById('phone-screen-done');
+      if (sc) sc.style.display = (screenName === 'scanner') ? 'flex' : 'none';
+      if (co) co.style.display = (screenName === 'connected') ? 'flex' : 'none';
+      if (dn) dn.style.display = (screenName === 'done') ? 'flex' : 'none';
+    }
+
+    async function phoneStartCamera() {
+      const video = document.getElementById('phone-video');
+      const msg = document.getElementById('phone-camera-msg');
+      if (msg) msg.style.display = 'block';
+      try {
+        phoneState.videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        if (video) {
+          video.srcObject = phoneState.videoStream;
+          video.setAttribute('playsinline', true);
+          video.play();
+          if (msg) msg.style.display = 'none';
+          phoneState.scanFrameId = requestAnimationFrame(phoneScanLoop);
+        }
+      } catch (err) {
+        console.warn("Camera permission blocked or unavailable:", err);
+        if (msg) msg.innerText = "Camera access denied. Please enter the 12-character ID manually above.";
+      }
+    }
+
+    function phoneStopCamera() {
+      if (phoneState.scanFrameId) {
+        cancelAnimationFrame(phoneState.scanFrameId);
+        phoneState.scanFrameId = null;
+      }
+      if (phoneState.videoStream) {
+        phoneState.videoStream.getTracks().forEach(track => track.stop());
+        phoneState.videoStream = null;
+      }
+    }
+
+    function phoneScanLoop() {
+      const video = document.getElementById('phone-video');
+      if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) {
+        phoneState.scanFrameId = requestAnimationFrame(phoneScanLoop);
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+
+      if (code && code.data) {
+        let sessionId = null;
+        try {
+          const parsed = JSON.parse(code.data);
+          if (parsed && parsed.s) {
+            if (parsed.e && parsed.e < Date.now()) {
+              alert("QR code expired. Please refresh the PC screen.");
+              phoneState.scanFrameId = requestAnimationFrame(phoneScanLoop);
+              return;
+            }
+            sessionId = parsed.s;
+          }
+        } catch (e) {
+          try {
+            const url = new URL(code.data);
+            const sParam = url.searchParams.get('s');
+            const eParam = url.searchParams.get('e');
+            if (sParam) {
+              if (eParam && parseInt(eParam, 10) < Date.now()) {
+                alert("QR code expired. Please refresh the PC screen.");
+                phoneState.scanFrameId = requestAnimationFrame(phoneScanLoop);
+                return;
+              }
+              sessionId = sParam;
+            }
+          } catch (e2) {
+            if (/^[a-zA-Z0-9]{12}$/.test(code.data.trim())) {
+              sessionId = code.data.trim();
+            }
+          }
+        }
+
+        if (sessionId) {
+          phoneStopCamera();
+          phoneProceedToConnected(sessionId);
+          return;
+        }
+      }
+      phoneState.scanFrameId = requestAnimationFrame(phoneScanLoop);
+    }
+
+    function phoneConnectManual() {
+      const input = document.getElementById('phone-manual-id');
+      if (!input) return;
+      const val = input.value.trim();
+      if (!/^[a-zA-Z0-9]{12}$/.test(val)) {
+        alert("Please enter a valid 12-character Session ID");
+        return;
+      }
+      phoneStopCamera();
+      phoneProceedToConnected(val);
+    }
+
+    async function phoneProceedToConnected(sessionId) {
+      phoneState.sessionId = sessionId;
+      phoneShowScreen('connected');
+      const infoEl = document.getElementById('phone-session-info');
+      if (infoEl) infoEl.innerText = `Session ID: ${sessionId}`;
+      phoneSetStatus(false, 'Connecting to PC...');
+
+      try {
+        phoneState.cryptoKey = await deriveAESKey(sessionId);
+      } catch (e) {
+        console.error("Failed to derive encryption key on phone:", e);
+      }
+
+      if (phoneState.ws) {
+        const old = phoneState.ws;
+        old.onclose = null;
+        try { old.close(); } catch (e) {}
+      }
+
+      const proto = window.location.protocol === 'http:' ? 'ws:' : 'wss:';
+      const wsUrl = `${proto}//${window.location.host}/session/${sessionId}/phone`;
+      const ws = new WebSocket(wsUrl);
+      ws.binaryType = 'arraybuffer';
+      phoneState.ws = ws;
+
+      ws.onopen = () => {
+        phoneSetStatus(true, 'Connected to PC');
+      };
+
+      ws.onmessage = async (event) => {
+        if (typeof event.data === 'string') {
+          const msg = JSON.parse(event.data);
+          phoneHandleTextMessage(msg);
+        } else if (event.data instanceof ArrayBuffer) {
+          phoneHandleIncomingBinaryChunk(event.data);
+        }
+      };
+
+      ws.onclose = () => {
+        phoneSetStatus(false, 'Disconnected');
+      };
+    }
+
+    function phoneSetStatus(active, text) {
+      const dot = document.getElementById('phone-status-dot');
+      const txt = document.getElementById('phone-status-text');
+      if (dot) {
+        if (active) dot.classList.add('active');
+        else dot.classList.remove('active');
+      }
+      if (txt) txt.innerText = text;
+    }
+
+    function phoneHandleTextMessage(msg) {
+      if (msg.type === 'paired') {
+        phoneSetStatus(true, 'Connected to PC');
+      } else if (msg.type === 'ready') {
+        if (phoneState.currentTransfer && phoneState.currentTransfer.direction === 'sending') {
+          phoneStartSendingChunks();
+        }
+      } else if (msg.type === 'ack') {
+        if (phoneState.currentTransfer && phoneState.currentTransfer.direction === 'sending') {
+          phoneHandleAck(msg.chunk_index);
+        }
+      } else if (msg.type === 'transfer_init') {
+        phoneState.currentTransfer = {
+          direction: 'receiving',
+          filename: msg.filename || 'received_file',
+          size: typeof msg.size === 'number' ? msg.size : 0,
+          total_chunks: typeof msg.total_chunks === 'number' ? msg.total_chunks : 0,
+          mime_type: msg.mime_type || 'application/octet-stream',
+          receivedChunks: 0,
+          chunksData: new Array(typeof msg.total_chunks === 'number' ? msg.total_chunks : 0)
+        };
+        document.getElementById('phone-transfer-area').style.display = 'flex';
+        document.getElementById('phone-dropzone').style.display = 'none';
+        phoneUpdateProgressDisplay(phoneState.currentTransfer.filename, phoneState.currentTransfer.size, 0);
+        if (phoneState.ws && phoneState.ws.readyState === WebSocket.OPEN) {
+          phoneState.ws.send(JSON.stringify({ type: 'ready' }));
+        }
+      } else if (msg.type === 'cancelled') {
+        alert('Transfer cancelled by PC');
+        phoneResetToConnected();
+      }
+    }
+
+    async function phoneHandleIncomingBinaryChunk(buffer) {
+      const transfer = phoneState.currentTransfer;
+      if (!transfer || transfer.direction !== 'receiving') return;
+
+      const chunkIndex = transfer.receivedChunks;
+      try {
+        const decrypted = await decryptChunk(buffer, phoneState.cryptoKey, chunkIndex);
+        transfer.chunksData[chunkIndex] = new Blob([decrypted]);
+        transfer.receivedChunks++;
+
+        const pct = Math.round((transfer.receivedChunks / transfer.total_chunks) * 100);
+        phoneUpdateProgressDisplay(transfer.filename, transfer.size, pct);
+
+        if (phoneState.ws && phoneState.ws.readyState === WebSocket.OPEN) {
+          phoneState.ws.send(JSON.stringify({ type: 'ack', chunk_index: chunkIndex }));
+        }
+
+        if (transfer.receivedChunks >= transfer.total_chunks) {
+          const finalBlob = new Blob(transfer.chunksData, { type: transfer.mime_type });
+          transfer.chunksData = null;
+          const blobUrl = URL.createObjectURL(finalBlob);
+
+          const a = document.createElement('a');
+          a.href = blobUrl;
+          a.download = transfer.filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+          phoneState.currentTransfer = null;
+          phoneShowScreen('done');
+          document.getElementById('phone-done-message').innerText = 'Received from PC!';
+          document.getElementById('phone-done-subtext').innerText = transfer.filename;
+        }
+      } catch (err) {
+        console.error('Failed to decrypt incoming chunk on phone:', err);
+      }
+    }
+
+    function phoneHandleFilesSelected(event) {
+      const files = event.target.files ? Array.from(event.target.files) : [];
+      if (files.length === 0) return;
+      phoneState.sendQueue.push(...files);
+      event.target.value = '';
+      if (!phoneState.currentTransfer) {
+        phoneProcessNextInQueue();
+      }
+    }
+
+    function phoneProcessNextInQueue() {
+      if (phoneState.sendQueue.length === 0) {
+        phoneResetToConnected();
+        return;
+      }
+      const file = phoneState.sendQueue.shift();
+      phoneInitiateSendFile(file);
+    }
+
+    function phoneInitiateSendFile(file) {
+      const totalChunks = Math.max(1, Math.ceil(file.size / (512 * 1024)));
+      phoneState.currentTransfer = {
+        direction: 'sending',
+        file: file,
+        filename: file.name,
+        size: file.size,
+        total_chunks: totalChunks,
+        sentChunks: 0
+      };
+
+      document.getElementById('phone-dropzone').style.display = 'none';
+      document.getElementById('phone-transfer-area').style.display = 'flex';
+      phoneUpdateProgressDisplay(file.name, file.size, 0);
+
+      if (phoneState.ws && phoneState.ws.readyState === WebSocket.OPEN) {
+        phoneState.ws.send(JSON.stringify({
+          type: 'transfer_init',
+          filename: file.name,
+          size: file.size,
+          total_chunks: totalChunks,
+          mime_type: file.type || 'application/octet-stream'
+        }));
+      }
+    }
+
+    async function phoneStartSendingChunks() {
+      if (!phoneState.currentTransfer || phoneState.currentTransfer.direction !== 'sending') return;
+      phoneSendNextChunk(0);
+    }
+
+    async function phoneSendNextChunk(chunkIndex) {
+      const transfer = phoneState.currentTransfer;
+      if (!transfer || chunkIndex >= transfer.total_chunks) {
+        phoneState.currentTransfer = null;
+        if (phoneState.sendQueue.length > 0) {
+          phoneProcessNextInQueue();
+        } else {
+          phoneShowScreen('done');
+          document.getElementById('phone-done-message').innerText = 'Sent to PC!';
+          document.getElementById('phone-done-subtext').innerText = transfer ? transfer.filename : 'File sent';
+        }
+        return;
+      }
+
+      const offset = chunkIndex * 512 * 1024;
+      const slice = transfer.file.slice(offset, offset + 512 * 1024);
+      const arrayBuffer = await slice.arrayBuffer();
+
+      const encrypted = await encryptChunk(arrayBuffer, phoneState.cryptoKey, chunkIndex);
+      if (phoneState.ws && phoneState.ws.readyState === WebSocket.OPEN) {
+        phoneState.ws.send(encrypted);
+      }
+    }
+
+    function phoneHandleAck(chunkIndex) {
+      const transfer = phoneState.currentTransfer;
+      if (!transfer || transfer.direction !== 'sending') return;
+
+      transfer.sentChunks++;
+      const pct = Math.round((transfer.sentChunks / transfer.total_chunks) * 100);
+      phoneUpdateProgressDisplay(transfer.filename, transfer.size, pct);
+
+      phoneSendNextChunk(chunkIndex + 1);
+    }
+
+    function phoneCancelTransfer() {
+      if (phoneState.ws && phoneState.ws.readyState === WebSocket.OPEN) {
+        phoneState.ws.send(JSON.stringify({ type: 'cancelled' }));
+      }
+      phoneResetToConnected();
+    }
+
+    function phoneResetToConnected() {
+      phoneState.currentTransfer = null;
+      if (phoneState.sendQueue.length > 0) {
+        phoneProcessNextInQueue();
+      } else {
+        phoneShowScreen('connected');
+        document.getElementById('phone-dropzone').style.display = 'block';
+        document.getElementById('phone-transfer-area').style.display = 'none';
+      }
+    }
+
+    function phoneUpdateProgressDisplay(filename, size, pct) {
+      const title = document.getElementById('phone-transfer-title');
+      const nameEl = document.getElementById('phone-transfer-filename');
+      const pctEl = document.getElementById('phone-transfer-pct');
+      const progEl = document.getElementById('phone-transfer-progress');
+      if (title) title.innerText = (phoneState.currentTransfer && phoneState.currentTransfer.direction === 'sending') ? 'Sending to PC...' : 'Receiving from PC...';
+      if (nameEl) nameEl.innerText = filename;
+      if (pctEl) pctEl.innerText = `${pct}%`;
+      if (progEl) progEl.value = pct;
     }
   </script>
 </body>
