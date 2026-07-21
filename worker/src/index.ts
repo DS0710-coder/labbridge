@@ -10,6 +10,7 @@ import { INDEX_HTML } from "./index_html";
 import { PHONE_HTML } from "./phone_html";
 import { MANIFEST_JSON } from "./manifest_json";
 import { SW_JS } from "./sw_js";
+import { ICON_PNG_BASE64 } from "./icon_png";
 
 // Re-export the Durable Object class so wrangler can discover it
 export { Session } from "./session";
@@ -77,6 +78,10 @@ export default {
       }
       if (path === "/sw.js") {
         return corsResponse(SW_JS, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8" } });
+      }
+      if (path === "/icon.png") {
+        const bin = Uint8Array.from(atob(ICON_PNG_BASE64), c => c.charCodeAt(0));
+        return new Response(bin, { status: 200, headers: { "Content-Type": "image/png", "Access-Control-Allow-Origin": "*" } });
       }
     }
 
