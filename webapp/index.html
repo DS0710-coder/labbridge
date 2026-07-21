@@ -313,7 +313,8 @@
         const qrEl = document.getElementById('qrcode');
         qrEl.innerHTML = '';
         const expiryMs = data.expires_at ? new Date(data.expires_at).getTime() : Date.now() + 120000;
-        const qrPayload = JSON.stringify({ s: data.session_id, e: expiryMs });
+        const pwaBase = HTTP_URL.replace('ws://', 'http://').replace('wss://', 'https://');
+        const qrPayload = `${pwaBase}/phone.html?s=${data.session_id}&e=${expiryMs}`;
 
         new QRCode(qrEl, {
           text: qrPayload,
