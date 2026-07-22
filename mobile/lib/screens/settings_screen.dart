@@ -188,7 +188,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             fontFamily: 'monospace',
                           ),
                           decoration: const InputDecoration(
-                            hintText: 'wss://cueflex-worker.YOUR_SUBDOMAIN.workers.dev',
+                            hintText: 'wss://cueflux.YOUR_SUBDOMAIN.workers.dev',
                             hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 12, fontFamily: 'monospace'),
                             filled: true,
                             fillColor: Color(0xFF121214),

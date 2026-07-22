@@ -8,7 +8,7 @@ Cloudflare Worker that handles QR session pairing and encrypted file relay.
 2. Login: `npx wrangler login`
 3. Set your account_id in wrangler.toml
 4. Deploy: `npx wrangler deploy`
-5. Your worker URL will be: `wss://cueflex-worker.YOUR_SUBDOMAIN.workers.dev`
+5. Your worker URL will be: `wss://cueflux.YOUR_SUBDOMAIN.workers.dev`
 6. Set this URL in the CueFlex app under Settings → Worker URL
 
 ## Local Dev

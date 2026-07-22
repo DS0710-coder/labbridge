@@ -5,7 +5,7 @@ class AppConfig {
 
   // Production worker URL — update this before building for release
   static const String defaultWorkerUrl =
-      'wss://labbridge-worker.shahdev0710.workers.dev';
+      'wss://cueflux.shahdev0710.workers.dev';
 
   // Dev fallbacks
   static const String androidEmulatorUrl = 'ws://10.0.2.2:8787';
