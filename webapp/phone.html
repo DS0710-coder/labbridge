@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>LabBridge — Phone</title>
+  <title>CueFlex — Phone</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="LabBridge" />
+  <meta name="apple-mobile-web-app-title" content="CueFlex" />
   <script src="html5-qrcode.min.js"></script>
   <style>
     :root {
@@ -289,9 +289,9 @@
 <body>
   <header>
     <div class="brand">
-      <img src="logo.png" alt="LabBridge Logo" />
+      <img src="logo.png" alt="CueFlex Logo" />
       <div>
-        <div class="brand-name">LabBridge</div>
+        <div class="brand-name">CueFlex</div>
       </div>
     </div>
     <div class="status-pill">
@@ -386,7 +386,7 @@
       }
       const w = params.get('w');
       
-      const savedUrl = localStorage.getItem('labbridge_worker_url');
+      const savedUrl = localStorage.getItem('cueflex_worker_url') || localStorage.getItem('labbridge_worker_url');
       if (w) {
         state.workerHttpUrl = w;
       } else if (savedUrl && !savedUrl.includes('YOUR_SUBDOMAIN')) {
@@ -424,7 +424,7 @@
         {
           name: 'HKDF',
           hash: 'SHA-256',
-          salt: enc.encode('labbridge-v2'),
+          salt: enc.encode('cueflex-v2'),
           info: enc.encode('file-transfer')
         },
         baseKey,
@@ -477,7 +477,7 @@
       const urlInput = document.getElementById('worker-url-input');
       if (urlInput && urlInput.value.trim()) {
         state.workerHttpUrl = urlInput.value.trim();
-        localStorage.setItem('labbridge_worker_url', state.workerHttpUrl);
+        localStorage.setItem('cueflex_worker_url', state.workerHttpUrl);
       }
 
       if (state.scanner) {

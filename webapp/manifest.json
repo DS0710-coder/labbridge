@@ -1,6 +1,6 @@
 {
-  "name": "LabBridge",
-  "short_name": "LabBridge",
+  "name": "CueFlex",
+  "short_name": "CueFlex",
   "start_url": "/phone.html",
   "display": "standalone",
   "background_color": "#0A0A0F",

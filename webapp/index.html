@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LabBridge v2 — PC Terminal</title>
+  <title>CueFlex — PC Terminal</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -599,9 +599,9 @@
     <header>
       <!-- Left: brand -->
       <div class="brand">
-        <img src="logo.png" alt="LabBridge Logo" />
+        <img src="logo.png" alt="CueFlex Logo" />
         <div>
-          <div class="brand-name">LabBridge</div>
+          <div class="brand-name">CueFlex</div>
           <div class="brand-sub">[ E2E ENCRYPTED · ZERO CLOUD ]</div>
         </div>
       </div>
@@ -631,7 +631,7 @@
       <div class="steps">
         <div class="step">
           <span class="step-num">01</span>
-          <span class="step-text">Open LabBridge app or iPhone camera</span>
+          <span class="step-text">Open CueFlex app or iPhone camera</span>
         </div>
         <div class="step">
           <span class="step-num">02</span>
@@ -709,9 +709,9 @@
   <div id="phone-mode-container" class="container" style="display: none;">
     <header>
       <div class="brand">
-        <img src="logo.png" alt="LabBridge Logo" style="width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);" />
+        <img src="logo.png" alt="CueFlex Logo" style="width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);" />
         <div>
-          <div class="brand-name">LabBridge</div>
+          <div class="brand-name">CueFlex</div>
         </div>
       </div>
       <div class="status-pill">
@@ -800,7 +800,7 @@
 
   <script>
     const isFileOrLocal = window.location.protocol === 'file:';
-    const WORKER_URL = window.LABBRIDGE_WORKER_URL || (isFileOrLocal ? 'ws://localhost:8787' : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
+    const WORKER_URL = window.CUEFLEX_WORKER_URL || window.LABBRIDGE_WORKER_URL || (isFileOrLocal ? 'ws://localhost:8787' : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
     const HTTP_URL = WORKER_URL.replace('ws://', 'http://').replace('wss://', 'https://');
 
     const state = {
@@ -823,7 +823,7 @@
       || (navigator.maxTouchPoints > 1 && window.innerWidth <= 768);
 
     if (PHONE_MODE) {
-      document.title = 'LabBridge — Phone';
+      document.title = 'CueFlex — Phone';
       window.addEventListener('DOMContentLoaded', initPhoneMode);
     } else {
       window.addEventListener('DOMContentLoaded', initPCMode);
@@ -1169,7 +1169,7 @@
         {
           name: 'HKDF',
           hash: 'SHA-256',
-          salt: enc.encode('labbridge-v2'),
+          salt: enc.encode('cueflex-v2'),
           info: enc.encode('file-transfer')
         },
         baseKey,

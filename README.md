@@ -1,4 +1,4 @@
-# LabBridge
+# CueFlex
 
 Secure file transfer for students. Scan a QR on any lab PC to send files directly to your phone.
 
@@ -21,13 +21,13 @@ npx wrangler login
 npx wrangler deploy
 ```
 
-Note your worker URL: `wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev`
+Note your worker URL: `wss://cueflex-worker.YOUR_SUBDOMAIN.workers.dev`
 
 ### 2. Set Worker URL in webapp
 
 Edit `webapp/index.html` line 1:
 ```javascript
-const WORKER_URL = 'wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev';
+const WORKER_URL = 'wss://cueflex-worker.YOUR_SUBDOMAIN.workers.dev';
 ```
 
 ### 3. Build Android APK
@@ -39,9 +39,9 @@ cd mobile
 cd android && bash create_keystore.sh && cd ..
 
 # Set env vars
-export KEYSTORE_FILE=android/labbridge.keystore
+export KEYSTORE_FILE=android/cueflex.keystore
 export KEYSTORE_PASSWORD=your_password
-export KEY_ALIAS=labbridge
+export KEY_ALIAS=cueflex
 export KEY_PASSWORD=your_password
 
 # Build

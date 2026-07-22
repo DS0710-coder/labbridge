@@ -40,7 +40,7 @@ class DbService {
       path = inMemoryDatabasePath;
     } else {
       final dbPath = await getDatabasesPath();
-      path = p.join(dbPath, 'labbridge_v2.db');
+      path = p.join(dbPath, 'cueflex_v2.db');
     }
 
     return await openDatabase(
@@ -341,10 +341,10 @@ class DbService {
     try {
       if (!Platform.environment.containsKey('FLUTTER_TEST')) {
         final docsDir = await getApplicationDocumentsDirectory();
-        final labBridgeDir = Directory(p.join(docsDir.path, 'LabBridge'));
-        if (await labBridgeDir.exists()) {
-          await labBridgeDir.delete(recursive: true);
-          await labBridgeDir.create();
+        final cueFlexDir = Directory(p.join(docsDir.path, 'CueFlex'));
+        if (await cueFlexDir.exists()) {
+          await cueFlexDir.delete(recursive: true);
+          await cueFlexDir.create();
         }
       }
     } catch (_) {}

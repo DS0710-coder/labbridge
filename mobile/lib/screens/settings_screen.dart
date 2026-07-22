@@ -179,7 +179,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             fontFamily: 'monospace',
                           ),
                           decoration: InputDecoration(
-                            hintText: 'wss://labbridge-worker.YOUR_SUBDOMAIN.workers.dev',
+                            hintText: 'wss://cueflex-worker.YOUR_SUBDOMAIN.workers.dev',
                             hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
                             filled: true,
                             fillColor: AppTheme.surface2,
@@ -405,7 +405,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const SizedBox(height: 14),
                           const Text(
-                            'LabBridge v2',
+                            'CueFlex',
                             style: TextStyle(
                               color: AppTheme.textPrimary,
                               fontSize: 18,

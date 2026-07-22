@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                         Row(
                                           children: [
                                             Text(
-                                              '✦ LabBridge',
+                                              '✦ CueFlex',
                                               style: TextStyle(
                                                 color: AppTheme.textPrimary,
                                                 fontSize: 24,

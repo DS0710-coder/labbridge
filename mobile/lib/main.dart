@@ -109,11 +109,11 @@ class IconBox extends StatelessWidget {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await DbService().init();
-  runApp(const LabBridgeApp());
+  runApp(const CueFlexApp());
 }
 
-class LabBridgeApp extends StatelessWidget {
-  const LabBridgeApp({super.key});
+class CueFlexApp extends StatelessWidget {
+  const CueFlexApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -122,7 +122,7 @@ class LabBridgeApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransferService()),
       ],
       child: MaterialApp(
-        title: 'LabBridge',
+        title: 'CueFlex',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: const ColorScheme.dark(
