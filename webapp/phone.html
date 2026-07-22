@@ -3,242 +3,295 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>LabBridge — Mobile PWA</title>
+  <title>LabBridge — Phone</title>
   <link rel="manifest" href="manifest.json" />
-  <meta name="theme-color" content="#0A0A0F" />
+  <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="LabBridge" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root {
-      --bg: #000000;
-      --card: #0A0A0E;
-      --card-border: #1E1E28;
-      --primary: #6C63FF;
-      --primary-gradient: linear-gradient(135deg, #6C63FF, #4F46E5);
-      --success: #22C55E;
-      --danger: #EF4444;
-      --text: #F0F0F5;
-      --muted: #707085;
+      --bg:           #000000;
+      --surface:      #080810;
+      --surface-2:    #0D0D18;
+      --border:       rgba(255, 255, 255, 0.06);
+      --border-hover: rgba(255, 255, 255, 0.12);
+      --primary:      #6C63FF;
+      --primary-dim:  rgba(108, 99, 255, 0.12);
+      --green:        #39FF14;
+      --green-dim:    rgba(57, 255, 20, 0.08);
+      --red:          #EF4444;
+      --red-dim:      rgba(239, 68, 68, 0.08);
+      --text:         #FFFFFF;
+      --text-2:       rgba(255, 255, 255, 0.5);
+      --text-3:       rgba(255, 255, 255, 0.25);
+      --mono:         'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+      --sans:         -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
     }
+
     body {
-      background-color: var(--bg);
+      background: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: var(--sans);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      padding: 20px;
-      background-image: radial-gradient(circle at 50% 0%, rgba(108, 99, 255, 0.08) 0%, transparent 70%);
+      padding: 16px;
+      background-image: radial-gradient(
+        ellipse 80% 40% at 50% -10%,
+        rgba(108, 99, 255, 0.10) 0%,
+        transparent 70%
+      );
     }
+
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 18px;
-      border-bottom: 1px solid var(--card-border);
-      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
     }
+
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
+
+    .brand img {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .brand-name {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
     .status-pill {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 6px 12px;
+      padding: 6px 10px;
       border-radius: 9999px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--card-border);
-      font-family: ui-monospace, monospace;
+      background: transparent;
+      border: 1px solid var(--border);
+      font-family: var(--mono);
+      color: var(--text-2);
     }
+
     .status-dot {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
-      background: var(--muted);
+      background: var(--text-3);
+      flex-shrink: 0;
       transition: background 0.3s ease;
     }
+
     .status-dot.active {
-      background: #39FF14;
-      box-shadow: 0 0 10px rgba(57, 255, 20, 0.6);
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
     }
+
     .card {
-      background: var(--card);
-      border: 1px solid var(--card-border);
-      border-radius: 18px;
-      padding: 24px;
-      margin-bottom: 20px;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.8);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0;
+      padding: 20px;
+      margin-bottom: 14px;
+      width: 100%;
     }
+
     h2 {
-      font-size: 18px;
+      font-family: var(--mono);
+      font-size: 13px;
       font-weight: 700;
-      margin-bottom: 8px;
-      font-family: ui-monospace, monospace;
-      color: #FFF;
+      color: var(--text);
+      letter-spacing: -0.3px;
+      margin-bottom: 6px;
     }
+
     p {
-      color: var(--muted);
-      font-size: 14px;
+      font-size: 13px;
+      color: var(--text-2);
       line-height: 1.5;
     }
+
     .input-group {
       display: flex;
       gap: 10px;
       margin-top: 16px;
     }
+
     input[type="text"] {
-      flex: 1;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--card-border);
-      border-radius: 10px;
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
       padding: 12px 14px;
-      color: #FFF;
-      font-size: 15px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
       outline: none;
-      font-family: ui-monospace, monospace;
+      transition: border-color 0.15s;
     }
+
     input[type="text"]:focus {
-      border-color: var(--primary);
+      border-color: rgba(108,99,255,0.5);
     }
+
     button {
-      background: var(--primary-gradient);
-      color: white;
+      width: 100%;
+      background: var(--primary);
+      color: #fff;
       border: none;
-      border-radius: 10px;
-      padding: 12px 20px;
-      font-size: 15px;
-      font-weight: 600;
+      border-radius: 8px;
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
       cursor: pointer;
-      display: inline-flex;
+      letter-spacing: 0.3px;
+      transition: opacity 0.15s;
+      min-height: 44px;
+    }
+
+    button:active { opacity: 0.8; }
+
+    button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-2);
+    }
+
+    #url-warning-banner {
+      font-family: var(--mono);
+      color: var(--red);
+      font-size: 12px;
+      margin-top: 12px;
+      padding: 8px;
+      background: var(--red-dim);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: 6px;
+    }
+
+    #dropzone-phone {
+      border: 1px dashed rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 32px 16px;
+      text-align: center;
+      position: relative;
+      margin-top: 14px;
+      transition: all 0.2s;
+    }
+
+    #dropzone-phone:active {
+      border-color: rgba(108,99,255,0.4);
+      background: var(--primary-dim);
+    }
+
+    #dropzone-phone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 2px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      overflow: hidden;
+      margin: 12px 0;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.1s linear;
+      box-shadow: 0 0 6px var(--primary);
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    .file-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--primary-dim);
+      border: 1px solid rgba(108,99,255,0.2);
+      display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      transition: opacity 0.2s, transform 0.1s;
-      font-family: ui-monospace, monospace;
-      box-shadow: 0 4px 16px rgba(108,99,255,0.3);
+      font-family: var(--mono);
+      font-size: 14px;
+      color: var(--primary);
+      flex-shrink: 0;
     }
-    button:active {
-      transform: scale(0.98);
-      opacity: 0.9;
+
+    .file-name {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    button.secondary {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--card-border);
-      box-shadow: none;
+
+    .file-size {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-3);
+      margin-top: 2px;
     }
+
     .qr-scanner-box {
       margin-top: 16px;
       border-radius: 12px;
       overflow: hidden;
       display: none;
       background: #000;
-      border: 1px solid var(--card-border);
-    }
-    .progress-bar-container {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 8px;
-      height: 12px;
-      overflow: hidden;
-      margin: 14px 0;
-      border: 1px solid var(--card-border);
-    }
-    .progress-bar {
-      height: 100%;
-      background: var(--primary-gradient);
-      width: 0%;
-      transition: width 0.1s linear;
-    }
-    .file-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: rgba(255, 255, 255, 0.02);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 14px;
-      margin-top: 12px;
-    }
-    .file-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 10px;
-      background: rgba(108, 99, 255, 0.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      color: var(--primary);
-      margin-right: 12px;
-      border: 1px solid rgba(108,99,255,0.3);
-    }
-    .file-details {
-      flex: 1;
-      overflow: hidden;
-    }
-    .file-name {
-      font-weight: 700;
-      font-size: 15px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      font-family: ui-monospace, monospace;
-      color: #FFF;
-    }
-    .file-size {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 2px;
-      font-family: ui-monospace, monospace;
-    }
-    .action-row {
-      display: flex;
-      gap: 10px;
-      margin-top: 16px;
-    }
-    .action-row button {
-      flex: 1;
-    }
-    #dropzone-phone {
-      border: 2px dashed rgba(108, 99, 255, 0.5);
-      border-radius: 16px;
-      padding: 40px 20px;
-      text-align: center;
-      cursor: pointer;
-      background: rgba(108, 99, 255, 0.03);
-      margin-top: 16px;
-      position: relative;
-    }
-    #dropzone-phone input[type="file"] {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      cursor: pointer;
+      border: 1px solid var(--border);
     }
   </style>
 </head>
 <body>
   <header>
     <div class="brand">
-      <img src="logo.png" alt="LabBridge Logo" style="width: 44px; height: 44px; border-radius: 12px; object-fit: contain; border: 1px solid var(--card-border); background: var(--bg);" />
+      <img src="logo.png" alt="LabBridge Logo" />
       <div>
-        <h1 style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 20px; font-weight: 700; color: #FFF;">LabBridge <span style="color: #39FF14; font-size: 12px; font-weight: 600; background: rgba(57,255,20,0.12); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(57,255,20,0.3);">PWA</span></h1>
-        <div style="font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; margin-top: 3px;">[ P2P RELAY CLIENT ]</div>
+        <div class="brand-name">LabBridge</div>
       </div>
     </div>
     <div class="status-pill">
@@ -252,20 +305,22 @@
     <h2>Connect to PC Session</h2>
     <p>Scan the QR code displayed on your PC screen or enter the 12-character session ID manually.</p>
     
-    <div id="url-warning-banner" style="display:none; padding:10px; background:rgba(239,68,68,0.15); border:1px solid var(--danger); border-radius:8px; margin-top:14px; font-size:13px; color:#FCA5A5;"></div>
+    <div id="url-warning-banner" style="display:none;">⚠ Update Worker URL in settings</div>
 
     <div style="margin-top: 16px;">
-      <label style="font-size: 12px; font-weight: 600; color: var(--muted); display: block; margin-bottom: 6px;">Server URL (Worker):</label>
-      <input type="text" id="worker-url-input" placeholder="e.g. http://192.168.1.5:8787" style="width:100%;" />
+      <label style="font-size: 11px; font-weight: 600; color: var(--text-3); display: block; margin-bottom: 6px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px;">Server URL (Worker):</label>
+      <input type="text" id="worker-url-input" placeholder="e.g. http://192.168.1.5:8787" />
     </div>
 
     <div class="input-group">
       <input type="text" id="session-input" placeholder="e.g. a1b2c3d4e5f6" maxlength="12" />
+    </div>
+    <div style="margin-top: 10px;">
       <button onclick="connectManual()">Connect</button>
     </div>
 
     <div style="margin-top: 14px; text-align: center;">
-      <button class="secondary" style="width: 100%;" onclick="toggleScanner()">📷 Scan PC QR Code</button>
+      <button class="secondary" onclick="toggleScanner()">Scan PC QR Code</button>
     </div>
 
     <div id="qr-reader" class="qr-scanner-box"></div>
@@ -279,9 +334,9 @@
       
       <div id="dropzone-phone">
         <input type="file" id="phone-file-input" multiple onchange="handlePhoneFilesSelected(event)" />
-        <div style="font-size: 28px; margin-bottom: 8px;">📤</div>
-        <div style="font-weight: 600; color: #FFF;">Tap to Send Files to PC</div>
-        <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">Choose from Photos, Files, or iCloud Drive</div>
+        <div style="font-family: var(--mono); font-size: 18px; color: var(--text-3); margin-bottom: 8px;">↑</div>
+        <div style="font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text);">Tap to send files to PC</div>
+        <div style="font-size: 12px; color: var(--text-3); margin-top: 4px;">Photos · Files · iCloud Drive</div>
       </div>
     </div>
 
@@ -289,16 +344,17 @@
     <div id="section-transferring" class="card" style="display: none;">
       <h2 id="transfer-title">Receiving File...</h2>
       <div class="file-item">
-        <div class="file-icon">📁</div>
-        <div class="file-details">
+        <div class="file-icon">↓</div>
+        <div style="flex: 1; overflow: hidden;">
           <div id="transfer-filename" class="file-name">file.pdf</div>
           <div id="transfer-pct" class="file-size">0%</div>
         </div>
       </div>
-      <div class="progress-bar-container">
+      <progress id="transfer-progress" value="0" max="100" style="display:none;"></progress>
+      <div class="progress-track">
         <div id="transfer-bar" class="progress-bar"></div>
       </div>
-      <button class="secondary" style="width: 100%; color: var(--danger); border-color: rgba(239, 68, 68, 0.3);" onclick="cancelTransfer()">Cancel Transfer</button>
+      <button class="secondary" style="color: var(--red); border-color: rgba(239, 68, 68, 0.3); margin-top: 8px;" onclick="cancelTransfer()">Cancel Transfer</button>
     </div>
 
     <!-- Completed Files -->
@@ -320,7 +376,6 @@
       scanner: null
     };
 
-    // Initialize from URL query parameters if opened via QR scan
     window.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
       let s = params.get('s');
@@ -343,7 +398,6 @@
       const urlInput = document.getElementById('worker-url-input');
       if (urlInput) urlInput.value = state.workerHttpUrl;
 
-      // Check if running on phone while URL points to localhost or placeholder
       const warningBanner = document.getElementById('url-warning-banner');
       const isLocalhostUrl = state.workerHttpUrl.includes('localhost') || state.workerHttpUrl.includes('127.0.0.1');
       const isPlaceholder = state.workerHttpUrl.includes('YOUR_SUBDOMAIN');
@@ -351,11 +405,7 @@
 
       if ((isLocalhostUrl || isPlaceholder) && isPhoneBrowser && warningBanner) {
         warningBanner.style.display = 'block';
-        if (isLocalhostUrl) {
-          warningBanner.innerHTML = `⚠️ <strong>Localhost URL Detected:</strong> 'localhost' on a phone refers to the phone itself, not your PC! Please change the Server URL below to your PC's Wi-Fi IP address (e.g. <code>http://192.168.1.15:8787</code>) and tap Connect.`;
-        } else {
-          warningBanner.innerHTML = `⚠️ <strong>Placeholder URL Detected:</strong> Please replace <code>YOUR_SUBDOMAIN</code> below with your actual Cloudflare Worker domain or local Wi-Fi IP address.`;
-        }
+        warningBanner.innerHTML = '⚠ Update Worker URL in settings';
       }
 
       if (s && s.length === 12) {
@@ -364,7 +414,6 @@
       }
     });
 
-    // ── Crypto Derivation & AES-GCM (Same exact logic as PC index.html) ──
     async function deriveAESKey(sessionId) {
       const enc = new TextEncoder();
       const baseKey = await crypto.subtle.importKey(
@@ -413,7 +462,6 @@
       return combined.buffer;
     }
 
-    // ── WebSocket & Session Management ──
     async function connectManual() {
       const s = document.getElementById('session-input').value.trim();
       if (!s || s.length !== 12) {
@@ -472,7 +520,7 @@
           const banner = document.getElementById('url-warning-banner');
           if (banner) {
             banner.style.display = 'block';
-            banner.innerHTML = `❌ <strong>Could not connect to ${socketUrl}</strong>.<br/>Please verify that the Server URL above is correct and reachable from your phone, and that your PC session is active.`;
+            banner.innerHTML = '⚠ Update Worker URL in settings';
           }
         }
       };
@@ -492,14 +540,13 @@
 
     function handleTextMessage(msg) {
       if (msg.type === 'folder_request') {
-        // Send virtual folder structure representing iPhone storage options
         if (state.ws && state.ws.readyState === WebSocket.OPEN) {
           state.ws.send(JSON.stringify({
             type: 'folders',
             folders: [
-              { id: 'root', name: '📱 iPhone Downloads', parentId: null },
-              { id: 'photos', name: '🖼️ Camera & Photos', parentId: 'root' },
-              { id: 'documents', name: '📄 Files App', parentId: 'root' }
+              { id: 'root', name: 'iPhone Downloads', parentId: null },
+              { id: 'photos', name: 'Camera & Photos', parentId: 'root' },
+              { id: 'documents', name: 'Files App', parentId: 'root' }
             ]
           }));
         }
@@ -583,7 +630,10 @@
 
     function updateProgress(pct) {
       document.getElementById('transfer-pct').innerText = `${pct}%`;
-      document.getElementById('transfer-bar').style.width = `${pct}%`;
+      const fillBar = document.getElementById('transfer-bar');
+      if (fillBar) fillBar.style.width = `${pct}%`;
+      const prog = document.getElementById('transfer-progress');
+      if (prog) prog.value = pct;
     }
 
     state.completedFilesMap = state.completedFilesMap || {};
@@ -605,28 +655,31 @@
 
       const div = document.createElement('div');
       div.className = 'file-item';
-      div.style.background = 'rgba(108, 99, 255, 0.15)';
-      div.style.border = '1px solid #6C63FF';
       div.innerHTML = `
         <div style="display:flex; align-items:center; overflow:hidden; flex:1;">
-          <div class="file-icon">📥</div>
-          <div class="file-details">
-            <div class="file-name" style="font-weight:700; color:#fff;">${rec.filename}</div>
-            <div class="file-size">${(rec.size / 1024 / 1024).toFixed(2)} MB — Ready to save!</div>
+          <div class="file-icon">↓</div>
+          <div style="flex:1; overflow:hidden;">
+            <div class="file-name">${rec.filename}</div>
+            <div class="file-size">${formatSize(rec.size)} — Ready</div>
           </div>
         </div>
         <div style="display:flex; gap:8px;">
-          <button style="padding: 10px 16px; font-size:14px; background:#6C63FF; color:#fff; font-weight:600; border-radius:8px;" onclick="shareOrSaveFileById('${fileId}')">💾 Tap to Save / Open</button>
+          <button style="padding: 8px 14px; font-size:12px; background:var(--primary); color:#fff; font-weight:700; border-radius:6px; min-height:36px;" onclick="shareOrSaveFileById('${fileId}')">Save / Open</button>
         </div>
       `;
       list.prepend(div);
+    }
+
+    function formatSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     }
 
     async function shareOrSaveFileById(fileId) {
       const item = (state.completedFilesMap || {})[fileId];
       if (!item) return;
       
-      // Synchronous file sharing inside direct user tap gesture
       if (navigator.canShare && navigator.canShare({ files: [item.file] })) {
         try {
           await navigator.share({
@@ -639,7 +692,6 @@
         }
       }
 
-      // Fallback: open URL or trigger download link
       const a = document.createElement('a');
       a.href = item.url;
       a.download = item.filename;
@@ -649,11 +701,10 @@
       document.body.removeChild(a);
     }
 
-    // ── Sending Files from iPhone PWA to PC ──
     function handlePhoneFilesSelected(event) {
       const files = event.target.files;
       if (!files || files.length === 0) return;
-      const file = files[0]; // Send first selected file
+      const file = files[0];
       
       const CHUNK_SIZE = 512 * 1024;
       const total_chunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -707,7 +758,6 @@
       state.sending = null;
     }
 
-    // ── QR Scanner (Camera) ──
     function toggleScanner() {
       const box = document.getElementById('qr-reader');
       if (box.style.display === 'block') {
@@ -722,7 +772,6 @@
           { facingMode: "environment" },
           { fps: 10, qrbox: { width: 220, height: 220 } },
           (decodedText) => {
-            // Check if decoded text is a PWA URL with ?s=...
             try {
               const uri = new URL(decodedText);
               const s = uri.searchParams.get('s');
@@ -732,7 +781,6 @@
               }
             } catch(e){}
 
-            // Or check JSON {"s":"abc..."}
             try {
               const data = JSON.parse(decodedText);
               if (data.s && data.s.length === 12) {
@@ -741,7 +789,6 @@
               }
             } catch(e){}
 
-            // Or raw 12 char string
             if (decodedText && decodedText.length === 12) {
               connectToSession(decodedText);
             }

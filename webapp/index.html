@@ -7,173 +7,674 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#0A0A0F">
+  <meta name="theme-color" content="#000000">
   <script src="qr.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsqr/1.4.0/jsQR.min.js"></script>
   <style>
     :root {
-      --bg: #000000;
-      --surface: #0A0A0E;
-      --surface-hover: #14141C;
-      --border: #1E1E28;
-      --primary: #6C63FF;
-      --success: #22C55E;
-      --error: #EF4444;
-      --text: #F0F0F5;
-      --muted: #707085;
+      --bg:           #000000;
+      --surface:      #080810;
+      --surface-2:    #0D0D18;
+      --border:       rgba(255, 255, 255, 0.06);
+      --border-hover: rgba(255, 255, 255, 0.12);
+      --primary:      #6C63FF;
+      --primary-dim:  rgba(108, 99, 255, 0.12);
+      --green:        #39FF14;
+      --green-dim:    rgba(57, 255, 20, 0.08);
+      --red:          #EF4444;
+      --red-dim:      rgba(239, 68, 68, 0.08);
+      --text:         #FFFFFF;
+      --text-2:       rgba(255, 255, 255, 0.5);
+      --text-3:       rgba(255, 255, 255, 0.25);
+      --mono:         'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+      --sans:         -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; background-image: radial-gradient(circle at 50% 0%, rgba(108, 99, 255, 0.08) 0%, transparent 70%); }
-    .container { width: 100%; max-width: 680px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); position: relative; }
-    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid var(--border); padding-bottom: 18px; }
-    h1 { font-size: 20px; font-weight: 700; color: var(--text); }
-    .status-badge { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.03); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); }
-    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
-    .status-dot.active { background: #39FF14; box-shadow: 0 0 10px #39FF14; }
-    .btn-disconnect { background: transparent; border: 1px solid var(--border); color: var(--error); padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; margin-left: 10px; font-family: ui-monospace, monospace; }
-    .btn-disconnect:hover { background: rgba(239, 68, 68, 0.1); }
-    
-    /* Phase 1: Waiting */
-    #phase-waiting { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding: 14px 0; }
-    .qr-box { background: #FFF; padding: 18px; border-radius: 16px; display: flex; align-items: center; justify-content: center; min-width: 256px; min-height: 256px; position: relative; overflow: hidden; border: 3px solid var(--border); box-shadow: 0 10px 30px rgba(108,99,255,0.15); }
-    #qrcode { width: 220px; height: 220px; transition: opacity 0.2s; }
-    .qr-expired-overlay { display: none; position: absolute; inset: 0; background: rgba(255, 255, 255, 0.96); border-radius: 14px; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; color: #000; z-index: 10; backdrop-filter: blur(4px); }
-    .btn-refresh-qr { background: var(--primary); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(108,99,255,0.4); display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s; font-family: ui-monospace, monospace; }
-    .btn-refresh-qr:hover { background: #5B52E0; transform: translateY(-1px); }
-    .timer { font-size: 13px; color: var(--muted); display: flex; align-items: center; justify-content: center; gap: 10px; font-family: ui-monospace, monospace; }
-    .timer span { color: var(--primary); font-weight: 600; }
 
-    /* Phase 2: Paired & Folders */
-    #phase-paired { display: none; flex-direction: column; gap: 20px; }
-    .breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 13px; color: var(--muted); padding: 10px 14px; background: rgba(255,255,255,0.02); border-radius: 10px; border: 1px solid var(--border); font-family: ui-monospace, monospace; }
-    .breadcrumb-item { cursor: pointer; color: var(--text); transition: color 0.15s; font-weight: 600; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      font-family: var(--sans);
+      background-image: radial-gradient(
+        ellipse 80% 40% at 50% -10%,
+        rgba(108, 99, 255, 0.10) 0%,
+        transparent 70%
+      );
+    }
+
+    .container {
+      width: 100%;
+      max-width: 560px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.03),
+                  0 32px 64px rgba(0,0,0,0.9);
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .brand-name {
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .brand-sub {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-3);
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-2);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-3);
+      flex-shrink: 0;
+    }
+
+    .status-dot.active {
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+
+    .btn-disconnect {
+      background: transparent;
+      border: none;
+      color: var(--red);
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+      opacity: 0.7;
+    }
+
+    .btn-disconnect:hover { opacity: 1; }
+
+    /* Phase 1: Waiting (QR Screen) */
+    #phase-waiting {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .phase-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      color: var(--text-3);
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .qr-wrap {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .qr-box {
+      background: #fff;
+      padding: 14px;
+      border-radius: 12px;
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.08),
+                  0 8px 32px rgba(108,99,255,0.15);
+    }
+
+    #qrcode {
+      width: 200px;
+      height: 200px;
+      display: block;
+    }
+
+    .qr-expired-overlay {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0.95);
+      border-radius: 10px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      backdrop-filter: blur(4px);
+      z-index: 10;
+    }
+
+    .expired-icon {
+      font-size: 28px;
+      color: #000;
+    }
+
+    .expired-text {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      color: #000;
+    }
+
+    .btn-refresh-qr {
+      background: #6C63FF;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Steps */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding: 0 4px;
+    }
+
+    .step {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .step-num {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--primary);
+      flex-shrink: 0;
+      width: 20px;
+    }
+
+    .step-text {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.4;
+    }
+
+    /* Session meta */
+    .session-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-3);
+    }
+
+    .mono-accent {
+      font-family: var(--mono);
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .btn-text {
+      background: transparent;
+      border: none;
+      color: var(--text-3);
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .btn-text:hover { color: var(--text-2); }
+
+    /* Phase 2: Paired */
+    #phase-paired {
+      display: none;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    #received-files-section {
+      padding: 14px 16px;
+      background: var(--primary-dim);
+      border: 1px solid rgba(108,99,255,0.2);
+      border-radius: 10px;
+    }
+
+    .folder-section {
+      padding: 14px 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      color: var(--text-3);
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .breadcrumb {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 4px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-3);
+      margin-bottom: 12px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+    }
+
+    .breadcrumb-item {
+      color: var(--text-2);
+      cursor: pointer;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+
     .breadcrumb-item:hover { color: var(--primary); }
-    .breadcrumb-sep { color: var(--muted); }
-    .folder-grid { display: flex; flex-wrap: wrap; gap: 10px; min-height: 80px; }
-    .folder-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.15s; font-family: ui-monospace, monospace; }
-    .folder-btn:hover { border-color: var(--primary); background: var(--surface-hover); }
-    .folder-btn.active { border-color: var(--primary); background: rgba(108, 99, 255, 0.15); font-weight: 600; }
-    
-    .dropzone { border: 2px dashed rgba(108,99,255,0.4); border-radius: 16px; padding: 48px 20px; text-align: center; cursor: pointer; transition: all 0.2s; position: relative; background: rgba(255,255,255,0.01); }
-    .dropzone:hover, .dropzone.dragover { border-color: var(--primary); background: rgba(108, 99, 255, 0.06); }
-    .dropzone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-    .dropzone p { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; font-family: ui-monospace, monospace; }
-    .dropzone span { font-size: 13px; color: var(--muted); }
+
+    .breadcrumb-sep {
+      color: var(--text-3);
+      font-size: 10px;
+    }
+
+    .folder-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 40px;
+    }
+
+    .folder-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      padding: 7px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: var(--mono);
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .folder-btn:hover {
+      border-color: var(--border-hover);
+      color: var(--text);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .folder-btn.active {
+      border-color: rgba(108,99,255,0.4);
+      background: var(--primary-dim);
+      color: var(--primary);
+    }
+
+    .dropzone {
+      border: 1px dashed rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      background: transparent;
+    }
+
+    .dropzone:hover,
+    .dropzone.dragover {
+      border-color: rgba(108,99,255,0.4);
+      background: var(--primary-dim);
+    }
+
+    .dropzone p {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    .dropzone span {
+      font-size: 12px;
+      color: var(--text-3);
+    }
+
+    .dropzone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+
+    .dropzone-icon {
+      font-size: 20px;
+      color: var(--text-3);
+      margin-bottom: 10px;
+      font-family: var(--mono);
+    }
 
     /* Phase 3: Transferring */
-    #phase-transferring { display: none; flex-direction: column; gap: 20px; padding: 14px 0; }
-    .transfer-info { display: flex; justify-content: space-between; font-size: 14px; font-family: ui-monospace, monospace; }
-    .progress-bar-wrap { width: 100%; height: 14px; background: var(--bg); border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
-    .progress-bar-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.1s linear; }
-    .btn-cancel { align-self: flex-start; background: transparent; border: 1px solid var(--border); color: var(--error); padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; font-family: ui-monospace, monospace; }
-    
+    #phase-transferring {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .transfer-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: var(--mono);
+      font-size: 13px;
+    }
+
+    #transfer-filename { color: var(--text); font-weight: 600; }
+    #transfer-size { font-size: 11px; color: var(--text-3); margin-top: 3px; font-family: var(--mono); }
+    #transfer-pct { color: var(--primary); font-weight: 700; }
+
+    .progress-track {
+      width: 100%;
+      height: 2px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      transition: width 0.1s linear;
+      box-shadow: 0 0 8px var(--primary);
+    }
+
+    .btn-cancel {
+      background: transparent;
+      border: none;
+      color: var(--text-3);
+      font-family: var(--mono);
+      font-size: 11px;
+      cursor: pointer;
+      padding: 0;
+      align-self: flex-start;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-cancel:hover { color: var(--red); }
+
     /* Phase 4: Done */
-    #phase-done { display: none; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding: 24px 0; }
-    .done-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(34, 197, 94, 0.15); color: #39FF14; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; border: 1px solid rgba(57,255,20,0.3); }
-    .btn-reset { background: var(--primary); border: none; color: white; padding: 12px 24px; border-radius: 10px; font-size: 14px; cursor: pointer; font-weight: 600; font-family: ui-monospace, monospace; box-shadow: 0 4px 16px rgba(108,99,255,0.4); }
+    #phase-done {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: 16px;
+      padding: 20px 0;
+    }
+
+    .done-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--green-dim);
+      border: 1px solid rgba(57,255,20,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 20px;
+      color: var(--green);
+    }
+
+    #done-message {
+      font-family: var(--mono);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    #done-subtext {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 4px;
+      font-family: var(--mono);
+    }
+
+    .btn-reset {
+      background: var(--primary-dim);
+      border: 1px solid rgba(108,99,255,0.3);
+      color: var(--primary);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: var(--mono);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-reset:hover {
+      background: rgba(108,99,255,0.2);
+    }
+
+    /* Phone mode container adjustments inside index.html */
+    #phone-mode-container.container {
+      max-width: none;
+      border-radius: 0;
+      border: none;
+      background: var(--surface);
+      box-shadow: none;
+      padding: 20px;
+    }
+
+    #phone-mode-container input[type="text"] {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #phone-mode-container input[type="text"]:focus { border-color: rgba(108,99,255,0.5); }
+
+    #phone-mode-container button {
+      width: 100%;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 14px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: opacity 0.15s;
+    }
+    #phone-mode-container button:active { opacity: 0.8; }
+    #phone-mode-container button.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-2);
+    }
   </style>
 </head>
 <body>
   <!-- PC Mode Container -->
   <div id="pc-mode-container" class="container">
     <header>
-      <div style="display: flex; align-items: center; gap: 14px;">
-        <img src="logo.png" alt="LabBridge Logo" style="width: 44px; height: 44px; border-radius: 12px; object-fit: contain; border: 1px solid var(--border); background: var(--bg);" />
+      <!-- Left: brand -->
+      <div class="brand">
+        <img src="logo.png" alt="LabBridge Logo" />
         <div>
-          <h1 style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 22px; font-weight: 700; color: #FFF; letter-spacing: -0.5px;">LabBridge <span style="color: var(--primary); font-size: 13px; font-weight: 600; background: rgba(108,99,255,0.15); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(108,99,255,0.3);">v2.0</span></h1>
-          <div style="font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; margin-top: 3px;">[ E2E ENCRYPTED · P2P RELAY · ZERO CLOUD STORAGE ]</div>
+          <div class="brand-name">LabBridge</div>
+          <div class="brand-sub">[ E2E ENCRYPTED · ZERO CLOUD ]</div>
         </div>
       </div>
-      <div class="status-badge">
+      <!-- Right: status pill -->
+      <div class="status-pill">
         <div id="status-dot" class="status-dot"></div>
-        <span id="status-text" style="font-family: ui-monospace, monospace; font-weight: 600;">Disconnected</span>
-        <button id="btn-disconnect" class="btn-disconnect" style="display:none;" onclick="disconnectSession()">Disconnect</button>
+        <span id="status-text">Disconnected</span>
+        <button id="btn-disconnect" class="btn-disconnect" style="display:none;" onclick="disconnectSession()">disconnect</button>
       </div>
     </header>
 
     <!-- Phase 1: Waiting -->
     <div id="phase-waiting">
-      <div style="font-family: ui-monospace, monospace; font-size: 12px; color: #39FF14; background: rgba(57,255,20,0.08); border: 1px solid rgba(57,255,20,0.25); padding: 6px 14px; border-radius: 999px; margin-bottom: 4px;">
-        &gt; READY TO PAIR WITH MOBILE DEVICE
-      </div>
-      <div class="qr-box">
-        <div id="qrcode"></div>
-        <div id="qr-expired-overlay" class="qr-expired-overlay">
-          <div style="font-size: 28px;">⌛</div>
-          <div style="font-weight: 700; font-size: 16px; color: #000;">QR Code Expired</div>
-          <button onclick="createSession()" class="btn-refresh-qr">🔄 Generate Fresh QR</button>
-        </div>
-      </div>
-      
-      <div style="width: 100%; max-width: 500px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-top: 6px; text-align: left;">
-        <div style="font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 12px; font-family: ui-monospace, monospace; border-bottom: 1px solid var(--border); padding-bottom: 8px; letter-spacing: 0.5px;">EFFORTLESS 3-STEP CONNECTION:</div>
-        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--text);">
-          <div style="display: flex; gap: 12px; align-items: baseline;"><span style="color: var(--primary); font-weight: 700; font-family: ui-monospace, monospace; font-size: 14px;">01.</span> <span>Open <strong>LabBridge Android App</strong> or <strong>iPhone Camera</strong></span></div>
-          <div style="display: flex; gap: 12px; align-items: baseline;"><span style="color: var(--primary); font-weight: 700; font-family: ui-monospace, monospace; font-size: 14px;">02.</span> <span>Point camera directly at the QR code above</span></div>
-          <div style="display: flex; gap: 12px; align-items: baseline;"><span style="color: #39FF14; font-weight: 700; font-family: ui-monospace, monospace; font-size: 14px;">03.</span> <span>Connected automatically — ready for instant drag & drop!</span></div>
+      <div class="phase-label">WAITING FOR DEVICE</div>
+
+      <div class="qr-wrap">
+        <div class="qr-box">
+          <div id="qrcode"></div>
+          <div id="qr-expired-overlay" class="qr-expired-overlay">
+            <div class="expired-icon">↻</div>
+            <div class="expired-text">QR Expired</div>
+            <button onclick="createSession()" class="btn-refresh-qr">Refresh</button>
+          </div>
         </div>
       </div>
 
-      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 500px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px;">
-        <div>Session ID: <span id="display-session-id" style="font-family: ui-monospace, monospace; color: var(--primary); font-weight: 700; font-size: 14px;">---</span></div>
-        <div class="timer">
-          <span>Expires in <span id="timer-sec">240s</span></span>
-          <button id="btn-refresh-waiting" onclick="createSession()" style="background: transparent; border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; font-family: ui-monospace, monospace;">🔄 Refresh</button>
+      <div class="steps">
+        <div class="step">
+          <span class="step-num">01</span>
+          <span class="step-text">Open LabBridge app or iPhone camera</span>
         </div>
+        <div class="step">
+          <span class="step-num">02</span>
+          <span class="step-text">Point at this QR code</span>
+        </div>
+        <div class="step">
+          <span class="step-num">03</span>
+          <span class="step-text">Connected — drag files below</span>
+        </div>
+      </div>
+
+      <div class="session-meta">
+        <span>session <span id="display-session-id" class="mono-accent">---</span></span>
+        <span>expires <span id="timer-sec" class="mono-accent">240s</span></span>
+        <button id="btn-refresh-waiting" onclick="createSession()" class="btn-text">↻ refresh</button>
       </div>
     </div>
 
-    <!-- Phase 2: Paired & Browsing -->
+    <!-- Phase 2: Paired -->
     <div id="phase-paired">
-      <div id="received-files-section" style="display:none; margin-bottom: 16px; padding: 18px; background: rgba(108, 99, 255, 0.08); border: 1px solid #6C63FF; border-radius: 14px; box-shadow: 0 4px 24px rgba(108, 99, 255, 0.15);">
-        <p style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; font-family: ui-monospace, monospace;">
-          <span>📥 RECEIVED FROM MOBILE DEVICE</span>
-          <span style="font-size: 11px; background: #6C63FF; padding: 2px 8px; border-radius: 99px;">READY</span>
-        </p>
+      <div id="received-files-section" style="display:none;">
+        <div class="section-label">RECEIVED FROM MOBILE DEVICE</div>
         <div id="received-files-list"></div>
       </div>
 
-      <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 14px; padding: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <span style="font-size: 12px; font-weight: 700; color: var(--muted); font-family: ui-monospace, monospace; letter-spacing: 0.5px;">TARGET FOLDER ON PHONE:</span>
-          <span style="font-size: 11px; color: var(--primary); font-family: ui-monospace, monospace;">Click any subfolder to open</span>
-        </div>
-        <div id="breadcrumb" class="breadcrumb" style="margin-bottom: 12px;">
+      <div class="folder-section">
+        <div class="section-label">TARGET FOLDER ON PHONE</div>
+        <div id="breadcrumb" class="breadcrumb">
           <span class="breadcrumb-item" onclick="navigateRoot()">Root</span>
         </div>
         <div id="folder-grid" class="folder-grid"></div>
       </div>
 
-      <div id="shortcut-mode-hint" style="display:none; padding: 12px 16px; background: rgba(108,99,255,0.08); border: 1px solid rgba(108,99,255,0.3); border-radius: 10px; font-size: 13px; color: #6C63FF; font-family: ui-monospace, monospace;">
-        📱 iPhone Shortcut mode active — drop a file below and your iPhone will receive it immediately via polling
+      <div id="shortcut-mode-hint" style="display:none; padding: 12px 16px; background: var(--primary-dim); border: 1px solid rgba(108,99,255,0.3); border-radius: 10px; font-size: 13px; color: var(--primary); font-family: var(--mono);">
+        iPhone Shortcut mode active — drop a file below and your iPhone will receive it immediately via polling
       </div>
 
       <div id="dropzone" class="dropzone">
         <input type="file" id="file-input" multiple />
-        <div style="font-size: 40px; margin-bottom: 12px;">📤</div>
-        <p>DRAG & DROP FILES TO SEND INSTANTLY</p>
-        <span id="queue-status" style="font-size: 13px; color: var(--muted); display: block; max-width: 420px; margin: 0 auto; line-height: 1.4;">Will be transferred over E2E encrypted P2P relay directly into the selected folder above</span>
+        <div class="dropzone-icon">↑</div>
+        <p>Drop files to transfer</p>
+        <span id="queue-status">E2E encrypted · saves directly to phone folder</span>
       </div>
     </div>
 
     <!-- Phase 3: Transferring -->
     <div id="phase-transferring">
-      <div>
-        <div class="transfer-info">
-          <span id="transfer-filename" style="font-weight: 600;">File.pdf</span>
-          <span id="transfer-pct" style="color: var(--primary); font-weight: 700;">0%</span>
-        </div>
-        <div style="font-size: 13px; color: var(--muted); margin-top: 4px; font-family: ui-monospace, monospace;" id="transfer-size">0 KB</div>
-      <progress id="transfer-progress" value="0" max="100" style="width: 100%; height: 16px; accent-color: var(--primary);"></progress>
-      <button class="btn-cancel" onclick="cancelTransfer()">Cancel Transfer</button>
+      <div class="transfer-info">
+        <span id="transfer-filename">file.pdf</span>
+        <span id="transfer-pct">0%</span>
+      </div>
+      <div id="transfer-size">0 KB</div>
+      <progress id="transfer-progress" value="0" max="100" style="display:none;"></progress>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill-bar"></div>
+      </div>
+      <button class="btn-cancel" onclick="cancelTransfer()">cancel transfer</button>
     </div>
 
     <!-- Phase 4: Done -->
     <div id="phase-done">
       <div class="done-icon">✓</div>
       <div>
-        <p id="done-message" style="font-size: 18px; font-weight: 700; margin-bottom: 6px; font-family: ui-monospace, monospace;">TRANSFER COMPLETED!</p>
-        <p id="done-subtext" style="font-size: 14px; color: var(--muted); font-family: ui-monospace, monospace;">Saved to phone</p>
+        <p id="done-message">TRANSFER COMPLETED!</p>
+        <p id="done-subtext">Saved to phone</p>
       </div>
       <button class="btn-reset" onclick="resetToPaired()">Send Another File</button>
     </div>
@@ -182,65 +683,67 @@
   <!-- Phone Mode Container -->
   <div id="phone-mode-container" class="container" style="display: none;">
     <header>
-      <div style="display: flex; align-items: center; gap: 14px;">
-        <img src="logo.png" alt="LabBridge Logo" style="width: 44px; height: 44px; border-radius: 12px; object-fit: contain; border: 1px solid var(--border); background: var(--bg);" />
+      <div class="brand">
+        <img src="logo.png" alt="LabBridge Logo" style="width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);" />
         <div>
-          <h1 style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 20px; font-weight: 700; color: #FFF;">LabBridge <span style="color: #39FF14; font-size: 12px; font-weight: 600; background: rgba(57,255,20,0.12); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(57,255,20,0.3);">Phone</span></h1>
-          <div style="font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; margin-top: 3px;">[ P2P RELAY CLIENT ]</div>
+          <div class="brand-name">LabBridge</div>
         </div>
       </div>
-      <div class="status-badge">
+      <div class="status-pill">
         <div id="phone-status-dot" class="status-dot"></div>
-        <span id="phone-status-text" style="font-family: ui-monospace, monospace; font-weight: 600;">Disconnected</span>
+        <span id="phone-status-text">Disconnected</span>
       </div>
     </header>
 
     <!-- Screen 1: Scanner -->
     <div id="phone-screen-scanner" style="display: flex; flex-direction: column; gap: 16px;">
-      <p style="font-size: 14px; color: var(--muted); text-align: center; font-family: ui-monospace, monospace;">Point camera at PC screen QR code to pair</p>
-      <div style="background: #000; border-radius: 14px; overflow: hidden; position: relative; min-height: 260px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border);">
+      <p style="font-size: 13px; color: var(--text-2); text-align: center;">Point camera at PC screen QR code to pair</p>
+      <div style="background: #000; border-radius: 12px; overflow: hidden; position: relative; min-height: 260px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border);">
         <video id="phone-video" playsinline autoplay muted style="width: 100%; height: auto; display: block;"></video>
-        <div id="phone-camera-msg" style="position: absolute; color: var(--muted); font-size: 13px; text-align: center; padding: 20px; font-family: ui-monospace, monospace;">Requesting camera access...</div>
+        <div id="phone-camera-msg" style="position: absolute; color: var(--text-3); font-size: 13px; text-align: center; padding: 20px; font-family: var(--mono);">Requesting camera access...</div>
       </div>
-      <div style="display: flex; gap: 8px; margin-top: 8px;">
-        <input type="text" id="phone-manual-id" placeholder="Or enter 12-char ID manually" maxlength="12" style="flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 8px; font-size: 14px;" />
-        <button onclick="phoneConnectManual()" style="background: var(--primary); border: none; color: white; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer;">Connect</button>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+        <input type="text" id="phone-manual-id" placeholder="Or enter 12-char ID manually" maxlength="12" />
+        <button onclick="phoneConnectManual()">Connect</button>
       </div>
     </div>
 
     <!-- Screen 2: Connected -->
-    <div id="phone-screen-connected" style="display: none; flex-direction: column; gap: 20px;">
-      <div style="padding: 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 14px;">
-        <p style="font-size: 13px; color: var(--text); font-weight: 700; font-family: ui-monospace, monospace;">CONNECTED TO PC TERMINAL</p>
-        <p id="phone-session-info" style="font-size: 12px; color: var(--primary); margin-top: 4px; font-family: ui-monospace, monospace;">Session ID: ---</p>
+    <div id="phone-screen-connected" style="display: none; flex-direction: column; gap: 16px;">
+      <div class="folder-section">
+        <p style="font-size: 13px; color: var(--text); font-weight: 700; font-family: var(--mono);">CONNECTED TO PC TERMINAL</p>
+        <p id="phone-session-info" style="font-size: 12px; color: var(--primary); margin-top: 4px; font-family: var(--mono);">Session ID: ---</p>
       </div>
 
       <!-- Send Dropzone -->
-      <div id="phone-dropzone" class="dropzone" style="border-color: rgba(108, 99, 255, 0.5); background: rgba(108, 99, 255, 0.03); padding: 48px 20px;">
+      <div id="phone-dropzone" class="dropzone">
         <input type="file" id="phone-file-input" multiple onchange="phoneHandleFilesSelected(event)" />
-        <div style="font-size: 40px; margin-bottom: 12px;">📤</div>
-        <p style="font-weight: 700; font-size: 17px; font-family: ui-monospace, monospace; color: #FFF;">TAP TO SEND FILES TO PC</p>
-        <span style="font-size: 13px; color: var(--muted); display: block; margin-top: 4px;">Choose from Photos, Files, or iCloud Drive</span>
+        <div style="font-family: var(--mono); font-size: 18px; color: var(--text-3); margin-bottom: 8px;">↑</div>
+        <div style="font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text);">Tap to send files to PC</div>
+        <div style="font-size: 12px; color: var(--text-3); margin-top: 4px;">Photos · Files · iCloud Drive</div>
       </div>
 
       <!-- Active Transfer Progress -->
-      <div id="phone-transfer-area" style="display: none; flex-direction: column; gap: 12px; padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px;">
-        <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; font-family: ui-monospace, monospace;">
+      <div id="phone-transfer-area" style="display: none; flex-direction: column; gap: 14px; padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;">
+        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; font-family: var(--mono);">
           <span id="phone-transfer-title" style="color: #FFF;">Transferring...</span>
           <span id="phone-transfer-pct" style="color: var(--primary);">0%</span>
         </div>
-        <div style="font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, monospace;" id="phone-transfer-filename">file.pdf</div>
-        <progress id="phone-transfer-progress" value="0" max="100" style="width: 100%; height: 16px; accent-color: var(--primary);"></progress>
-        <button onclick="phoneCancelTransfer()" style="background: transparent; border: 1px solid var(--border); color: var(--error); padding: 10px; border-radius: 8px; font-size: 13px; cursor: pointer; margin-top: 4px; font-family: ui-monospace, monospace;">Cancel Transfer</button>
+        <div style="font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono);" id="phone-transfer-filename">file.pdf</div>
+        <progress id="phone-transfer-progress" value="0" max="100" style="display:none;"></progress>
+        <div class="progress-track">
+          <div class="progress-fill" id="phone-transfer-bar"></div>
+        </div>
+        <button onclick="phoneCancelTransfer()" class="btn-cancel">cancel transfer</button>
       </div>
     </div>
 
     <!-- Screen 3: Done -->
-    <div id="phone-screen-done" style="display: none; flex-direction: column; align-items: center; text-align: center; gap: 20px; padding: 24px 0;">
+    <div id="phone-screen-done" style="display: none; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 20px 0;">
       <div class="done-icon">✓</div>
       <div>
-        <p id="phone-done-message" style="font-size: 18px; font-weight: 700; margin-bottom: 6px; font-family: ui-monospace, monospace; color: #FFF;">TRANSFER COMPLETED!</p>
-        <p id="phone-done-subtext" style="font-size: 14px; color: var(--muted); word-break: break-all; font-family: ui-monospace, monospace;">File.pdf</p>
+        <p id="phone-done-message">TRANSFER COMPLETED!</p>
+        <p id="phone-done-subtext">File.pdf</p>
       </div>
       <button class="btn-reset" onclick="phoneResetToConnected()">Transfer Another</button>
     </div>
@@ -359,10 +862,10 @@
 
         new QRCode(qrEl, {
           text: qrPayload,
-          width: 220,
-          height: 220,
-          colorDark: "#0A0A0F",
-          colorLight: "#E8E8F0",
+          width: 200,
+          height: 200,
+          colorDark: "#000000",
+          colorLight: "#FFFFFF",
           correctLevel: QRCode.CorrectLevel.M
         });
 
@@ -384,7 +887,7 @@
               if (qEl) qEl.style.opacity = '0.25';
               const secEl = document.getElementById('timer-sec');
               if (secEl) secEl.innerText = '0s';
-              setStatus(false, 'QR Code Expired (Click Refresh)');
+              setStatus(false, 'QR Code Expired');
             } else {
               console.warn('Session expired.');
             }
@@ -539,7 +1042,6 @@
       createSession();
     }
 
-    // Folder Navigation & Rendering
     function navigateRoot() {
       state.currentFolderId = null;
       state.currentFolderPath = [];
@@ -553,7 +1055,6 @@
     }
 
     function renderFolders() {
-      // Render breadcrumbs safely using DOM manipulation
       const bcEl = document.getElementById('breadcrumb');
       if (!bcEl) return;
       bcEl.innerHTML = '';
@@ -578,7 +1079,6 @@
         bcEl.appendChild(itemSpan);
       }
 
-      // Find children of currentFolderId (checking both camelCase and snake_case parentId)
       const children = (state.folderTree || []).filter(f => {
         const pid = f.parentId !== undefined ? f.parentId : f.parent_id;
         return pid === state.currentFolderId || (state.currentFolderId === null && !pid);
@@ -587,7 +1087,7 @@
       if (!gridEl) return;
 
       if (children.length === 0) {
-        gridEl.innerHTML = `<p style="color: var(--muted); font-size: 13px; align-self: center;">No subfolders inside this directory</p>`;
+        gridEl.innerHTML = `<p style="color: var(--text-3); font-size: 12px; align-self: center; font-family: var(--mono);">No subfolders inside this directory</p>`;
         return;
       }
 
@@ -595,7 +1095,7 @@
       children.forEach(f => {
         const btn = document.createElement('button');
         btn.className = 'folder-btn';
-        btn.textContent = `📁 ${f.name || 'Folder'}`;
+        btn.textContent = f.name || 'Folder';
         btn.addEventListener('click', () => navigateIntoFolder(f.id, f.name || 'Folder'));
         gridEl.appendChild(btn);
       });
@@ -611,7 +1111,6 @@
       renderFolders();
     }
 
-    // HKDF / AES-GCM Key Derivation & Encryption
     async function deriveAESKey(sessionId) {
       const enc = new TextEncoder();
       const baseKey = await crypto.subtle.importKey(
@@ -663,7 +1162,6 @@
       return { chunkIndex: extractedIndex, plaintext };
     }
 
-    // File Drop & Sending
     function setupDropzone() {
       const dz = document.getElementById('dropzone');
       const fileInput = document.getElementById('file-input');
@@ -711,7 +1209,7 @@
       if (qs && state.sendQueue.length > 0) {
         qs.innerText = `${state.sendQueue.length} more file(s) waiting in queue...`;
       } else if (qs) {
-        qs.innerText = 'Will be saved directly to the selected folder above';
+        qs.innerText = 'E2E encrypted · saves directly to phone folder';
       }
     }
 
@@ -798,7 +1296,6 @@
       sendNextChunk(chunkIndex + 1);
     }
 
-    // Receiving Binary Chunks (Phone to PC)
     async function handleIncomingBinaryChunk(buffer) {
       const transfer = state.currentTransfer;
       if (!transfer || transfer.direction !== 'receiving') return;
@@ -878,13 +1375,13 @@
       state.receivedFiles.forEach(f => {
         const item = document.createElement('div');
         item.className = 'received-item';
-        item.style.cssText = 'padding: 14px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; margin-top: 10px;';
+        item.style.cssText = 'padding: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 10px; margin-top: 10px; font-family: var(--mono);';
 
         const isImage = (f.mimeType && f.mimeType.startsWith('image/')) || f.filename.match(/\.(jpg|jpeg|png|gif|webp|heic|bmp)$/i);
         let imgHtml = '';
         if (isImage) {
           imgHtml = `<div style="margin-bottom: 12px; text-align: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px;">
-            <img src="${f.blobUrl}" alt="${f.filename}" style="max-height: 240px; max-width: 100%; border-radius: 6px; object-fit: contain; box-shadow: 0 4px 12px rgba(0,0,0,0.4);" />
+            <img src="${f.blobUrl}" alt="${f.filename}" style="max-height: 240px; max-width: 100%; border-radius: 6px; object-fit: contain;" />
           </div>`;
         }
 
@@ -892,12 +1389,12 @@
           ${imgHtml}
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
             <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
-              <strong style="font-size: 15px; color: #fff;">${f.filename}</strong><br />
-              <span style="font-size: 13px; color: #aaa;">${(f.size / (1024 * 1024)).toFixed(2)} MB</span>
+              <strong style="font-size: 13px; color: #fff;">${f.filename}</strong><br />
+              <span style="font-size: 11px; color: var(--text-3);">${formatSize(f.size)}</span>
             </div>
             <div style="display: flex; gap: 8px;">
-              <a href="${f.blobUrl}" target="_blank" style="background: rgba(255,255,255,0.15); color: white; text-decoration: none; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; white-space: nowrap;">👁️ Preview</a>
-              <a href="${f.blobUrl}" download="${f.filename}" style="background: #6C63FF; color: white; text-decoration: none; padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; white-space: nowrap; box-shadow: 0 2px 8px rgba(108,99,255,0.4);">📥 Download</a>
+              <a href="${f.blobUrl}" target="_blank" style="background: transparent; border: 1px solid var(--border); color: white; text-decoration: none; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; white-space: nowrap;">Preview</a>
+              <a href="${f.blobUrl}" download="${f.filename}" style="background: var(--primary); color: white; text-decoration: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap;">Download</a>
             </div>
           </div>
         `;
@@ -928,6 +1425,8 @@
       document.getElementById('transfer-pct').innerText = `${pct}%`;
       const prog = document.getElementById('transfer-progress');
       if (prog) prog.value = pct;
+      const fillBar = document.getElementById('progress-fill-bar');
+      if (fillBar) fillBar.style.width = pct + '%';
     }
 
     function formatSize(bytes) {
@@ -936,9 +1435,6 @@
       return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     }
 
-    // ==========================================
-    // Phone PWA Mode (Three-Screen State Machine)
-    // ==========================================
     const phoneState = {
       sessionId: null,
       ws: null,
@@ -1186,7 +1682,7 @@
         phoneUpdateProgressDisplay(transfer.filename, transfer.size, pct);
 
         if (phoneState.ws && phoneState.ws.readyState === WebSocket.OPEN) {
-          phoneState.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
+          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
         }
 
         if (receivedCount >= transfer.total_chunks) {
@@ -1314,7 +1810,7 @@
         phoneProcessNextInQueue();
       } else {
         phoneShowScreen('connected');
-        document.getElementById('phone-dropzone').style.display = 'block';
+        document.getElementById('phone-dropzone').style.display = 'flex';
         document.getElementById('phone-transfer-area').style.display = 'none';
       }
     }
@@ -1328,6 +1824,8 @@
       if (nameEl) nameEl.innerText = filename;
       if (pctEl) pctEl.innerText = `${pct}%`;
       if (progEl) progEl.value = pct;
+      const phoneFill = document.getElementById('phone-transfer-bar');
+      if (phoneFill) phoneFill.style.width = pct + '%';
     }
   </script>
 </body>
