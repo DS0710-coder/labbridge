@@ -86,7 +86,7 @@ export default {
       if (path === "/sw.js") {
         return corsResponse(SW_JS, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8" } });
       }
-      if (path === "/qr.min.js") {
+      if (path === "/qr.min.js" || path === "/qrcode.min.js") {
         return corsResponse(QR_MIN_JS, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8" } });
       }
       if (path === "/jsQR.min.js") {
