@@ -47,14 +47,14 @@
 
     .container {
       width: 100%;
-      max-width: 680px;
+      max-width: 1600px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 0;
-      padding: 28px;
+      padding: 32px;
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 24px;
     }
 
     header {
@@ -726,54 +726,64 @@
     </header>
 
     <!-- Phase 1: Waiting -->
-    <div id="phase-waiting">
-      <!-- Explanation / Onboarding Banner -->
-      <div style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-          <span style="font-size: 12px; font-weight: 800; color: #FFFFFF; letter-spacing: 1px;">[ WHAT IS CUEFLEX? ]</span>
-          <a href="install.html" style="background: #FFFFFF; color: #000000; padding: 6px 12px; font-size: 11px; font-weight: 800; text-decoration: none; text-transform: uppercase;">[ GET MOBILE APP / APK ]</a>
-        </div>
-        <p style="font-size: 13px; color: var(--text-2); line-height: 1.5; font-family: var(--mono);">
-          CueFlex is a serverless, zero-install peer-to-peer file transfer utility for rapid data movement between desktop terminals and mobile devices.
-        </p>
-        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: var(--text-3); font-family: var(--mono); border-top: 1px solid var(--border); padding-top: 10px;">
-          <div>• <strong style="color: #FFFFFF;">ZERO CLOUD STORAGE:</strong> Files stream directly between devices via WebSocket memory relay without server caching.</div>
-          <div>• <strong style="color: #FFFFFF;">E2E ENCRYPTED:</strong> 256-bit AES-GCM encryption derived from the ephemeral session ID ensures zero interception.</div>
-          <div>• <strong style="color: #FFFFFF;">INSTANT PAIRING:</strong> Point your CueFlex app or iPhone camera at the QR code below to connect in &lt;1 second.</div>
-        </div>
-      </div>
+    <div id="phase-waiting" style="width: 100%;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 32px; align-items: stretch; width: 100%;">
+        <!-- Left Column: Specs, Onboarding & Instructions -->
+        <div style="display: flex; flex-direction: column; justify-content: space-between; gap: 24px; background: var(--surface-2); border: 1px solid var(--border); padding: 28px;">
+          <div style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+              <span style="font-size: 13px; font-weight: 800; color: #FFFFFF; letter-spacing: 1px;">[ WHAT IS CUEFLEX? ]</span>
+              <a href="install.html" style="background: #FFFFFF; color: #000000; padding: 6px 14px; font-size: 11px; font-weight: 800; text-decoration: none; text-transform: uppercase;">[ GET MOBILE APP / APK ]</a>
+            </div>
+            <p style="font-size: 14px; color: var(--text-2); line-height: 1.6; font-family: var(--mono);">
+              CueFlex is a serverless, zero-install peer-to-peer file transfer utility for rapid data movement between desktop terminals and mobile devices.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px; color: var(--text-3); font-family: var(--mono); border-top: 1px solid var(--border); padding-top: 16px;">
+              <div>• <strong style="color: #FFFFFF;">ZERO CLOUD STORAGE:</strong> Files stream directly between devices via WebSocket memory relay without server caching.</div>
+              <div>• <strong style="color: #FFFFFF;">E2E ENCRYPTED:</strong> 256-bit AES-GCM encryption derived from the ephemeral session ID ensures zero interception.</div>
+              <div>• <strong style="color: #FFFFFF;">INSTANT PAIRING:</strong> Point your CueFlex app or iPhone camera at the QR code to connect in &lt;1 second.</div>
+            </div>
+          </div>
 
-      <div class="phase-label">WAITING FOR DEVICE CONNECTION</div>
-
-      <div class="qr-wrap">
-        <div class="qr-box">
-          <div id="qrcode"></div>
-          <div id="qr-expired-overlay" class="qr-expired-overlay">
-            <div class="expired-text">[ QR CODE EXPIRED ]</div>
-            <button onclick="createSession()" class="btn-refresh-qr">[ REFRESH QR ]</button>
+          <div style="border-top: 1px solid var(--border); padding-top: 20px;">
+            <div style="font-size: 11px; font-weight: 800; color: #FFFFFF; letter-spacing: 1px; margin-bottom: 14px;">[ PAIRING PROCEDURE ]</div>
+            <div class="steps" style="margin-bottom: 0; gap: 14px;">
+              <div class="step">
+                <span class="step-num">01</span>
+                <span class="step-text" style="font-size: 14px;">Open CueFlex mobile app or iPhone camera</span>
+              </div>
+              <div class="step">
+                <span class="step-num">02</span>
+                <span class="step-text" style="font-size: 14px;">Scan the QR code displayed on the right</span>
+              </div>
+              <div class="step">
+                <span class="step-num">03</span>
+                <span class="step-text" style="font-size: 14px;">Connected — drop files or browse target directory across full screen</span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="steps">
-        <div class="step">
-          <span class="step-num">01</span>
-          <span class="step-text">Open CueFlex mobile app or iPhone camera</span>
-        </div>
-        <div class="step">
-          <span class="step-num">02</span>
-          <span class="step-text">Scan the QR code displayed above</span>
-        </div>
-        <div class="step">
-          <span class="step-num">03</span>
-          <span class="step-text">Connected — drop files or browse target directory</span>
-        </div>
-      </div>
+        <!-- Right Column: QR Code Pairing Terminal -->
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--surface-2); border: 1px solid var(--border); padding: 32px; gap: 24px;">
+          <div class="phase-label" style="margin-bottom: 0; font-size: 12px; letter-spacing: 2px;">WAITING FOR DEVICE CONNECTION</div>
 
-      <div class="session-meta">
-        <span>SESSION: <span id="display-session-id" class="mono-accent">---</span></span>
-        <span>EXPIRES: <span id="timer-sec" class="mono-accent">240s</span></span>
-        <button id="btn-refresh-waiting" onclick="createSession()" class="btn-text">[ REFRESH SESSION ]</button>
+          <div class="qr-wrap" style="margin-bottom: 0;">
+            <div class="qr-box" style="padding: 24px;">
+              <div id="qrcode"></div>
+              <div id="qr-expired-overlay" class="qr-expired-overlay">
+                <div class="expired-text">[ QR CODE EXPIRED ]</div>
+                <button onclick="createSession()" class="btn-refresh-qr">[ REFRESH QR ]</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="session-meta" style="width: 100%; justify-content: space-around; border-top: 1px solid var(--border); padding-top: 20px; font-size: 12px;">
+            <span>SESSION: <span id="display-session-id" class="mono-accent">---</span></span>
+            <span>EXPIRES: <span id="timer-sec" class="mono-accent">240s</span></span>
+            <button id="btn-refresh-waiting" onclick="createSession()" class="btn-text">[ REFRESH SESSION ]</button>
+          </div>
+        </div>
       </div>
     </div>
 
