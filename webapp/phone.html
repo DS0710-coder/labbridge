@@ -373,6 +373,7 @@
       cryptoKey: null,
       receiving: null,
       sending: null,
+      phoneSendQueue: [],
       scanner: null
     };
 
@@ -578,10 +579,13 @@
           const pct = Math.round((state.sending.acked / state.sending.total_chunks) * 100);
           updateProgress(pct);
           if (state.sending.acked === state.sending.total_chunks) {
-            document.getElementById('section-transferring').style.display = 'none';
-            document.getElementById('card-connected').style.display = 'block';
             state.sending = null;
-            alert('File sent successfully to PC!');
+            if (state.phoneSendQueue && state.phoneSendQueue.length > 0) {
+              processNextPhoneSend();
+            } else {
+              document.getElementById('section-transferring').style.display = 'none';
+              document.getElementById('card-connected').style.display = 'block';
+            }
           } else {
             streamNextSendingChunk();
           }
@@ -708,7 +712,24 @@
     function handlePhoneFilesSelected(event) {
       const files = event.target.files;
       if (!files || files.length === 0) return;
-      const file = files[0];
+      state.phoneSendQueue = state.phoneSendQueue || [];
+      state.phoneSendQueue.push(...Array.from(files));
+      event.target.value = '';
+      if (!state.sending) {
+        processNextPhoneSend();
+      } else {
+        document.getElementById('transfer-title').innerText = `Sending (${state.phoneSendQueue.length} more in queue)...`;
+      }
+    }
+
+    function processNextPhoneSend() {
+      if (!state.phoneSendQueue || state.phoneSendQueue.length === 0) {
+        document.getElementById('section-transferring').style.display = 'none';
+        document.getElementById('card-connected').style.display = 'block';
+        state.sending = null;
+        return;
+      }
+      const file = state.phoneSendQueue.shift();
       
       const CHUNK_SIZE = 512 * 1024;
       const total_chunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -723,7 +744,11 @@
 
       document.getElementById('card-connected').style.display = 'none';
       document.getElementById('section-transferring').style.display = 'block';
-      document.getElementById('transfer-title').innerText = 'Sending to PC...';
+      if (state.phoneSendQueue.length > 0) {
+        document.getElementById('transfer-title').innerText = `Sending to PC (${state.phoneSendQueue.length} remaining)...`;
+      } else {
+        document.getElementById('transfer-title').innerText = 'Sending to PC...';
+      }
       document.getElementById('transfer-filename').innerText = file.name;
       updateProgress(0);
 
