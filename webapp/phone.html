@@ -340,12 +340,12 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 16px;
-      background: var(--surface);
+      padding: 8px 14px;
+      background: var(--surface-2);
       border: 1px solid var(--border);
       color: var(--text);
       font-family: var(--mono);
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 800;
       text-decoration: none;
       transition: border-color 0.15s;
@@ -364,9 +364,12 @@
         <div class="brand-name">CUEFLEX</div>
       </div>
     </div>
-    <div class="status-pill">
-      <span id="status-dot" class="status-dot"></span>
-      <span id="status-text">DISCONNECTED</span>
+    <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+      <a href="https://github.com/DS0710-coder" target="_blank" class="made-by-badge">MADE BY DS0710-CODER</a>
+      <div class="status-pill">
+        <span id="status-dot" class="status-dot"></span>
+        <span id="status-text">DISCONNECTED</span>
+      </div>
     </div>
   </header>
 
@@ -469,12 +472,6 @@
 
     <div id="phone-thumb-strip" class="thumb-strip"></div>
   </div>
-
-  <footer>
-    <a href="https://github.com/DS0710-coder" target="_blank" class="made-by-badge">
-      <span>MADE BY DS0710-CODER</span>
-    </a>
-  </footer>
 
   <script>
     const state = {

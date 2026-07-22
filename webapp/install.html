@@ -88,8 +88,8 @@
 
     .grid-sections {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
-      gap: 40px;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+      gap: 32px;
       flex: 1;
       align-items: stretch;
       width: 100%;
@@ -154,28 +154,6 @@
       flex-shrink: 0;
     }
 
-    footer {
-      margin-top: 36px;
-      padding-top: 24px;
-      border-top: 1px solid var(--border);
-      text-align: center;
-    }
-
-    .made-by-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 24px;
-      background: var(--surface-2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: var(--mono);
-      font-size: 14px;
-      font-weight: 800;
-      text-decoration: none;
-    }
-
-    .made-by-badge:hover { border-color: #FFFFFF; }
   </style>
 </head>
 <body>
@@ -226,11 +204,6 @@
       </div>
     </div>
 
-    <footer>
-      <a href="https://github.com/DS0710-coder" target="_blank" class="made-by-badge">
-        <span>MADE BY DS0710-CODER</span>
-      </a>
-    </footer>
   </div>
 </body>
 </html>
