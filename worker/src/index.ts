@@ -67,7 +67,7 @@ export default {
     const ip = request.headers.get("CF-Connecting-IP") ?? "local/unknown";
 
     // ── Static Web & PWA Routes ───────────────────────────────────────
-    if (request.method === "GET") {
+    if (request.method === "GET" || request.method === "HEAD") {
       if (path === "/" || path === "/index.html") {
         return corsResponse(INDEX_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
       }
@@ -87,7 +87,7 @@ export default {
         const bin = Uint8Array.from(atob(ICON_192_BASE64), c => c.charCodeAt(0));
         return new Response(bin, { status: 200, headers: { "Content-Type": "image/png", "Access-Control-Allow-Origin": "*" } });
       }
-      if (path === "/icon-512.png") {
+      if (path === "/icon-512.png" || path === "/logo.png") {
         const bin = Uint8Array.from(atob(ICON_512_BASE64), c => c.charCodeAt(0));
         return new Response(bin, { status: 200, headers: { "Content-Type": "image/png", "Access-Control-Allow-Origin": "*" } });
       }

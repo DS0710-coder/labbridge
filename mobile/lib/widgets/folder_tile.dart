@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/constants.dart';
 import '../models/folder.dart';
+import '../main.dart';
 
 class FolderTile extends StatelessWidget {
   final Folder folder;
@@ -22,72 +23,102 @@ class FolderTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final folderColor = AppColors.fromHex(folder.color);
 
-    return Card(
-      color: isSelected ? const Color(0xFF6C63FF).withValues(alpha: 0.08) : const Color(0xFF111118),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isSelected ? const Color(0xFF6C63FF) : const Color(0xFF1E1E2E),
-          width: isSelected ? 2 : 1,
+    final borderColors = isSelected
+        ? AppTheme.gradPrimary
+        : AppTheme.borderGrad;
+
+    final bgColor = isSelected
+        ? AppTheme.accent.withValues(alpha: 0.12)
+        : AppTheme.surface;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: borderColors,
         ),
+        boxShadow: isSelected
+            ? [
+                BoxShadow(
+                  color: AppTheme.accent.withValues(alpha: 0.25),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                )
+              ]
+            : null,
       ),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: folderColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.folder_rounded,
-                  color: folderColor,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  folder.name,
-                  style: const TextStyle(
-                    color: Color(0xFFE8E8F0),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (selectionMode)
+      padding: const EdgeInsets.all(1),
+      child: Material(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(19),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(19),
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFF6C63FF) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: isSelected ? const Color(0xFF6C63FF) : const Color(0xFF6B6B80),
-                      width: 2,
+                    borderRadius: BorderRadius.circular(14),
+                    gradient: LinearGradient(
+                      colors: [
+                        folderColor.withValues(alpha: 0.28),
+                        folderColor.withValues(alpha: 0.08)
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                   ),
-                  child: isSelected
-                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
-                      : null,
-                )
-              else
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: Color(0xFF6B6B80),
-                  size: 22,
+                  child: Icon(
+                    Icons.folder_rounded,
+                    color: folderColor,
+                    size: 22,
+                  ),
                 ),
-            ],
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    folder.name,
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: -0.3,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (selectionMode)
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppTheme.accent : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isSelected ? AppTheme.accent : AppTheme.textMuted,
+                        width: 2,
+                      ),
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
+                        : null,
+                  )
+                else
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: AppTheme.textSecondary,
+                    size: 20,
+                  ),
+              ],
+            ),
           ),
         ),
       ),

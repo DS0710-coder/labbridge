@@ -204,16 +204,16 @@ export class Session extends DurableObject {
     const role = roleMatch[1] as "pc" | "phone";
 
     // Require Upgrade header
-    if (request.headers.get("Upgrade") !== "websocket") {
+    if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
       return new Response("Expected WebSocket upgrade", { status: 426 });
     }
 
-    // Enforce one-PC, one-phone policy
+    // Enforce one-PC, one-phone policy: if reconnecting, replace existing socket
     const existing = this.ctx.getWebSockets();
     for (const ws of existing) {
       const att = ws.deserializeAttachment() as SocketAttachment | null;
       if (att && att.role === role) {
-        return new Response(`A ${role} is already connected`, { status: 409 });
+        try { ws.close(1000, "Replaced by new connection"); } catch (_) {}
       }
     }
 

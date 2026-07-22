@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../services/transfer_service.dart';
+import '../main.dart';
 
 class ScannerScreen extends StatefulWidget {
   const ScannerScreen({super.key});
@@ -102,7 +105,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
         content: Text(message),
         backgroundColor: const Color(0xFFEF4444),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -111,56 +114,124 @@ class _ScannerScreenState extends State<ScannerScreen> {
     final controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111118),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Manual Session ID',
-          style: TextStyle(color: Color(0xFFE8E8F0)),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Enter session ID for emulator testing',
-              style: TextStyle(color: Color(0xFF6B6B80), fontSize: 12),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              style: const TextStyle(color: Color(0xFFE8E8F0)),
-              decoration: InputDecoration(
-                hintText: 'Session ID',
-                hintStyle: const TextStyle(color: Color(0xFF6B6B80)),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: GradientCard(
+          borderRadius: 24,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  IconBox(icon: Icons.keyboard_rounded, size: 40, iconSize: 20),
+                  SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Manual Session ID',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Enter session ID for connection',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontFamily: 'monospace',
+                  fontSize: 14,
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+                decoration: InputDecoration(
+                  hintText: 'e.g. lb_session_abc123',
+                  hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                  filled: true,
+                  fillColor: AppTheme.surface2,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppTheme.accent),
+                  ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.textSecondary,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    ),
+                    child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(width: 10),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: const LinearGradient(colors: AppTheme.gradPrimary),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.accent.withValues(alpha: 0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () async {
+                          final id = controller.text.trim();
+                          if (id.isNotEmpty) {
+                            Navigator.pop(context);
+                            await _connectAndReturn(id);
+                          }
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                          child: Text(
+                            'Connect',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
-          ),
-          TextButton(
-            onPressed: () async {
-              final id = controller.text.trim();
-              if (id.isNotEmpty) {
-                Navigator.pop(context);
-                await _connectAndReturn(id);
-              }
-            },
-            child: const Text('Connect', style: TextStyle(color: Color(0xFF6C63FF))),
-          ),
-        ],
       ),
     );
   }
@@ -168,7 +239,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: Colors.black,
       body: Stack(
         children: [
           // Camera scanner
@@ -177,88 +248,232 @@ class _ScannerScreenState extends State<ScannerScreen> {
             onDetect: _onDetect,
           ),
 
-          // Overlay
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF0A0A0F).withValues(alpha: 0.3),
-            ),
-          ),
-
-          // Scan frame
-          Center(
-            child: Container(
-              width: 260,
-              height: 260,
-              decoration: BoxDecoration(
-                border: Border.all(
-                  color: const Color(0xFF6C63FF).withValues(alpha: 0.7),
-                  width: 2,
-                ),
-                borderRadius: BorderRadius.circular(20),
+          // Dark overlay with cutout using ColorFiltered or custom Stack overlays
+          Positioned.fill(
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                Colors.black.withValues(alpha: 0.65),
+                BlendMode.srcOut,
               ),
-            ),
-          ),
-
-          // Top bar
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+              child: Stack(
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                    style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFF0A0A0F).withValues(alpha: 0.6),
+                  Container(
+                    decoration: const BoxDecoration(color: Colors.black),
+                  ),
+                  Center(
+                    child: Container(
+                      width: 260,
+                      height: 260,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
                     ),
                   ),
-                  const Spacer(),
-                  const Text(
-                    'Scan QR Code',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const Spacer(),
-                  const SizedBox(width: 48), // Balance
                 ],
               ),
             ),
           ),
 
-          // Bottom hint and manual entry
+          // Glowing scan frame & sweeping laser
+          Center(
+            child: SizedBox(
+              width: 260,
+              height: 260,
+              child: Stack(
+                children: [
+                  // Gradient border
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        width: 2.5,
+                        color: AppTheme.accent,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.accent.withValues(alpha: 0.35),
+                          blurRadius: 20,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Sweeping laser line
+                  Animate(
+                    onPlay: (controller) => controller.repeat(reverse: true),
+                    effects: [
+                      SlideEffect(
+                        begin: const Offset(0, 0),
+                        end: const Offset(0, 240 / 2),
+                        duration: 1800.ms,
+                        curve: Curves.easeInOut,
+                      ),
+                    ],
+                    child: Container(
+                      height: 3,
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            AppTheme.accent,
+                            Color(0xFF9B8FFF),
+                            AppTheme.accent,
+                            Colors.transparent,
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.accent.withValues(alpha: 0.8),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // Corner indicators
+                  ..._buildCornerIndicators(),
+                ],
+              ),
+            ),
+          ),
+
+          // Top glassmorphic bar
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  color: AppTheme.bg.withValues(alpha: 0.5),
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + 10,
+                    bottom: 14,
+                    left: 16,
+                    right: 16,
+                  ),
+                  child: Row(
+                    children: [
+                      // Back pill button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF1E1E2E)),
+                        ),
+                        child: IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary, size: 20),
+                          tooltip: 'Back',
+                        ),
+                      ),
+                      const Expanded(
+                        child: Text(
+                          'Scan QR Code',
+                          style: TextStyle(
+                            color: AppTheme.textPrimary,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      // Flash / torch toggle pill button
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface.withValues(alpha: 0.8),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFF1E1E2E)),
+                        ),
+                        child: IconButton(
+                          onPressed: () => _scannerController.toggleTorch(),
+                          icon: const Icon(Icons.flash_on_rounded, color: AppTheme.accent, size: 20),
+                          tooltip: 'Toggle Flash',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom glassmorphic overlay
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Point your camera at the QR code\non the PC browser',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    TextButton(
-                      onPressed: _showManualEntry,
-                      child: const Text(
-                        'Enter Session ID Manually',
+            child: ClipRRect(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                child: Container(
+                  color: AppTheme.bg.withValues(alpha: 0.65),
+                  padding: EdgeInsets.only(
+                    top: 24,
+                    bottom: MediaQuery.of(context).padding.bottom + 20,
+                    left: 24,
+                    right: 24,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Point your camera at the QR code displayed on the desktop browser at contextl-web.vercel.app',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Color(0xFF6C63FF),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textSecondary,
+                          fontSize: 13.5,
+                          height: 1.4,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 20),
+                      // Manual entry pill button
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppTheme.surface.withValues(alpha: 0.9),
+                              borderRadius: BorderRadius.circular(30),
+                              border: Border.all(color: const Color(0xFF1E1E2E)),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(30),
+                                onTap: _showManualEntry,
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.keyboard_rounded, color: AppTheme.accent, size: 18),
+                                      SizedBox(width: 10),
+                                      Text(
+                                        'Enter Session ID Manually',
+                                        style: TextStyle(
+                                          color: AppTheme.textPrimary,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ).animate().fadeIn(delay: 200.ms).scale(),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -266,5 +481,78 @@ class _ScannerScreenState extends State<ScannerScreen> {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildCornerIndicators() {
+    const double size = 26;
+    const double stroke = 4;
+    const color = AppTheme.accent;
+
+    return [
+      // Top-left corner
+      Positioned(
+        top: -1,
+        left: -1,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            border: Border(
+              top: BorderSide(color: color, width: stroke),
+              left: BorderSide(color: color, width: stroke),
+            ),
+            borderRadius: BorderRadius.only(topLeft: Radius.circular(24)),
+          ),
+        ),
+      ),
+      // Top-right corner
+      Positioned(
+        top: -1,
+        right: -1,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            border: Border(
+              top: BorderSide(color: color, width: stroke),
+              right: BorderSide(color: color, width: stroke),
+            ),
+            borderRadius: BorderRadius.only(topRight: Radius.circular(24)),
+          ),
+        ),
+      ),
+      // Bottom-left corner
+      Positioned(
+        bottom: -1,
+        left: -1,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: color, width: stroke),
+              left: BorderSide(color: color, width: stroke),
+            ),
+            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(24)),
+          ),
+        ),
+      ),
+      // Bottom-right corner
+      Positioned(
+        bottom: -1,
+        right: -1,
+        child: Container(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(color: color, width: stroke),
+              right: BorderSide(color: color, width: stroke),
+            ),
+            borderRadius: BorderRadius.only(bottomRight: Radius.circular(24)),
+          ),
+        ),
+      ),
+    ];
   }
 }

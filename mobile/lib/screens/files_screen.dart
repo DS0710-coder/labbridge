@@ -4,6 +4,7 @@ import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../models/folder.dart';
 import '../models/file_item.dart';
@@ -12,6 +13,7 @@ import '../services/transfer_service.dart';
 import '../widgets/folder_tile.dart';
 import '../widgets/file_tile.dart';
 import 'files_batch_mixin.dart';
+import '../main.dart';
 
 class FilesScreen extends StatefulWidget {
   const FilesScreen({super.key});
@@ -30,6 +32,12 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
   List<Folder> _breadcrumbs = [];
   String? _currentFolderId;
   bool _loading = true;
+
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedTab = 'All';
+
+  final List<String> _tabs = ['All', 'Documents', 'Images', 'Media', 'Archives', 'Code'];
 
   @override
   Set<String> get selectedFolderIds => _selectedFolderIds;
@@ -67,6 +75,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
 
   @override
   void dispose() {
+    _searchController.dispose();
     _completionSub?.cancel();
     super.dispose();
   }
@@ -120,39 +129,49 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111118),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF1E1E2E)),
+        ),
         title: const Text(
           'New Folder',
-          style: TextStyle(color: Color(0xFFE8E8F0)),
+          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
         ),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: 100,
-          style: const TextStyle(color: Color(0xFFE8E8F0)),
+          style: const TextStyle(color: AppTheme.textPrimary),
           decoration: InputDecoration(
             hintText: 'Folder name',
-            hintStyle: const TextStyle(color: Color(0xFF6B6B80)),
-            counterStyle: const TextStyle(color: Color(0xFF6B6B80), fontSize: 10),
+            hintStyle: const TextStyle(color: AppTheme.textSecondary),
+            counterStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 10),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.accent),
             ),
+            filled: true,
+            fillColor: AppTheme.surface2,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Create', style: TextStyle(color: Color(0xFF6C63FF))),
+            child: const Text('Create'),
           ),
         ],
       ),
@@ -177,9 +196,9 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
   void _showFolderOptions(Folder folder) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF111118),
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => SafeArea(
         child: Column(
@@ -197,9 +216,9 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
             Text(
               folder.name,
               style: const TextStyle(
-                color: Color(0xFFE8E8F0),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const SizedBox(height: 16),
@@ -251,34 +270,44 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111118),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Rename Folder', style: TextStyle(color: Color(0xFFE8E8F0))),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF1E1E2E)),
+        ),
+        title: const Text('Rename Folder', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: 100,
-          style: const TextStyle(color: Color(0xFFE8E8F0)),
+          style: const TextStyle(color: AppTheme.textPrimary),
           decoration: InputDecoration(
-            counterStyle: const TextStyle(color: Color(0xFF6B6B80), fontSize: 10),
+            counterStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 10),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.accent),
             ),
+            filled: true,
+            fillColor: AppTheme.surface2,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Rename', style: TextStyle(color: Color(0xFF6C63FF))),
+            child: const Text('Rename'),
           ),
         ],
       ),
@@ -302,9 +331,9 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF111118),
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => SafeArea(
         child: Padding(
@@ -315,9 +344,9 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
               const Text(
                 'Choose Color',
                 style: TextStyle(
-                  color: Color(0xFFE8E8F0),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const SizedBox(height: 20),
@@ -364,21 +393,29 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111118),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Folder?', style: TextStyle(color: Color(0xFFE8E8F0))),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF1E1E2E)),
+        ),
+        title: const Text('Delete Folder?', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
         content: Text(
           'Delete "${folder.name}"? Sub-folders will be moved up.',
-          style: const TextStyle(color: Color(0xFF6B6B80)),
+          style: const TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -394,9 +431,9 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
   void _showFileOptions(FileItem file) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF111118),
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) => SafeArea(
         child: Column(
@@ -414,9 +451,9 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
             Text(
               file.name,
               style: const TextStyle(
-                color: Color(0xFFE8E8F0),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+                color: AppTheme.textPrimary,
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
               ),
               overflow: TextOverflow.ellipsis,
             ),
@@ -487,17 +524,20 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final selectedId = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111118),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Move to Folder', style: TextStyle(color: Color(0xFFE8E8F0))),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF1E1E2E)),
+        ),
+        title: const Text('Move to Folder', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
             shrinkWrap: true,
             children: [
               ListTile(
-                leading: const Icon(Icons.folder_rounded, color: Color(0xFF6B6B80)),
-                title: const Text('Root', style: TextStyle(color: Color(0xFFE8E8F0))),
+                leading: const Icon(Icons.folder_rounded, color: AppTheme.textSecondary),
+                title: const Text('Root', style: TextStyle(color: AppTheme.textPrimary)),
                 onTap: () => Navigator.pop(context, '__root__'),
               ),
               ...allFolders.map((f) => ListTile(
@@ -507,7 +547,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                         int.parse('FF${f.color.replaceAll('#', '')}', radix: 16),
                       ),
                     ),
-                    title: Text(f.name, style: const TextStyle(color: Color(0xFFE8E8F0))),
+                    title: Text(f.name, style: const TextStyle(color: AppTheme.textPrimary)),
                     onTap: () => Navigator.pop(context, f.id),
                   )),
             ],
@@ -533,33 +573,43 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final tags = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111118),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Edit Tags', style: TextStyle(color: Color(0xFFE8E8F0))),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF1E1E2E)),
+        ),
+        title: const Text('Edit Tags', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
         content: TextField(
           controller: controller,
-          style: const TextStyle(color: Color(0xFFE8E8F0)),
+          style: const TextStyle(color: AppTheme.textPrimary),
           decoration: InputDecoration(
             hintText: 'Comma-separated tags',
-            hintStyle: const TextStyle(color: Color(0xFF6B6B80)),
+            hintStyle: const TextStyle(color: AppTheme.textSecondary),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: Color(0xFF6C63FF)),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.accent),
             ),
+            filled: true,
+            fillColor: AppTheme.surface2,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save', style: TextStyle(color: Color(0xFF6C63FF))),
+            child: const Text('Save'),
           ),
         ],
       ),
@@ -576,21 +626,29 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111118),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete File?', style: TextStyle(color: Color(0xFFE8E8F0))),
+        backgroundColor: AppTheme.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF1E1E2E)),
+        ),
+        title: const Text('Delete File?', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
         content: Text(
           'Delete "${file.name}"?',
-          style: const TextStyle(color: Color(0xFF6B6B80)),
+          style: const TextStyle(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -631,26 +689,62 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
 
   void _selectAll() {
     setState(() {
-      if (_selectedFolderIds.length + _selectedFileIds.length == _folders.length + _files.length) {
+      final filteredList = _getFilteredFiles();
+      final filteredFolderList = _getFilteredFolders();
+      if (_selectedFolderIds.length + _selectedFileIds.length == filteredFolderList.length + filteredList.length) {
         _selectedFolderIds.clear();
         _selectedFileIds.clear();
         _selectionMode = false;
       } else {
-        _selectedFolderIds.addAll(_folders.map((f) => f.id));
-        _selectedFileIds.addAll(_files.map((f) => f.id));
+        _selectedFolderIds.addAll(filteredFolderList.map((f) => f.id));
+        _selectedFileIds.addAll(filteredList.map((f) => f.id));
       }
     });
+  }
+
+  bool _matchesTab(FileItem file) {
+    if (_selectedTab == 'All') return true;
+    final ext = file.name.split('.').last.toLowerCase();
+    switch (_selectedTab) {
+      case 'Documents':
+        return ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx', 'ppt', 'pptx'].contains(ext);
+      case 'Images':
+        return ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(ext);
+      case 'Media':
+        return ['mp4', 'avi', 'mkv', 'mov', 'mp3', 'wav', 'flac'].contains(ext);
+      case 'Archives':
+        return ['zip', 'rar', 'tar', 'gz'].contains(ext);
+      case 'Code':
+        return ['py', 'js', 'dart', 'java', 'c', 'cpp', 'html', 'css', 'ts', 'json'].contains(ext);
+      default:
+        return true;
+    }
+  }
+
+  List<Folder> _getFilteredFolders() {
+    if (_selectedTab != 'All' && _searchQuery.isEmpty) return [];
+    if (_searchQuery.isEmpty) return _folders;
+    return _folders.where((f) => f.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+  }
+
+  List<FileItem> _getFilteredFiles() {
+    var result = _files.where(_matchesTab).toList();
+    if (_searchQuery.isNotEmpty) {
+      result = result.where((f) => f.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+    }
+    return result;
   }
 
   Widget _buildSheetOption(IconData icon, String label, VoidCallback onTap,
       {Color? color}) {
     return ListTile(
-      leading: Icon(icon, color: color ?? const Color(0xFFE8E8F0), size: 22),
+      leading: Icon(icon, color: color ?? AppTheme.textPrimary, size: 22),
       title: Text(
         label,
         style: TextStyle(
-          color: color ?? const Color(0xFFE8E8F0),
+          color: color ?? AppTheme.textPrimary,
           fontSize: 15,
+          fontWeight: FontWeight.w500,
         ),
       ),
       onTap: onTap,
@@ -665,18 +759,23 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppTheme.surface2,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFF1E1E2E)),
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color ?? const Color(0xFF6C63FF), size: 24),
+            Icon(icon, color: color ?? AppTheme.accent, size: 22),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                color: color ?? const Color(0xFFE8E8F0),
+                color: color ?? AppTheme.textPrimary,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -689,21 +788,38 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
 
   @override
   Widget build(BuildContext context) {
+    final filteredFolders = _getFilteredFolders();
+    final filteredFiles = _getFilteredFiles();
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
+      backgroundColor: AppTheme.bg,
       floatingActionButton: !_selectionMode
-          ? FloatingActionButton(
-              backgroundColor: const Color(0xFF6C63FF),
-              onPressed: _showCreateFolderDialog,
-              child: const Icon(Icons.create_new_folder_rounded, color: Colors.white),
-            )
+          ? Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(30),
+                gradient: const LinearGradient(colors: AppTheme.gradPrimary),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.accent.withValues(alpha: 0.35),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: FloatingActionButton(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                onPressed: _showCreateFolderDialog,
+                child: const Icon(Icons.create_new_folder_rounded, color: Colors.white, size: 26),
+              ),
+            ).animate().scale(delay: 200.ms, curve: Curves.easeOutBack)
           : null,
       bottomNavigationBar: _selectionMode && (_selectedFolderIds.isNotEmpty || _selectedFileIds.isNotEmpty)
           ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: const BoxDecoration(
-                color: Color(0xFF111118),
-                border: Border(top: BorderSide(color: Color(0xFF1E1E2E))),
+                color: AppTheme.surface,
+                border: Border(top: BorderSide(color: Color(0xFF1E1E28))),
               ),
               child: SafeArea(
                 child: Row(
@@ -728,15 +844,15 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                   ],
                 ),
               ),
-            )
+            ).animate().slideY(begin: 1, end: 0, duration: 250.ms)
           : null,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header / Action Bar
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
               child: !_selectionMode
                   ? Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -744,14 +860,15 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                         const Text(
                           'Files',
                           style: TextStyle(
-                            color: Color(0xFFE8E8F0),
-                            fontSize: 24,
+                            color: AppTheme.textPrimary,
+                            fontSize: 26,
                             fontWeight: FontWeight.w700,
+                            letterSpacing: -0.8,
                           ),
                         ),
                         if (_folders.isNotEmpty || _files.isNotEmpty)
                           IconButton(
-                            icon: const Icon(Icons.checklist_rounded, color: Color(0xFF6C63FF), size: 26),
+                            icon: const Icon(Icons.checklist_rounded, color: AppTheme.accent, size: 26),
                             tooltip: 'Select multiple items',
                             onPressed: () {
                               setState(() {
@@ -760,14 +877,14 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                             },
                           ),
                       ],
-                    )
+                    ).animate().fadeIn()
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.close_rounded, color: Color(0xFFE8E8F0)),
+                              icon: const Icon(Icons.close_rounded, color: AppTheme.textPrimary),
                               onPressed: () {
                                 setState(() {
                                   _selectionMode = false;
@@ -780,7 +897,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                             Text(
                               '${_selectedFolderIds.length + _selectedFileIds.length} Selected',
                               style: const TextStyle(
-                                color: Color(0xFFE8E8F0),
+                                color: AppTheme.textPrimary,
                                 fontSize: 20,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -789,148 +906,307 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                         ),
                         TextButton.icon(
                           onPressed: _selectAll,
-                          icon: const Icon(Icons.select_all_rounded, color: Color(0xFF6C63FF), size: 20),
+                          icon: const Icon(Icons.select_all_rounded, color: AppTheme.accent, size: 20),
                           label: Text(
-                            _selectedFolderIds.length + _selectedFileIds.length == _folders.length + _files.length
-                                ? 'Deselect All'
-                                : 'Select All',
-                            style: const TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.w600),
+                            _selectedFolderIds.length + _selectedFileIds.length == filteredFolders.length + filteredFiles.length
+                                ? 'Deselect all'
+                                : 'Select all',
+                            style: const TextStyle(color: AppTheme.accent, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
-                    ),
+                    ).animate().fadeIn(),
             ),
-            const SizedBox(height: 12),
 
-            // Breadcrumbs
+            // Search Bar at top (#111118 input with #1E1E28 border, search icon, filter icon)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF1E1E28)),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(
+                  children: [
+                    const Icon(Icons.search_rounded, color: AppTheme.textSecondary, size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                        decoration: const InputDecoration(
+                          hintText: 'Search files and folders...',
+                          hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onChanged: (val) {
+                          setState(() {
+                            _searchQuery = val;
+                          });
+                        },
+                      ),
+                    ),
+                    if (_searchQuery.isNotEmpty)
+                      GestureDetector(
+                        onTap: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                        child: const Icon(Icons.close_rounded, color: AppTheme.textSecondary, size: 18),
+                      )
+                    else
+                      const Icon(Icons.tune_rounded, color: AppTheme.textSecondary, size: 20),
+                  ],
+                ),
+              ),
+            ).animate().fadeIn(delay: 100.ms),
+            const SizedBox(height: 14),
+
+            // Filter chips row below search: [All] [Documents] [Images] [Media] [Archives] [Code] — animated pill selection
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => _navigateToFolder(null),
-                    child: Text(
-                      'Root',
-                      style: TextStyle(
-                        color: _currentFolderId == null
-                            ? const Color(0xFF6C63FF)
-                            : const Color(0xFF6B6B80),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                children: _tabs.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final tab = entry.value;
+                  final isSelected = _selectedTab == tab;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedTab = tab;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      margin: const EdgeInsets.only(right: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppTheme.accent : AppTheme.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected ? AppTheme.accent : const Color(0xFF1E1E28),
+                        ),
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: AppTheme.accent.withValues(alpha: 0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Text(
+                        tab,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : AppTheme.textSecondary,
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                        ),
                       ),
                     ),
-                  ),
-                  ..._breadcrumbs.map((crumb) {
-                    final isLast = crumb == _breadcrumbs.last;
-                    return Row(
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 6),
-                          child: Icon(
-                            Icons.chevron_right_rounded,
-                            color: Color(0xFF6B6B80),
-                            size: 16,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => _navigateToFolder(crumb.id),
-                          child: Text(
-                            crumb.name,
-                            style: TextStyle(
-                              color: isLast
-                                  ? const Color(0xFF6C63FF)
-                                  : const Color(0xFF6B6B80),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  }),
-                ],
+                  ).animate(delay: (30 * idx).ms).fadeIn().slideX(begin: 0.1, end: 0);
+                }).toList(),
               ),
             ),
+            const SizedBox(height: 16),
+
+            // Breadcrumb trail with subtle background #111118, rounded 12px pill
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF1E1E28)),
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      GestureDetector(
+                        onTap: () => _navigateToFolder(null),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.home_rounded,
+                              size: 16,
+                              color: _currentFolderId == null ? AppTheme.accent : AppTheme.textSecondary,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Root',
+                              style: TextStyle(
+                                color: _currentFolderId == null ? AppTheme.accent : AppTheme.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ..._breadcrumbs.map((crumb) {
+                        final isLast = crumb == _breadcrumbs.last;
+                        return Row(
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 6),
+                              child: Icon(
+                                Icons.chevron_right_rounded,
+                                color: AppTheme.textMuted,
+                                size: 16,
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => _navigateToFolder(crumb.id),
+                              child: Text(
+                                crumb.name,
+                                style: TextStyle(
+                                  color: isLast ? AppTheme.accent : AppTheme.textSecondary,
+                                  fontSize: 13,
+                                  fontWeight: isLast ? FontWeight.w600 : FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            ).animate().fadeIn(delay: 150.ms),
             const SizedBox(height: 16),
 
             // Content
             Expanded(
               child: _loading
                   ? const Center(
-                      child: CircularProgressIndicator(color: Color(0xFF6C63FF)),
+                      child: CircularProgressIndicator(color: AppTheme.accent),
                     )
-                  : (_folders.isEmpty && _files.isEmpty)
+                  : (filteredFolders.isEmpty && filteredFiles.isEmpty)
                       ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.folder_open_rounded,
-                                color: const Color(0xFF6B6B80).withValues(alpha: 0.5),
-                                size: 56,
+                          child: Container(
+                            margin: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              gradient: const LinearGradient(colors: AppTheme.borderGrad),
+                            ),
+                            padding: const EdgeInsets.all(1.5),
+                            child: Container(
+                              padding: const EdgeInsets.all(32),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surface,
+                                borderRadius: BorderRadius.circular(22.5),
                               ),
-                              const SizedBox(height: 12),
-                              const Text(
-                                'Empty folder',
-                                style: TextStyle(
-                                  color: Color(0xFF6B6B80),
-                                  fontSize: 14,
-                                ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 72,
+                                    height: 72,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.accent.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: const Icon(
+                                      Icons.folder_open_rounded,
+                                      color: AppTheme.accent,
+                                      size: 36,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Text(
+                                    _searchQuery.isNotEmpty || _selectedTab != 'All'
+                                        ? 'No matching files'
+                                        : 'Empty folder',
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimary,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _searchQuery.isNotEmpty || _selectedTab != 'All'
+                                        ? 'Try checking other categories or adjusting search terms'
+                                        : 'Create a folder or transfer files from PC',
+                                    style: const TextStyle(
+                                      color: AppTheme.textSecondary,
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95)),
                         )
                       : RefreshIndicator(
-                          color: const Color(0xFF6C63FF),
-                          backgroundColor: const Color(0xFF111118),
+                          color: AppTheme.accent,
+                          backgroundColor: AppTheme.surface,
                           onRefresh: () => _loadFolder(_currentFolderId),
                           child: ListView(
-                            padding: const EdgeInsets.only(bottom: 80),
+                            padding: const EdgeInsets.only(bottom: 100),
                             children: [
-                              ..._folders.map((folder) => FolderTile(
-                                    folder: folder,
-                                    isSelected: _selectedFolderIds.contains(folder.id),
-                                    selectionMode: _selectionMode,
-                                    onTap: () {
-                                      if (_selectionMode) {
-                                        _toggleFolderSelection(folder);
-                                      } else {
-                                        _navigateToFolder(folder.id);
-                                      }
-                                    },
-                                    onLongPress: () {
-                                      if (!_selectionMode) {
-                                        _showFolderOptions(folder);
-                                      } else {
-                                        _toggleFolderSelection(folder);
-                                      }
-                                    },
-                                  )),
-                              if (_folders.isNotEmpty && _files.isNotEmpty)
+                              ...filteredFolders.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final folder = entry.value;
+                                return FolderTile(
+                                  folder: folder,
+                                  isSelected: _selectedFolderIds.contains(folder.id),
+                                  selectionMode: _selectionMode,
+                                  onTap: () {
+                                    if (_selectionMode) {
+                                      _toggleFolderSelection(folder);
+                                    } else {
+                                      _navigateToFolder(folder.id);
+                                    }
+                                  },
+                                  onLongPress: () {
+                                    if (!_selectionMode) {
+                                      _showFolderOptions(folder);
+                                    } else {
+                                      _toggleFolderSelection(folder);
+                                    }
+                                  },
+                                ).animate(delay: (40 * idx).ms).fadeIn().slideY(begin: 0.05);
+                              }),
+                              if (filteredFolders.isNotEmpty && filteredFiles.isNotEmpty)
                                 const Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                                   child: Divider(color: Color(0xFF1E1E2E), height: 1),
                                 ),
-                              ..._files.map((file) => FileTile(
-                                    file: file,
-                                    isSelected: _selectedFileIds.contains(file.id),
-                                    selectionMode: _selectionMode,
-                                    onTap: () {
-                                      if (_selectionMode) {
-                                        _toggleFileSelection(file);
-                                      } else {
-                                        OpenFile.open(file.localPath);
-                                      }
-                                    },
-                                    onLongPress: () {
-                                      if (!_selectionMode) {
-                                        _showFileOptions(file);
-                                      } else {
-                                        _toggleFileSelection(file);
-                                      }
-                                    },
-                                  )),
+                              ...filteredFiles.asMap().entries.map((entry) {
+                                final idx = entry.key;
+                                final file = entry.value;
+                                return FileTile(
+                                  file: file,
+                                  isSelected: _selectedFileIds.contains(file.id),
+                                  selectionMode: _selectionMode,
+                                  onTap: () {
+                                    if (_selectionMode) {
+                                      _toggleFileSelection(file);
+                                    } else {
+                                      OpenFile.open(file.localPath);
+                                    }
+                                  },
+                                  onLongPress: () {
+                                    if (!_selectionMode) {
+                                      _showFileOptions(file);
+                                    } else {
+                                      _toggleFileSelection(file);
+                                    }
+                                  },
+                                ).animate(delay: (40 * (idx + filteredFolders.length)).ms).fadeIn().slideY(begin: 0.05);
+                              }),
                             ],
                           ),
                         ),

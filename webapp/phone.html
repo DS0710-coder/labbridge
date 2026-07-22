@@ -15,15 +15,15 @@
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     :root {
-      --bg: #0A0A0F;
-      --card: #14141E;
-      --card-border: rgba(255, 255, 255, 0.08);
+      --bg: #000000;
+      --card: #0A0A0E;
+      --card-border: #1E1E28;
       --primary: #6C63FF;
       --primary-gradient: linear-gradient(135deg, #6C63FF, #4F46E5);
-      --success: #10B981;
+      --success: #22C55E;
       --danger: #EF4444;
-      --text: #F8FAFC;
-      --muted: #94A3B8;
+      --text: #F0F0F5;
+      --muted: #707085;
     }
     * {
       box-sizing: border-box;
@@ -34,29 +34,25 @@
     body {
       background-color: var(--bg);
       color: var(--text);
-      font-family: 'Inter', -apple-system, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       padding: 20px;
+      background-image: radial-gradient(circle at 50% 0%, rgba(108, 99, 255, 0.08) 0%, transparent 70%);
     }
     header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 20px;
+      padding-bottom: 18px;
       border-bottom: 1px solid var(--card-border);
       margin-bottom: 24px;
     }
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-weight: 700;
-      font-size: 20px;
-      background: linear-gradient(135deg, #FFF, #A5B4FC);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      gap: 12px;
     }
     .status-pill {
       display: inline-flex;
@@ -66,8 +62,9 @@
       border-radius: 9999px;
       font-size: 12px;
       font-weight: 600;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--card-border);
+      font-family: ui-monospace, monospace;
     }
     .status-dot {
       width: 8px;
@@ -77,21 +74,23 @@
       transition: background 0.3s ease;
     }
     .status-dot.active {
-      background: var(--success);
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+      background: #39FF14;
+      box-shadow: 0 0 10px rgba(57, 255, 20, 0.6);
     }
     .card {
       background: var(--card);
       border: 1px solid var(--card-border);
-      border-radius: 16px;
+      border-radius: 18px;
       padding: 24px;
       margin-bottom: 20px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.8);
     }
     h2 {
       font-size: 18px;
-      font-weight: 600;
+      font-weight: 700;
       margin-bottom: 8px;
+      font-family: ui-monospace, monospace;
+      color: #FFF;
     }
     p {
       color: var(--muted);
@@ -105,13 +104,14 @@
     }
     input[type="text"] {
       flex: 1;
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.03);
       border: 1px solid var(--card-border);
       border-radius: 10px;
       padding: 12px 14px;
       color: #FFF;
       font-size: 15px;
       outline: none;
+      font-family: ui-monospace, monospace;
     }
     input[type="text"]:focus {
       border-color: var(--primary);
@@ -130,14 +130,17 @@
       justify-content: center;
       gap: 8px;
       transition: opacity 0.2s, transform 0.1s;
+      font-family: ui-monospace, monospace;
+      box-shadow: 0 4px 16px rgba(108,99,255,0.3);
     }
     button:active {
       transform: scale(0.98);
       opacity: 0.9;
     }
     button.secondary {
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.05);
       border: 1px solid var(--card-border);
+      box-shadow: none;
     }
     .qr-scanner-box {
       margin-top: 16px;
@@ -145,13 +148,15 @@
       overflow: hidden;
       display: none;
       background: #000;
+      border: 1px solid var(--card-border);
     }
     .progress-bar-container {
       background: rgba(255, 255, 255, 0.05);
       border-radius: 8px;
-      height: 10px;
+      height: 12px;
       overflow: hidden;
       margin: 14px 0;
+      border: 1px solid var(--card-border);
     }
     .progress-bar {
       height: 100%;
@@ -163,39 +168,43 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: rgba(255, 255, 255, 0.03);
+      background: rgba(255, 255, 255, 0.02);
       border: 1px solid var(--card-border);
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 14px;
       margin-top: 12px;
     }
     .file-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
       background: rgba(108, 99, 255, 0.15);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: 22px;
       color: var(--primary);
       margin-right: 12px;
+      border: 1px solid rgba(108,99,255,0.3);
     }
     .file-details {
       flex: 1;
       overflow: hidden;
     }
     .file-name {
-      font-weight: 600;
+      font-weight: 700;
       font-size: 15px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      font-family: ui-monospace, monospace;
+      color: #FFF;
     }
     .file-size {
       font-size: 12px;
       color: var(--muted);
       margin-top: 2px;
+      font-family: ui-monospace, monospace;
     }
     .action-row {
       display: flex;
@@ -206,9 +215,9 @@
       flex: 1;
     }
     #dropzone-phone {
-      border: 2px dashed rgba(108, 99, 255, 0.4);
-      border-radius: 14px;
-      padding: 28px;
+      border: 2px dashed rgba(108, 99, 255, 0.5);
+      border-radius: 16px;
+      padding: 40px 20px;
       text-align: center;
       cursor: pointer;
       background: rgba(108, 99, 255, 0.03);
@@ -226,7 +235,11 @@
 <body>
   <header>
     <div class="brand">
-      <span>⚡ LabBridge PWA</span>
+      <img src="logo.png" alt="LabBridge Logo" style="width: 44px; height: 44px; border-radius: 12px; object-fit: contain; border: 1px solid var(--card-border); background: var(--bg);" />
+      <div>
+        <h1 style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 20px; font-weight: 700; color: #FFF;">LabBridge <span style="color: #39FF14; font-size: 12px; font-weight: 600; background: rgba(57,255,20,0.12); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(57,255,20,0.3);">PWA</span></h1>
+        <div style="font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; margin-top: 3px;">[ P2P RELAY CLIENT ]</div>
+      </div>
     </div>
     <div class="status-pill">
       <span id="status-dot" class="status-dot"></span>
@@ -320,12 +333,11 @@
       const savedUrl = localStorage.getItem('labbridge_worker_url');
       if (w) {
         state.workerHttpUrl = w;
-      } else if (savedUrl) {
+      } else if (savedUrl && !savedUrl.includes('YOUR_SUBDOMAIN')) {
         state.workerHttpUrl = savedUrl;
       } else {
-        state.workerHttpUrl = window.location.origin.includes('localhost') 
-          ? 'http://localhost:8787' 
-          : 'https://labbridge-worker.YOUR_SUBDOMAIN.workers.dev';
+        const isFileOrLocal = window.location.protocol === 'file:' || window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1');
+        state.workerHttpUrl = isFileOrLocal ? 'http://localhost:8787' : window.location.origin;
       }
 
       const urlInput = document.getElementById('worker-url-input');
@@ -378,11 +390,9 @@
       const iv = combined.slice(0, 12);
       const view = new DataView(iv.buffer, iv.byteOffset, iv.byteLength);
       const extractedIndex = view.getUint32(8, false);
-      if (extractedIndex !== chunkIndex) {
-        throw new Error(`Index mismatch: expected ${chunkIndex}, got ${extractedIndex}`);
-      }
       const ciphertext = combined.slice(12);
-      return await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+      const plaintext = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ciphertext);
+      return { chunkIndex: extractedIndex, plaintext };
     }
 
     async function encryptChunk(plaintextBuffer, key, chunkIndex) {
@@ -542,24 +552,32 @@
         buffer = await buffer.arrayBuffer();
       }
 
-      const chunkIndex = state.receiving.received;
       try {
-        const plaintext = await decryptChunk(buffer, state.cryptoKey, chunkIndex);
-        state.receiving.chunks[chunkIndex] = plaintext;
-        state.receiving.received++;
+        const result = await decryptChunk(buffer, state.cryptoKey, state.receiving.received);
+        const idx = typeof result.chunkIndex === 'number' ? result.chunkIndex : state.receiving.received;
+        state.receiving.chunks[idx] = result.plaintext;
+        
+        let receivedCount = 0;
+        for (let i = 0; i < state.receiving.total_chunks; i++) {
+          if (state.receiving.chunks[i] != null) receivedCount++;
+        }
+        state.receiving.received = receivedCount;
 
-        const pct = Math.round((state.receiving.received / state.receiving.total_chunks) * 100);
+        const pct = Math.round((receivedCount / state.receiving.total_chunks) * 100);
         updateProgress(pct);
 
         if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: chunkIndex }));
+          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
         }
 
-        if (state.receiving.received === state.receiving.total_chunks) {
+        if (receivedCount >= state.receiving.total_chunks) {
           finalizeReceivedFile();
         }
       } catch (err) {
         console.error('Decryption failed:', err);
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) {
+          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: state.receiving.received }));
+        }
       }
     }
 
@@ -568,6 +586,9 @@
       document.getElementById('transfer-bar').style.width = `${pct}%`;
     }
 
+    state.completedFilesMap = state.completedFilesMap || {};
+    let fileCounter = 0;
+
     function finalizeReceivedFile() {
       const rec = state.receiving;
       document.getElementById('section-transferring').style.display = 'none';
@@ -575,52 +596,54 @@
 
       const blob = new Blob(rec.chunks, { type: rec.mime_type });
       const url = URL.createObjectURL(blob);
+      const fileId = 'file_' + (++fileCounter);
+      const fileObj = new File([blob], rec.filename, { type: rec.mime_type });
+      state.completedFilesMap[fileId] = { url, file: fileObj, filename: rec.filename, mimeType: rec.mime_type };
 
       const list = document.getElementById('completed-files-list');
       document.getElementById('section-completed').style.display = 'block';
 
       const div = document.createElement('div');
       div.className = 'file-item';
+      div.style.background = 'rgba(108, 99, 255, 0.15)';
+      div.style.border = '1px solid #6C63FF';
       div.innerHTML = `
         <div style="display:flex; align-items:center; overflow:hidden; flex:1;">
           <div class="file-icon">📥</div>
           <div class="file-details">
-            <div class="file-name">${rec.filename}</div>
-            <div class="file-size">${(rec.size / 1024 / 1024).toFixed(2)} MB</div>
+            <div class="file-name" style="font-weight:700; color:#fff;">${rec.filename}</div>
+            <div class="file-size">${(rec.size / 1024 / 1024).toFixed(2)} MB — Ready to save!</div>
           </div>
         </div>
         <div style="display:flex; gap:8px;">
-          <button style="padding: 8px 14px; font-size:13px;" onclick="shareOrSaveFile('${url}', '${rec.filename}', '${rec.mime_type}')">Open / Save</button>
+          <button style="padding: 10px 16px; font-size:14px; background:#6C63FF; color:#fff; font-weight:600; border-radius:8px;" onclick="shareOrSaveFileById('${fileId}')">💾 Tap to Save / Open</button>
         </div>
       `;
       list.prepend(div);
-
-      // Auto trigger share/save on iOS
-      shareOrSaveFile(url, rec.filename, rec.mime_type);
     }
 
-    async function shareOrSaveFile(url, filename, mimeType) {
-      try {
-        const res = await fetch(url);
-        const blob = await res.blob();
-        const file = new File([blob], filename, { type: mimeType });
-
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    async function shareOrSaveFileById(fileId) {
+      const item = (state.completedFilesMap || {})[fileId];
+      if (!item) return;
+      
+      // Synchronous file sharing inside direct user tap gesture
+      if (navigator.canShare && navigator.canShare({ files: [item.file] })) {
+        try {
           await navigator.share({
-            files: [file],
-            title: filename,
-            text: `LabBridge file: ${filename}`
+            files: [item.file],
+            title: item.filename
           });
           return;
+        } catch (err) {
+          if (err.name === 'AbortError') return;
         }
-      } catch (err) {
-        console.log('Web Share not available or cancelled, triggering direct download');
       }
 
-      // Fallback: direct download link
+      // Fallback: open URL or trigger download link
       const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
+      a.href = item.url;
+      a.download = item.filename;
+      a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
