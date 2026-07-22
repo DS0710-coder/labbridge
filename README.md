@@ -21,13 +21,13 @@ npx wrangler login
 npx wrangler deploy
 ```
 
-Note your worker URL: `wss://cueflux.YOUR_SUBDOMAIN.workers.dev`
+Note your worker URL: `wss://cueflex.YOUR_SUBDOMAIN.workers.dev`
 
 ### 2. Set Worker URL in webapp
 
 Edit `webapp/index.html` line 1:
 ```javascript
-const WORKER_URL = 'wss://cueflux.YOUR_SUBDOMAIN.workers.dev';
+const WORKER_URL = 'wss://cueflex.YOUR_SUBDOMAIN.workers.dev';
 ```
 
 ### 3. Build Android APK
