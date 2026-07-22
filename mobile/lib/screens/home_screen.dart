@@ -5,6 +5,7 @@ import 'package:open_file/open_file.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/formatters.dart';
 import '../models/file_item.dart';
@@ -22,23 +23,16 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> {
   final DbService _dbService = DbService();
   StreamSubscription<String>? _completionSub;
   List<FileItem> _recentFiles = [];
   int _storageUsed = 0;
   bool _loading = true;
 
-  late AnimationController _pulseController;
-
   @override
   void initState() {
     super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2000),
-    )..repeat(reverse: true);
-
     _loadData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -51,13 +45,12 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   @override
   void dispose() {
-    _pulseController.dispose();
     _completionSub?.cancel();
     super.dispose();
   }
 
   Future<void> _loadData() async {
-    final files = await _dbService.getRecentFiles(5);
+    final files = await _dbService.getRecentFiles(10);
     final storage = await _dbService.getStorageUsed();
     if (mounted) {
       setState(() {
@@ -75,106 +68,77 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       body: SafeArea(
         child: _loading
             ? const Center(
-                child: CircularProgressIndicator(color: AppTheme.accent),
+                child: CircularProgressIndicator(color: AppTheme.textPrimary),
               )
             : RefreshIndicator(
-                color: AppTheme.accent,
+                color: AppTheme.textPrimary,
                 backgroundColor: AppTheme.surface,
                 onRefresh: _loadData,
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
                     // Header section edge-to-edge
-                    ClipRect(
-                      child: Stack(
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF09090B),
+                        border: Border(bottom: BorderSide(color: Color(0xFF27272A), width: 1)),
+                      ),
+                      child: Row(
                         children: [
                           Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Color(0xFF080810), Color(0xFF0F0F1A)],
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF121214),
+                              border: Border.all(color: const Color(0xFF27272A)),
+                            ),
+                            padding: const EdgeInsets.all(6),
+                            child: Image.asset(
+                              'assets/logo.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) => const Center(
+                                child: Text('CF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
                               ),
                             ),
-                            child: Row(
+                          ),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.asset(
-                                    'assets/logo.png',
-                                    width: 44,
-                                    height: 44,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error, stackTrace) => Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.accent.withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Icon(Icons.bolt_rounded, color: AppTheme.accent, size: 26),
-                                    ),
+                                Text(
+                                  'CUEFLEX SYSTEM',
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.5,
+                                    fontFamily: 'monospace',
                                   ),
                                 ),
-                                const SizedBox(width: 14),
-                                const Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              '✦ CueFlex',
-                                              style: TextStyle(
-                                                color: AppTheme.textPrimary,
-                                                fontSize: 24,
-                                                fontWeight: FontWeight.w700,
-                                                letterSpacing: -0.8,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Transfer files between phone & PC',
-                                          style: TextStyle(
-                                            color: AppTheme.textSecondary,
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                        ),
-                                    ],
+                                SizedBox(height: 4),
+                                Text(
+                                  'Deterministic Local Relay · Zero Cloud Storage',
+                                  style: TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          Positioned(
-                            top: -40,
-                            right: -40,
-                            child: Container(
-                              width: 180,
-                              height: 180,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: [Color(0x336C63FF), Colors.transparent],
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
-                    ).animate().fadeIn(duration: 400.ms),
+                    ).animate().fadeIn(duration: 300.ms),
 
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Dynamic CTA Section (Connected vs Disconnected)
                           Consumer<TransferService>(
                             builder: (context, transferService, child) {
                               final isConnected = transferService.currentStatus == ConnectionStatus.connected ||
@@ -184,95 +148,78 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Connected State Card
                                     Container(
                                       decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(20),
-                                        gradient: const LinearGradient(
-                                          colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
-                                        ),
-                                        boxShadow: const [
-                                          BoxShadow(
-                                            color: Color(0x4022C55E),
-                                            blurRadius: 20,
-                                            offset: Offset(0, 6),
+                                        color: const Color(0xFF09090B),
+                                        border: Border.all(color: const Color(0xFF22C55E), width: 1),
+                                      ),
+                                      padding: const EdgeInsets.all(16),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFF22C55E),
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  transferService.currentStatus == ConnectionStatus.connecting
+                                                      ? 'STATUS: CONNECTING TO PC...'
+                                                      : 'STATUS: CONNECTED TO PC',
+                                                  style: const TextStyle(
+                                                    color: Color(0xFF22C55E),
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w700,
+                                                    fontFamily: 'monospace',
+                                                    letterSpacing: 0.5,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                const Text(
+                                                  'Active relay session · Ready for batch transfer',
+                                                  style: TextStyle(
+                                                    color: AppTheme.textSecondary,
+                                                    fontSize: 11,
+                                                    fontFamily: 'monospace',
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          InkWell(
+                                            onTap: () => transferService.disconnect(),
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF121214),
+                                                border: Border.all(color: const Color(0xFFEF4444)),
+                                              ),
+                                              child: const Text(
+                                                'DISCONNECT',
+                                                style: TextStyle(
+                                                  color: Color(0xFFEF4444),
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontFamily: 'monospace',
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ),
-                                      padding: const EdgeInsets.all(1.5),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(18),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.surface,
-                                          borderRadius: BorderRadius.circular(18.5),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Container(
-                                              width: 12,
-                                              height: 12,
-                                              decoration: const BoxDecoration(
-                                                color: Color(0xFF22C55E),
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 14),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    transferService.currentStatus == ConnectionStatus.connecting
-                                                        ? 'Connecting to PC Browser...'
-                                                        : 'Connected to PC Browser',
-                                                    style: const TextStyle(
-                                                      color: Color(0xFF22C55E),
-                                                      fontSize: 16,
-                                                      fontWeight: FontWeight.w700,
-                                                      letterSpacing: -0.3,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  const Text(
-                                                    'Active session · Ready to transfer',
-                                                    style: TextStyle(
-                                                      color: AppTheme.textSecondary,
-                                                      fontSize: 13,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            InkWell(
-                                              borderRadius: BorderRadius.circular(12),
-                                              onTap: () => transferService.disconnect(),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                decoration: BoxDecoration(
-                                                  color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-                                                  borderRadius: BorderRadius.circular(12),
-                                                  border: Border.all(color: const Color(0xFFEF4444).withValues(alpha: 0.4)),
-                                                ),
-                                                child: const Text(
-                                                  '✕ End',
-                                                  style: TextStyle(
-                                                    color: Color(0xFFEF4444),
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ).animate().fadeIn().scale(begin: const Offset(0.96, 0.96)),
+                                    ),
                                     const SizedBox(height: 16),
 
-                                    // Send button when connected
                                     _buildPrimaryButton(
-                                      title: 'Transfer Files to PC',
-                                      subtitle: 'Select documents, images or code to send',
+                                      title: 'TRANSFER FILES TO PC',
+                                      subtitle: 'Select documents, images or code files',
                                       icon: Icons.upload_file_rounded,
                                       onTap: () async {
                                         final messenger = ScaffoldMessenger.of(context);
@@ -296,7 +243,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                     ),
                                     const SizedBox(height: 16),
 
-                                    // Active transfer/progress display
                                     StreamBuilder<TransferProgress?>(
                                       stream: transferService.progress,
                                       builder: (context, snapshot) {
@@ -307,46 +253,38 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                         }
                                         return Container(
                                           margin: const EdgeInsets.only(bottom: 16),
-                                          padding: const EdgeInsets.all(16),
+                                          padding: const EdgeInsets.all(14),
                                           decoration: BoxDecoration(
-                                            color: AppTheme.surface,
-                                            borderRadius: BorderRadius.circular(20),
-                                            gradient: const LinearGradient(colors: AppTheme.borderGrad),
+                                            color: const Color(0xFF09090B),
+                                            border: Border.all(color: const Color(0xFF27272A)),
                                           ),
-                                          child: Container(
-                                            padding: const EdgeInsets.all(14),
-                                            decoration: BoxDecoration(
-                                              color: AppTheme.surface,
-                                              borderRadius: BorderRadius.circular(19),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                  children: [
-                                                    Expanded(
-                                                      child: Text(
-                                                        prog.fileName,
-                                                        style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600),
-                                                        overflow: TextOverflow.ellipsis,
-                                                      ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      prog.fileName,
+                                                      style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontFamily: 'monospace', fontSize: 12),
+                                                      overflow: TextOverflow.ellipsis,
                                                     ),
-                                                    Text(
-                                                      prog.percentage,
-                                                      style: const TextStyle(color: AppTheme.accent, fontWeight: FontWeight.w700, fontFamily: 'monospace'),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 10),
-                                                LinearProgressIndicator(
-                                                  value: prog.progress,
-                                                  backgroundColor: AppTheme.surface2,
-                                                  valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.accent),
-                                                  borderRadius: BorderRadius.circular(6),
-                                                ),
-                                              ],
-                                            ),
+                                                  ),
+                                                  Text(
+                                                    prog.percentage,
+                                                    style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontFamily: 'monospace', fontSize: 12),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 10),
+                                              LinearProgressIndicator(
+                                                value: prog.progress,
+                                                backgroundColor: const Color(0xFF18181B),
+                                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                                                minHeight: 4,
+                                              ),
+                                            ],
                                           ),
                                         );
                                       },
@@ -355,44 +293,23 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                 );
                               }
 
-                              // Disconnected State
                               return Column(
                                 children: [
-                                  // Primary CTA Button (Scan QR) with pulse ring
-                                  AnimatedBuilder(
-                                    animation: _pulseController,
-                                    builder: (context, child) {
-                                      return Container(
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(20),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: AppTheme.accent.withValues(alpha: 0.35 + (0.15 * _pulseController.value)),
-                                              blurRadius: 24,
-                                              offset: const Offset(0, 8),
-                                            ),
-                                          ],
+                                  _buildPrimaryButton(
+                                    title: 'SCAN QR TO RECEIVE',
+                                    subtitle: 'Open camera · Connect to PC Terminal',
+                                    icon: Icons.qr_code_scanner_rounded,
+                                    onTap: () {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const ScannerScreen(),
                                         ),
-                                        child: child,
                                       );
                                     },
-                                    child: _buildPrimaryButton(
-                                      title: 'Scan QR to Receive',
-                                      subtitle: 'Open camera · Connect to PC',
-                                      icon: Icons.qr_code_scanner_rounded,
-                                      onTap: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) => const ScannerScreen(),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1, end: 0),
+                                  ),
                                   const SizedBox(height: 16),
-                                  // Secondary CTA Button (Send File)
                                   _buildSecondaryButton(
-                                    title: 'Send File to PC',
+                                    title: 'SEND FILE TO PC',
                                     icon: Icons.upload_file_rounded,
                                     onTap: () {
                                       Navigator.of(context).push(
@@ -404,194 +321,162 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                                         ),
                                       );
                                     },
-                                  ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1, end: 0),
+                                  ),
                                 ],
                               );
                             },
                           ),
                           const SizedBox(height: 36),
 
-                          // Recent Files Section header
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text(
-                                'Recent Files',
+                                '> RECENT_FILES',
                                 style: TextStyle(
                                   color: AppTheme.textPrimary,
-                                  fontSize: 18,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w700,
-                                  letterSpacing: -0.8,
+                                  letterSpacing: 0.5,
+                                  fontFamily: 'monospace',
                                 ),
                               ),
-                              Row(
-                                children: [
-                                  Text(
-                                    '${_recentFiles.length} files',
-                                    style: const TextStyle(
-                                      color: AppTheme.textSecondary,
-                                      fontSize: 13,
-                                      fontFamily: 'monospace',
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const Icon(Icons.arrow_forward_rounded, color: AppTheme.textSecondary, size: 16),
-                                ],
+                              Text(
+                                '[ ${_recentFiles.length} FILES ]',
+                                style: const TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
+                                ),
                               ),
                             ],
-                          ).animate().fadeIn(delay: 250.ms),
+                          ),
                         ],
                       ),
                     ),
 
-                    // Recent file tiles
                     if (_recentFiles.isEmpty)
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: const LinearGradient(colors: AppTheme.borderGrad),
+                          color: const Color(0xFF09090B),
+                          border: Border.all(color: const Color(0xFF27272A)),
                         ),
-                        padding: const EdgeInsets.all(1),
-                        child: Container(
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: AppTheme.surface,
-                            borderRadius: BorderRadius.circular(19),
-                          ),
-                          child: const Column(
-                            children: [
-                              Icon(
-                                Icons.folder_open_rounded,
-                                color: AppTheme.textMuted,
-                                size: 48,
+                        padding: const EdgeInsets.all(28),
+                        child: const Column(
+                          children: [
+                            Text(
+                              'SYS_EMPTY_BUFFER',
+                              style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'monospace',
                               ),
-                              SizedBox(height: 12),
-                              Text(
-                                'No recent files',
-                                style: TextStyle(
-                                  color: AppTheme.textPrimary,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              'Received or transferred files will appear here.',
+                              style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 11,
+                                fontFamily: 'monospace',
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Received files will appear here',
-                                style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ).animate().fadeIn(delay: 300.ms)
+                      )
                     else
-                      ..._recentFiles.asMap().entries.map((entry) {
-                        final i = entry.key;
-                        final file = entry.value;
+                      ..._recentFiles.map((file) {
                         return FileTile(
                           file: file,
                           onTap: () => OpenFile.open(file.localPath),
-                        ).animate(delay: (50 * i).ms).fadeIn().slideY(begin: 0.05);
+                        );
                       }),
 
                     Padding(
                       padding: const EdgeInsets.all(20),
                       child: Container(
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          gradient: const LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: AppTheme.borderGrad,
-                          ),
+                          color: const Color(0xFF09090B),
+                          border: Border.all(color: const Color(0xFF27272A)),
                         ),
-                        padding: const EdgeInsets.all(1),
-                        child: Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: AppTheme.surface,
-                            borderRadius: BorderRadius.circular(19),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(14),
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          AppTheme.accent.withValues(alpha: 0.3),
-                                          AppTheme.accent.withValues(alpha: 0.1)
-                                        ],
-                                      ),
-                                    ),
-                                    child: const Icon(
-                                      Icons.storage_rounded,
-                                      color: AppTheme.accent,
-                                      size: 22,
-                                    ),
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'STORAGE_ALLOCATION',
+                                  style: TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.5,
+                                    fontFamily: 'monospace',
                                   ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          '💾 Storage Used',
-                                          style: TextStyle(
-                                            color: AppTheme.textPrimary,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: -0.3,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          Formatters.formatStorage(_storageUsed),
-                                          style: const TextStyle(
-                                            color: AppTheme.textSecondary,
-                                            fontSize: 13,
-                                            fontFamily: 'monospace',
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 14),
-                              Container(
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.surface2,
-                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: ShaderMask(
-                                    shaderCallback: (bounds) => const LinearGradient(
-                                      colors: AppTheme.gradPrimary,
-                                    ).createShader(bounds),
-                                    child: LinearProgressIndicator(
-                                      value: (_storageUsed / (1024 * 1024 * 500)).clamp(0.05, 1.0),
-                                      backgroundColor: Colors.transparent,
-                                      valueColor: const AlwaysStoppedAnimation(Colors.white),
-                                      minHeight: 8,
-                                    ),
+                                Text(
+                                  Formatters.formatStorage(_storageUsed),
+                                  style: const TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 11,
+                                    fontFamily: 'monospace',
                                   ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF18181B),
+                              ),
+                              child: LinearProgressIndicator(
+                                value: (_storageUsed / (1024 * 1024 * 500)).clamp(0.05, 1.0),
+                                backgroundColor: Colors.transparent,
+                                valueColor: const AlwaysStoppedAnimation(Colors.white),
+                                minHeight: 6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Center(
+                      child: InkWell(
+                        onTap: () async {
+                          final uri = Uri.parse('https://github.com/DS0710-coder');
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF121214),
+                            border: Border.all(color: const Color(0xFF27272A)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.code, color: Colors.white, size: 14),
+                              SizedBox(width: 8),
+                              Text(
+                                'MADE BY DS0710-CODER',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  fontFamily: 'monospace',
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ).animate().fadeIn(delay: 350.ms),
+                      ),
                     ),
                     const SizedBox(height: 20),
                   ],
@@ -608,32 +493,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     required VoidCallback onTap,
   }) {
     return Container(
-      height: 72,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: AppTheme.gradPrimary,
-        ),
+      height: 64,
+      decoration: const BoxDecoration(
+        color: Color(0xFFFFFFFF),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(icon, color: Colors.white, size: 28),
-                ),
+                Icon(icon, color: const Color(0xFF000000), size: 22),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -643,25 +515,27 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       Text(
                         title,
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: -0.5,
+                          color: Color(0xFF000000),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
+                          fontFamily: 'monospace',
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         subtitle,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
+                        style: const TextStyle(
+                          color: Color(0xFF3F3F46),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          fontFamily: 'monospace',
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 22),
+                const Icon(Icons.arrow_forward_rounded, color: Color(0xFF000000), size: 18),
               ],
             ),
           ),
@@ -676,53 +550,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     required VoidCallback onTap,
   }) {
     return Container(
-      height: 56,
+      height: 52,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: AppTheme.borderGrad,
-        ),
+        color: const Color(0xFF09090B),
+        border: Border.all(color: const Color(0xFF27272A), width: 1),
       ),
-      padding: const EdgeInsets.all(1.5),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(18.5),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(18.5),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(18.5),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppTheme.accent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, color: AppTheme.accent, size: 20),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.3,
-                      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: Row(
+              children: [
+                Icon(icon, color: AppTheme.textPrimary, size: 18),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                      fontFamily: 'monospace',
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary, size: 20),
-                ],
-              ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary, size: 18),
+              ],
             ),
           ),
         ),

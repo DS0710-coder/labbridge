@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CueFlex — Universal Installer</title>
+  <style>
+    :root {
+      --bg:           #000000;
+      --surface:      #09090B;
+      --surface-2:    #121214;
+      --border:       #27272A;
+      --primary:      #FFFFFF;
+      --text:         #FFFFFF;
+      --text-2:       #A1A1AA;
+      --text-3:       #52525B;
+      --mono:         'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--mono);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 680px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand img {
+      width: 32px;
+      height: 32px;
+      border-radius: 0;
+      border: 1px solid var(--border);
+    }
+
+    .brand-name {
+      font-family: var(--mono);
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .section-box {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .btn-download {
+      background: #FFFFFF;
+      color: #000000;
+      border: 1px solid var(--border);
+      padding: 16px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-transform: uppercase;
+    }
+
+    .btn-download:hover { opacity: 0.9; }
+
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 8px;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 12px;
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+
+    .step-num {
+      color: #FFFFFF;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    footer {
+      margin-top: 28px;
+      text-align: center;
+    }
+
+    .made-by-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .made-by-badge:hover { border-color: #FFFFFF; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <img src="logo.png" alt="CueFlex Logo" />
+        <div>
+          <div class="brand-name">CUEFLEX INSTALLER</div>
+        </div>
+      </div>
+    </header>
+
+    <div class="section-box">
+      <div class="section-title">[ ANDROID SINGLE-CLICK INSTALL ]</div>
+      <p style="font-size: 13px; color: var(--text-2); line-height: 1.5;">
+        Download and install the native CueFlex APK directly to your Android device for zero-latency offline background syncing.
+      </p>
+      <a href="cueflex-app.apk" download="cueflex-app.apk" class="btn-download">
+        <span>[ DOWNLOAD CUEFLEX APK (~76 MB) ]</span>
+      </a>
+    </div>
+
+    <div class="section-box">
+      <div class="section-title">[ IPHONE & IOS PROGRESSIVE WEB APP SETUP ]</div>
+      <p style="font-size: 13px; color: var(--text-2); line-height: 1.5;">
+        On Apple iOS, CueFlex runs natively from Safari as a Progressive Web App with local Files app access and instant camera pairing.
+      </p>
+      <div class="step-list">
+        <div class="step-item">
+          <span class="step-num">[ 01 ]</span>
+          <span>Open <strong>phone.html</strong> in Safari on your iPhone or iPad.</span>
+        </div>
+        <div class="step-item">
+          <span class="step-num">[ 02 ]</span>
+          <span>Tap the <strong>Share</strong> button at the bottom of the Safari toolbar.</span>
+        </div>
+        <div class="step-item">
+          <span class="step-num">[ 03 ]</span>
+          <span>Select <strong>Add to Home Screen</strong>. CueFlex will now launch cleanly without browser borders or address bars.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <a href="https://github.com/DS0710-coder" target="_blank" class="made-by-badge">
+      <span>MADE BY DS0710-CODER</span>
+    </a>
+  </footer>
+</body>
+</html>

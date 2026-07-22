@@ -8,6 +8,7 @@
 import { generateSessionId } from "./relay";
 import { INDEX_HTML } from "./index_html";
 import { PHONE_HTML } from "./phone_html";
+import { INSTALL_HTML } from "./install_html";
 import { MANIFEST_JSON } from "./manifest_json";
 import { SW_JS } from "./sw_js";
 import { ICON_192_BASE64, ICON_512_BASE64 } from "./icon_png";
@@ -75,6 +76,9 @@ export default {
       }
       if (path === "/phone.html" || path === "/pwa") {
         return corsResponse(PHONE_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+      }
+      if (path === "/install.html" || path === "/install") {
+        return corsResponse(INSTALL_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
       }
       if (path === "/manifest.json") {
         return corsResponse(MANIFEST_JSON, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8" } });

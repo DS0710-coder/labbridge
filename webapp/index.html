@@ -2,156 +2,142 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CueFlex — PC Terminal</title>
-  <link rel="manifest" href="/manifest.json">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#000000">
-  <script src="qr.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CueFlex — Terminal & PWA</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="CueFlex" />
+  <script src="qrcode.min.js"></script>
   <script src="jsQR.min.js"></script>
   <style>
     :root {
       --bg:           #000000;
-      --surface:      #080810;
-      --surface-2:    #0D0D18;
-      --border:       rgba(255, 255, 255, 0.06);
-      --border-hover: rgba(255, 255, 255, 0.12);
-      --primary:      #6C63FF;
-      --primary-dim:  rgba(108, 99, 255, 0.12);
-      --green:        #39FF14;
-      --green-dim:    rgba(57, 255, 20, 0.08);
+      --surface:      #09090B;
+      --surface-2:    #121214;
+      --border:       #27272A;
+      --border-hover: #FFFFFF;
+      --primary:      #FFFFFF;
+      --primary-dim:  #18181B;
       --red:          #EF4444;
-      --red-dim:      rgba(239, 68, 68, 0.08);
       --text:         #FFFFFF;
-      --text-2:       rgba(255, 255, 255, 0.5);
-      --text-3:       rgba(255, 255, 255, 0.25);
+      --text-2:       #A1A1AA;
+      --text-3:       #52525B;
       --mono:         'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
-      --sans:         -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
       background: var(--bg);
       color: var(--text);
+      font-family: var(--mono);
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      padding: 24px;
-      font-family: var(--sans);
-      background-image: radial-gradient(
-        ellipse 80% 40% at 50% -10%,
-        rgba(108, 99, 255, 0.10) 0%,
-        transparent 70%
-      );
+      padding: 24px 16px;
     }
 
     .container {
       width: 100%;
-      max-width: 560px;
-      display: flex;
-      flex-direction: column;
+      max-width: 680px;
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 0;
       padding: 28px;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.03),
-                  0 32px 64px rgba(0,0,0,0.9);
-    }
-
-    #pc-mode-container, #phone-mode-container {
       display: flex;
       flex-direction: column;
-      width: 100%;
+      gap: 20px;
     }
 
-    /* Header */
     header {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      margin-bottom: 28px;
+      justify-content: space-between;
       padding-bottom: 20px;
       border-bottom: 1px solid var(--border);
-      width: 100%;
-      flex-shrink: 0;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 14px;
     }
 
     .brand img {
       width: 32px;
       height: 32px;
-      border-radius: 8px;
+      border-radius: 0;
       border: 1px solid var(--border);
     }
 
     .brand-name {
       font-family: var(--mono);
-      font-size: 15px;
-      font-weight: 700;
+      font-size: 16px;
+      font-weight: 800;
       color: var(--text);
       letter-spacing: -0.3px;
     }
 
     .brand-sub {
-      font-family: var(--mono);
-      font-size: 10px;
+      font-size: 11px;
       color: var(--text-3);
-      letter-spacing: 0.5px;
       margin-top: 2px;
+      font-family: var(--mono);
     }
 
     .status-pill {
-      display: flex;
+      display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 10px;
-      border-radius: 9999px;
+      padding: 6px 12px;
+      border-radius: 0;
       border: 1px solid var(--border);
-      background: transparent;
+      background: var(--surface-2);
       font-family: var(--mono);
-      font-size: 12px;
+      font-size: 11px;
+      font-weight: 700;
       color: var(--text-2);
     }
 
     .status-dot {
       width: 6px;
       height: 6px;
-      border-radius: 50%;
+      border-radius: 0;
       background: var(--text-3);
       flex-shrink: 0;
     }
 
     .status-dot.active {
-      background: var(--green);
-      box-shadow: 0 0 8px var(--green);
+      background: #FFFFFF;
+      box-shadow: 0 0 6px #FFFFFF;
     }
 
     .btn-disconnect {
       background: transparent;
-      border: none;
-      color: var(--red);
+      border: 1px solid var(--border);
+      color: #EF4444;
       font-family: var(--mono);
       font-size: 11px;
+      font-weight: 700;
       cursor: pointer;
-      padding: 0;
-      opacity: 0.7;
+      padding: 4px 8px;
+      text-transform: uppercase;
     }
 
-    .btn-disconnect:hover { opacity: 1; }
+    .btn-disconnect:hover {
+      border-color: #EF4444;
+      background: rgba(239, 68, 68, 0.1);
+    }
 
-    /* Phase 1: Waiting (QR Screen) */
+    /* Phase 1: Waiting */
     #phase-waiting {
       display: flex;
       flex-direction: column;
@@ -160,12 +146,13 @@
 
     .phase-label {
       font-family: var(--mono);
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 2px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
       color: var(--text-3);
       text-align: center;
       margin-bottom: 20px;
+      text-transform: uppercase;
     }
 
     .qr-wrap {
@@ -175,15 +162,14 @@
     }
 
     .qr-box {
-      background: #fff;
-      padding: 14px;
-      border-radius: 12px;
+      background: #FFFFFF;
+      padding: 16px;
+      border-radius: 0;
+      border: 1px solid var(--border);
       position: relative;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 0 0 1px rgba(255,255,255,0.08),
-                  0 8px 32px rgba(108,99,255,0.15);
     }
 
     #qrcode {
@@ -204,46 +190,41 @@
       display: none;
       position: absolute;
       inset: 0;
-      background: rgba(255,255,255,0.95);
-      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.95);
+      border-radius: 0;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      backdrop-filter: blur(4px);
+      gap: 12px;
       z-index: 10;
-    }
-
-    .expired-icon {
-      font-size: 28px;
-      color: #000;
+      border: 1px solid var(--border);
     }
 
     .expired-text {
       font-family: var(--mono);
       font-size: 13px;
-      font-weight: 700;
-      color: #000;
+      font-weight: 800;
+      color: #FFFFFF;
     }
 
     .btn-refresh-qr {
-      background: #6C63FF;
-      color: #fff;
-      border: none;
+      background: #FFFFFF;
+      color: #000000;
+      border: 1px solid var(--border);
       padding: 8px 16px;
-      border-radius: 6px;
+      border-radius: 0;
       font-family: var(--mono);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 800;
       cursor: pointer;
+      text-transform: uppercase;
     }
 
-    /* Steps */
     .steps {
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      margin-bottom: 20px;
+      gap: 12px;
+      margin-bottom: 24px;
       padding: 0 4px;
     }
 
@@ -256,19 +237,19 @@
     .step-num {
       font-family: var(--mono);
       font-size: 11px;
-      font-weight: 700;
-      color: var(--primary);
+      font-weight: 800;
+      color: #FFFFFF;
       flex-shrink: 0;
-      width: 20px;
+      width: 24px;
     }
 
     .step-text {
       font-size: 13px;
       color: var(--text-2);
       line-height: 1.4;
+      font-family: var(--mono);
     }
 
-    /* Session meta */
     .session-meta {
       display: flex;
       align-items: center;
@@ -278,25 +259,32 @@
       font-family: var(--mono);
       font-size: 11px;
       color: var(--text-3);
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
     .mono-accent {
       font-family: var(--mono);
-      color: var(--primary);
-      font-weight: 600;
+      color: #FFFFFF;
+      font-weight: 700;
     }
 
     .btn-text {
-      background: transparent;
-      border: none;
-      color: var(--text-3);
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: #FFFFFF;
       font-family: var(--mono);
       font-size: 11px;
+      font-weight: 700;
       cursor: pointer;
-      padding: 0;
+      padding: 6px 12px;
+      border-radius: 0;
+      text-transform: uppercase;
     }
 
-    .btn-text:hover { color: var(--text-2); }
+    .btn-text:hover {
+      border-color: #FFFFFF;
+    }
 
     /* Phase 2: Paired */
     #phase-paired {
@@ -307,57 +295,49 @@
     }
 
     #received-files-section {
-      padding: 14px 16px;
-      background: var(--primary-dim);
-      border: 1px solid rgba(108,99,255,0.2);
-      border-radius: 10px;
+      padding: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 0;
     }
 
     .folder-section {
-      padding: 14px 16px;
+      padding: 16px;
       background: var(--surface-2);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 0;
     }
 
     .section-label {
       font-family: var(--mono);
-      font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 1.5px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1px;
       color: var(--text-3);
       text-transform: uppercase;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
 
     .breadcrumb {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 4px;
+      gap: 6px;
       font-family: var(--mono);
       font-size: 12px;
       color: var(--text-3);
       margin-bottom: 12px;
-      padding: 0;
-      background: transparent;
-      border: none;
-      border-radius: 0;
     }
 
     .breadcrumb-item {
-      color: var(--text-2);
+      color: #FFFFFF;
       cursor: pointer;
-      font-weight: 500;
-      transition: color 0.15s;
+      font-weight: 700;
     }
 
-    .breadcrumb-item:hover { color: var(--primary); }
+    .breadcrumb-item:hover { text-decoration: underline; }
 
-    .breadcrumb-sep {
-      color: var(--text-3);
-      font-size: 10px;
-    }
+    .breadcrumb-sep { color: var(--text-3); }
 
     .folder-grid {
       display: flex;
@@ -367,61 +347,51 @@
     }
 
     .folder-btn {
-      background: transparent;
+      background: var(--surface);
       border: 1px solid var(--border);
-      color: var(--text-2);
-      padding: 7px 12px;
-      border-radius: 6px;
+      color: var(--text);
+      padding: 8px 14px;
+      border-radius: 0;
       font-size: 12px;
       font-family: var(--mono);
+      font-weight: 700;
       cursor: pointer;
-      transition: all 0.15s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      transition: border-color 0.15s;
     }
 
     .folder-btn:hover {
-      border-color: var(--border-hover);
-      color: var(--text);
-      background: rgba(255,255,255,0.03);
-    }
-
-    .folder-btn.active {
-      border-color: rgba(108,99,255,0.4);
-      background: var(--primary-dim);
-      color: var(--primary);
+      border-color: #FFFFFF;
+      background: var(--surface-2);
     }
 
     .dropzone {
-      border: 1px dashed rgba(255,255,255,0.1);
-      border-radius: 10px;
-      padding: 40px 20px;
+      border: 1px dashed var(--border);
+      border-radius: 0;
+      padding: 44px 20px;
       text-align: center;
       cursor: pointer;
       transition: all 0.2s;
       position: relative;
-      background: transparent;
+      background: var(--surface-2);
     }
 
-    .dropzone:hover,
-    .dropzone.dragover {
-      border-color: rgba(108,99,255,0.4);
-      background: var(--primary-dim);
+    .dropzone:hover, .dropzone.dragover {
+      border-color: #FFFFFF;
+      background: var(--surface);
     }
 
     .dropzone p {
       font-family: var(--mono);
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 800;
       color: var(--text);
       margin-bottom: 6px;
-      letter-spacing: 0.3px;
     }
 
     .dropzone span {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-3);
+      font-family: var(--mono);
     }
 
     .dropzone input[type="file"] {
@@ -435,9 +405,10 @@
 
     .dropzone-icon {
       font-size: 20px;
-      color: var(--text-3);
-      margin-bottom: 10px;
+      color: var(--text);
+      margin-bottom: 12px;
       font-family: var(--mono);
+      font-weight: 800;
     }
 
     /* Phase 3: Transferring */
@@ -446,6 +417,10 @@
       flex-direction: column;
       gap: 14px;
       width: 100%;
+      padding: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 0;
     }
 
     .transfer-info {
@@ -454,41 +429,46 @@
       align-items: baseline;
       font-family: var(--mono);
       font-size: 13px;
+      font-weight: 700;
     }
 
-    #transfer-filename { color: var(--text); font-weight: 600; }
+    #transfer-filename { color: var(--text); }
     #transfer-size { font-size: 11px; color: var(--text-3); margin-top: 3px; font-family: var(--mono); }
-    #transfer-pct { color: var(--primary); font-weight: 700; }
+    #transfer-pct { color: #FFFFFF; font-weight: 800; }
 
     .progress-track {
       width: 100%;
       height: 2px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 2px;
+      background: var(--surface);
+      border-radius: 0;
       overflow: hidden;
+      border: 1px solid var(--border);
     }
 
     .progress-fill {
       height: 100%;
-      background: var(--primary);
+      background: #FFFFFF;
       width: 0%;
       transition: width 0.1s linear;
-      box-shadow: 0 0 8px var(--primary);
     }
 
     .btn-cancel {
       background: transparent;
-      border: none;
-      color: var(--text-3);
+      border: 1px solid var(--border);
+      color: #EF4444;
       font-family: var(--mono);
       font-size: 11px;
+      font-weight: 700;
       cursor: pointer;
-      padding: 0;
+      padding: 6px 12px;
       align-self: flex-start;
-      letter-spacing: 0.5px;
+      border-radius: 0;
+      text-transform: uppercase;
     }
 
-    .btn-cancel:hover { color: var(--red); }
+    .btn-cancel:hover {
+      border-color: #EF4444;
+    }
 
     /* Phase 4: Done */
     #phase-done {
@@ -497,30 +477,30 @@
       align-items: center;
       text-align: center;
       gap: 16px;
-      padding: 20px 0;
+      padding: 24px 0;
       width: 100%;
     }
 
     .done-icon {
       width: 48px;
       height: 48px;
-      border-radius: 50%;
-      background: var(--green-dim);
-      border: 1px solid rgba(57,255,20,0.2);
+      border-radius: 0;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: var(--mono);
       font-size: 20px;
-      color: var(--green);
+      font-weight: 800;
+      color: #FFFFFF;
     }
 
     #done-message {
       font-family: var(--mono);
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 15px;
+      font-weight: 800;
       color: var(--text);
-      letter-spacing: -0.3px;
     }
 
     #done-subtext {
@@ -531,65 +511,199 @@
     }
 
     .btn-reset {
-      background: var(--primary-dim);
-      border: 1px solid rgba(108,99,255,0.3);
-      color: var(--primary);
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-size: 13px;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      color: #000000;
+      padding: 12px 24px;
+      border-radius: 0;
+      font-size: 12px;
       font-family: var(--mono);
-      font-weight: 600;
+      font-weight: 800;
       cursor: pointer;
-      transition: all 0.15s;
+      text-transform: uppercase;
     }
 
     .btn-reset:hover {
-      background: rgba(108,99,255,0.2);
+      opacity: 0.9;
     }
 
-    /* Phone mode container adjustments inside index.html */
+    /* Phone mode styles inside index.html */
     #phone-mode-container.container {
       max-width: none;
       border-radius: 0;
-      border: none;
+      border: 1px solid var(--border);
       background: var(--surface);
       box-shadow: none;
-      padding: 20px;
+      padding: 24px;
     }
 
     #phone-mode-container input[type="text"] {
       width: 100%;
-      background: transparent;
+      background: var(--surface-2);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 0;
       padding: 12px 14px;
       color: var(--text);
       font-family: var(--mono);
-      font-size: 14px;
+      font-size: 13px;
       outline: none;
       transition: border-color 0.15s;
     }
-    #phone-mode-container input[type="text"]:focus { border-color: rgba(108,99,255,0.5); }
+    #phone-mode-container input[type="text"]:focus { border-color: #FFFFFF; }
 
     #phone-mode-container button {
       width: 100%;
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
+      background: #FFFFFF;
+      color: #000000;
+      border: 1px solid var(--border);
+      border-radius: 0;
       padding: 14px;
       font-family: var(--mono);
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 800;
       cursor: pointer;
-      letter-spacing: 0.3px;
-      transition: opacity 0.15s;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
     #phone-mode-container button:active { opacity: 0.8; }
     #phone-mode-container button.secondary {
-      background: transparent;
+      background: var(--surface-2);
       border: 1px solid var(--border);
-      color: var(--text-2);
+      color: var(--text);
+    }
+
+    /* Lightbox Modal */
+    #photo-lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.96);
+      z-index: 9999;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 24px;
+      border: 1px solid var(--border);
+    }
+
+    .lightbox-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+      width: 100%;
+    }
+
+    .lightbox-img-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      width: 100%;
+      overflow: hidden;
+      margin: 16px 0;
+    }
+
+    .lightbox-img-wrap img {
+      max-width: 85vw;
+      max-height: 72vh;
+      object-fit: contain;
+      border: 1px solid var(--border);
+    }
+
+    .lightbox-btn {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: #FFFFFF;
+      padding: 8px 16px;
+      border-radius: 0;
+      font-family: var(--mono);
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+    }
+
+    .lightbox-btn:hover { border-color: #FFFFFF; }
+
+    .lightbox-btn.primary {
+      background: #FFFFFF;
+      color: #000000;
+    }
+
+    .lightbox-nav-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: #FFFFFF;
+      width: 48px;
+      height: 48px;
+      border-radius: 0;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 10;
+    }
+
+    .lightbox-nav-btn:hover { border-color: #FFFFFF; }
+    .lightbox-nav-btn.left { left: 16px; }
+    .lightbox-nav-btn.right { right: 16px; }
+
+    .thumb-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+      width: 100%;
+    }
+
+    .thumb-item {
+      width: 56px;
+      height: 56px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .thumb-item.active {
+      border: 2px solid #FFFFFF;
+    }
+
+    footer {
+      margin-top: 28px;
+      text-align: center;
+    }
+
+    .made-by-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      text-decoration: none;
+      transition: border-color 0.15s;
+    }
+
+    .made-by-badge:hover {
+      border-color: #FFFFFF;
     }
   </style>
 </head>
@@ -597,33 +711,46 @@
   <!-- PC Mode Container -->
   <div id="pc-mode-container" class="container">
     <header>
-      <!-- Left: brand -->
       <div class="brand">
         <img src="logo.png" alt="CueFlex Logo" />
         <div>
-          <div class="brand-name">CueFlex</div>
+          <div class="brand-name">CUEFLEX TERMINAL</div>
           <div class="brand-sub">[ E2E ENCRYPTED · ZERO CLOUD ]</div>
         </div>
       </div>
-      <!-- Right: status pill -->
       <div class="status-pill">
         <div id="status-dot" class="status-dot"></div>
-        <span id="status-text">Disconnected</span>
-        <button id="btn-disconnect" class="btn-disconnect" style="display:none;" onclick="disconnectSession()">disconnect</button>
+        <span id="status-text">DISCONNECTED</span>
+        <button id="btn-disconnect" class="btn-disconnect" style="display:none;" onclick="disconnectSession()">[ DISCONNECT ]</button>
       </div>
     </header>
 
     <!-- Phase 1: Waiting -->
     <div id="phase-waiting">
-      <div class="phase-label">WAITING FOR DEVICE</div>
+      <!-- Explanation / Onboarding Banner -->
+      <div style="background: var(--surface-2); border: 1px solid var(--border); padding: 16px; margin-bottom: 24px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <span style="font-size: 12px; font-weight: 800; color: #FFFFFF; letter-spacing: 1px;">[ WHAT IS CUEFLEX? ]</span>
+          <a href="install.html" style="background: #FFFFFF; color: #000000; padding: 6px 12px; font-size: 11px; font-weight: 800; text-decoration: none; text-transform: uppercase;">[ GET MOBILE APP / APK ]</a>
+        </div>
+        <p style="font-size: 13px; color: var(--text-2); line-height: 1.5; font-family: var(--mono);">
+          CueFlex is a serverless, zero-install peer-to-peer file transfer utility for rapid data movement between desktop terminals and mobile devices.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 11px; color: var(--text-3); font-family: var(--mono); border-top: 1px solid var(--border); padding-top: 10px;">
+          <div>• <strong style="color: #FFFFFF;">ZERO CLOUD STORAGE:</strong> Files stream directly between devices via WebSocket memory relay without server caching.</div>
+          <div>• <strong style="color: #FFFFFF;">E2E ENCRYPTED:</strong> 256-bit AES-GCM encryption derived from the ephemeral session ID ensures zero interception.</div>
+          <div>• <strong style="color: #FFFFFF;">INSTANT PAIRING:</strong> Point your CueFlex app or iPhone camera at the QR code below to connect in &lt;1 second.</div>
+        </div>
+      </div>
+
+      <div class="phase-label">WAITING FOR DEVICE CONNECTION</div>
 
       <div class="qr-wrap">
         <div class="qr-box">
           <div id="qrcode"></div>
           <div id="qr-expired-overlay" class="qr-expired-overlay">
-            <div class="expired-icon">↻</div>
-            <div class="expired-text">QR Expired</div>
-            <button onclick="createSession()" class="btn-refresh-qr">Refresh</button>
+            <div class="expired-text">[ QR CODE EXPIRED ]</div>
+            <button onclick="createSession()" class="btn-refresh-qr">[ REFRESH QR ]</button>
           </div>
         </div>
       </div>
@@ -631,52 +758,52 @@
       <div class="steps">
         <div class="step">
           <span class="step-num">01</span>
-          <span class="step-text">Open CueFlex app or iPhone camera</span>
+          <span class="step-text">Open CueFlex mobile app or iPhone camera</span>
         </div>
         <div class="step">
           <span class="step-num">02</span>
-          <span class="step-text">Point at this QR code</span>
+          <span class="step-text">Scan the QR code displayed above</span>
         </div>
         <div class="step">
           <span class="step-num">03</span>
-          <span class="step-text">Connected — drag files below</span>
+          <span class="step-text">Connected — drop files or browse target directory</span>
         </div>
       </div>
 
       <div class="session-meta">
-        <span>session <span id="display-session-id" class="mono-accent">---</span></span>
-        <span>expires <span id="timer-sec" class="mono-accent">240s</span></span>
-        <button id="btn-refresh-waiting" onclick="createSession()" class="btn-text">↻ refresh</button>
+        <span>SESSION: <span id="display-session-id" class="mono-accent">---</span></span>
+        <span>EXPIRES: <span id="timer-sec" class="mono-accent">240s</span></span>
+        <button id="btn-refresh-waiting" onclick="createSession()" class="btn-text">[ REFRESH SESSION ]</button>
       </div>
     </div>
 
     <!-- Phase 2: Paired -->
     <div id="phase-paired">
       <div id="received-files-section" style="display:none;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
           <div class="section-label" style="margin-bottom:0;">RECEIVED FROM MOBILE DEVICE</div>
-          <button onclick="openPhotoLightbox(0)" style="background: var(--primary); border: none; color: white; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: var(--mono); display: flex; align-items: center; gap: 6px;">🖼️ Gallery Preview All</button>
+          <button id="btn-preview-all" onclick="openPhotoLightbox(0)" style="width: auto; padding: 6px 14px; font-size: 11px; font-weight: 800; min-height: 32px; display: none;">[ PREVIEW ALL PHOTOS ]</button>
         </div>
         <div id="received-files-list"></div>
       </div>
 
       <div class="folder-section">
-        <div class="section-label">TARGET FOLDER ON PHONE</div>
+        <div class="section-label">TARGET DIRECTORY ON DEVICE</div>
         <div id="breadcrumb" class="breadcrumb">
-          <span class="breadcrumb-item" onclick="navigateRoot()">Root</span>
+          <span class="breadcrumb-item" onclick="navigateRoot()">/ROOT</span>
         </div>
         <div id="folder-grid" class="folder-grid"></div>
       </div>
 
-      <div id="shortcut-mode-hint" style="display:none; padding: 12px 16px; background: var(--primary-dim); border: 1px solid rgba(108,99,255,0.3); border-radius: 10px; font-size: 13px; color: var(--primary); font-family: var(--mono);">
-        iPhone Shortcut mode active — drop a file below and your iPhone will receive it immediately via polling
+      <div id="shortcut-mode-hint" style="display:none; padding: 14px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12px; color: #FFFFFF; font-family: var(--mono); font-weight: 700;">
+        [ ! ] iPhone Shortcut mode active — files dropped below are sent via instant polling
       </div>
 
       <div id="dropzone" class="dropzone">
         <input type="file" id="file-input" multiple />
-        <div class="dropzone-icon">↑</div>
-        <p>Drop files to transfer</p>
-        <span id="queue-status">E2E encrypted · saves directly to phone folder</span>
+        <div class="dropzone-icon">[ ↑ ]</div>
+        <p>DROP FILES TO TRANSFER</p>
+        <span id="queue-status">E2E ENCRYPTED · SAVES DIRECTLY TO TARGET DIRECTORY</span>
       </div>
     </div>
 
@@ -691,17 +818,17 @@
       <div class="progress-track">
         <div class="progress-fill" id="progress-fill-bar"></div>
       </div>
-      <button class="btn-cancel" onclick="cancelTransfer()">cancel transfer</button>
+      <button class="btn-cancel" onclick="cancelTransfer()">[ CANCEL TRANSFER ]</button>
     </div>
 
     <!-- Phase 4: Done -->
     <div id="phase-done">
-      <div class="done-icon">✓</div>
+      <div class="done-icon">[ OK ]</div>
       <div>
         <p id="done-message">TRANSFER COMPLETED!</p>
-        <p id="done-subtext">Saved to phone</p>
+        <p id="done-subtext">Saved to target device</p>
       </div>
-      <button class="btn-reset" onclick="resetToPaired()">Send Another File</button>
+      <button class="btn-reset" onclick="resetToPaired()">[ SEND ANOTHER FILE ]</button>
     </div>
   </div>
 
@@ -709,94 +836,104 @@
   <div id="phone-mode-container" class="container" style="display: none;">
     <header>
       <div class="brand">
-        <img src="logo.png" alt="CueFlex Logo" style="width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border);" />
+        <img src="logo.png" alt="CueFlex Logo" />
         <div>
-          <div class="brand-name">CueFlex</div>
+          <div class="brand-name">CUEFLEX PHONE</div>
         </div>
       </div>
       <div class="status-pill">
         <div id="phone-status-dot" class="status-dot"></div>
-        <span id="phone-status-text">Disconnected</span>
+        <span id="phone-status-text">DISCONNECTED</span>
       </div>
     </header>
 
     <!-- Screen 1: Scanner -->
     <div id="phone-screen-scanner" style="display: flex; flex-direction: column; gap: 16px;">
-      <p style="font-size: 13px; color: var(--text-2); text-align: center;">Point camera at PC screen QR code to pair</p>
-      <div style="background: #000; border-radius: 12px; overflow: hidden; position: relative; min-height: 260px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border);">
+      <p style="font-size: 12px; color: var(--text-2); text-align: center;">Point camera at PC terminal QR code to pair</p>
+      <div style="background: #000; border-radius: 0; overflow: hidden; position: relative; min-height: 260px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border);">
         <video id="phone-video" playsinline autoplay muted style="width: 100%; height: auto; display: block;"></video>
-        <div id="phone-camera-msg" style="position: absolute; color: var(--text-3); font-size: 13px; text-align: center; padding: 20px; font-family: var(--mono);">Requesting camera access...</div>
+        <div id="phone-camera-msg" style="position: absolute; color: var(--text-3); font-size: 12px; text-align: center; padding: 20px; font-family: var(--mono);">Requesting camera access...</div>
       </div>
       <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
-        <input type="text" id="phone-manual-id" placeholder="Or enter 12-char ID manually" maxlength="12" />
-        <button onclick="phoneConnectManual()">Connect</button>
+        <input type="text" id="phone-manual-id" placeholder="Or enter 12-char Session ID" maxlength="12" />
+        <button onclick="phoneConnectManual()">[ CONNECT TO SESSION ]</button>
       </div>
     </div>
 
     <!-- Screen 2: Connected -->
     <div id="phone-screen-connected" style="display: none; flex-direction: column; gap: 16px;">
       <div class="folder-section">
-        <p style="font-size: 13px; color: var(--text); font-weight: 700; font-family: var(--mono);">CONNECTED TO PC TERMINAL</p>
-        <p id="phone-session-info" style="font-size: 12px; color: var(--primary); margin-top: 4px; font-family: var(--mono);">Session ID: ---</p>
+        <p style="font-size: 13px; color: var(--text); font-weight: 800; font-family: var(--mono);">CONNECTED TO PC TERMINAL</p>
+        <p id="phone-session-info" style="font-size: 12px; color: #FFFFFF; margin-top: 4px; font-family: var(--mono);">SESSION ID: ---</p>
       </div>
 
       <!-- Send Dropzone -->
       <div id="phone-dropzone" class="dropzone">
         <input type="file" id="phone-file-input" multiple onchange="phoneHandleFilesSelected(event)" />
-        <div style="font-family: var(--mono); font-size: 18px; color: var(--text-3); margin-bottom: 8px;">↑</div>
-        <div style="font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text);">Tap to send files to PC</div>
-        <div style="font-size: 12px; color: var(--text-3); margin-top: 4px;">Photos · Files · iCloud Drive</div>
+        <div style="font-family: var(--mono); font-size: 18px; color: var(--text); margin-bottom: 8px;">[ + ]</div>
+        <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: var(--text);">TAP TO SEND FILES TO PC</div>
+        <div style="font-size: 11px; color: var(--text-2); margin-top: 4px;">PHOTOS · DOCUMENTS · ARCHIVES</div>
       </div>
 
       <!-- Active Transfer Progress -->
-      <div id="phone-transfer-area" style="display: none; flex-direction: column; gap: 14px; padding: 18px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px;">
-        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; font-family: var(--mono);">
-          <span id="phone-transfer-title" style="color: #FFF;">Transferring...</span>
-          <span id="phone-transfer-pct" style="color: var(--primary);">0%</span>
+      <div id="phone-transfer-area" style="display: none; flex-direction: column; gap: 14px; padding: 18px; background: var(--surface-2); border: 1px solid var(--border);">
+        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 800; font-family: var(--mono);">
+          <span id="phone-transfer-title" style="color: #FFF;">TRANSFERRING...</span>
+          <span id="phone-transfer-pct" style="color: #FFFFFF;">0%</span>
         </div>
-        <div style="font-size: 12px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono);" id="phone-transfer-filename">file.pdf</div>
+        <div style="font-size: 12px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono);" id="phone-transfer-filename">file.pdf</div>
         <progress id="phone-transfer-progress" value="0" max="100" style="display:none;"></progress>
         <div class="progress-track">
           <div class="progress-fill" id="phone-transfer-bar"></div>
         </div>
-        <button onclick="phoneCancelTransfer()" class="btn-cancel">cancel transfer</button>
+        <button onclick="phoneCancelTransfer()" class="btn-cancel">[ CANCEL TRANSFER ]</button>
       </div>
     </div>
 
     <!-- Screen 3: Done -->
-    <div id="phone-screen-done" style="display: none; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 20px 0;">
-      <div class="done-icon">✓</div>
+    <div id="phone-screen-done" style="display: none; flex-direction: column; align-items: center; text-align: center; gap: 16px; padding: 24px 0;">
+      <div class="done-icon">[ OK ]</div>
       <div>
         <p id="phone-done-message">TRANSFER COMPLETED!</p>
         <p id="phone-done-subtext">File.pdf</p>
       </div>
-      <button class="btn-reset" onclick="phoneResetToConnected()">Transfer Another</button>
+      <button class="btn-reset" onclick="phoneResetToConnected()">[ TRANSFER ANOTHER ]</button>
     </div>
+  </div>
+
   <!-- Photo Lightbox Gallery Modal -->
-  <div id="photo-lightbox" style="display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0, 0, 0, 0.94); backdrop-filter: blur(12px); flex-direction: column; align-items: center; justify-content: center; padding: 20px;">
-    <div style="position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: rgba(10, 10, 14, 0.8); border-bottom: 1px solid var(--border); z-index: 10;">
+  <div id="photo-lightbox">
+    <div class="lightbox-header">
       <div style="display: flex; align-items: center; gap: 12px;">
-        <span id="lightbox-counter" style="font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--primary); background: rgba(108, 99, 255, 0.15); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(108, 99, 255, 0.3);">1 / 1</span>
-        <span id="lightbox-title" style="font-family: var(--mono); font-size: 14px; font-weight: 600; color: #FFF; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">photo.jpg</span>
+        <span id="lightbox-counter" style="font-family: var(--mono); font-size: 12px; font-weight: 800; color: #FFFFFF; background: var(--surface-2); padding: 4px 10px; border: 1px solid var(--border);">1 / 1</span>
+        <span id="lightbox-title" style="font-family: var(--mono); font-size: 14px; font-weight: 800; color: #FFF; max-width: 40vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">photo.jpg</span>
       </div>
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <a id="lightbox-download-btn" href="#" download style="background: var(--primary); color: #FFF; text-decoration: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; font-family: var(--mono);">📥 Download</a>
-        <button onclick="closePhotoLightbox()" style="background: transparent; border: 1px solid var(--border); color: #FFF; padding: 6px 14px; border-radius: 6px; font-size: 14px; cursor: pointer; font-family: var(--mono);">✕ Close</button>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <a id="lightbox-download-btn" href="#" download class="lightbox-btn primary">[ DOWNLOAD ]</a>
+        <button onclick="closePhotoLightbox()" class="lightbox-btn">[ CLOSE ]</button>
       </div>
     </div>
 
-    <div style="position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; max-width: 1200px;">
-      <button onclick="changePhotoLightbox(-1)" style="position: absolute; left: 10px; background: rgba(20, 20, 28, 0.8); border: 1px solid var(--border); color: #FFF; width: 48px; height: 48px; border-radius: 50%; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; z-index: 5;">←</button>
-      <img id="lightbox-image" src="" alt="Preview" style="max-width: 85vw; max-height: 78vh; object-fit: contain; border-radius: 12px; box-shadow: 0 24px 64px rgba(0, 0, 0, 0.9); border: 1px solid var(--border);" />
-      <div id="lightbox-nonimage" style="display: none; background: var(--surface); border: 1px solid var(--border); padding: 40px; border-radius: 16px; text-align: center; max-width: 400px;">
-        <div style="font-size: 48px; margin-bottom: 16px;">📄</div>
-        <div id="lightbox-nonimage-name" style="font-family: var(--mono); font-size: 16px; font-weight: 700; color: #FFF; margin-bottom: 8px; word-break: break-all;">file.pdf</div>
-        <div style="font-size: 13px; color: var(--text-3); margin-bottom: 20px;">Document preview not supported in browser</div>
-        <a id="lightbox-nonimage-download" href="#" download style="background: var(--primary); color: #FFF; text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 700; font-family: var(--mono); display: inline-block;">Download File</a>
+    <div class="lightbox-img-wrap">
+      <button onclick="changePhotoLightbox(-1)" class="lightbox-nav-btn left">[ < ]</button>
+      <img id="lightbox-image" src="" alt="Preview" />
+      <div id="lightbox-nonimage" style="display: none; background: var(--surface); border: 1px solid var(--border); padding: 40px; text-align: center; max-width: 400px;">
+        <div style="font-size: 32px; margin-bottom: 16px; font-family: var(--mono); font-weight: 800;">[ FILE ]</div>
+        <div id="lightbox-nonimage-name" style="font-family: var(--mono); font-size: 15px; font-weight: 800; color: #FFF; margin-bottom: 8px; word-break: break-all;">file.pdf</div>
+        <div style="font-size: 12px; color: var(--text-2); margin-bottom: 20px;">Document preview not supported in browser</div>
+        <a id="lightbox-nonimage-download" href="#" download class="lightbox-btn primary">[ DOWNLOAD FILE ]</a>
       </div>
-      <button onclick="changePhotoLightbox(1)" style="position: absolute; right: 10px; background: rgba(20, 20, 28, 0.8); border: 1px solid var(--border); color: #FFF; width: 48px; height: 48px; border-radius: 50%; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; z-index: 5;">→</button>
+      <button onclick="changePhotoLightbox(1)" class="lightbox-nav-btn right">[ > ]</button>
     </div>
+
+    <div id="lightbox-thumb-strip" class="thumb-strip"></div>
   </div>
+
+  <footer>
+    <a href="https://github.com/DS0710-coder" target="_blank" class="made-by-badge">
+      <span>MADE BY DS0710-CODER</span>
+    </a>
+  </footer>
 
   <script>
     const isFileOrLocal = window.location.protocol === 'file:';
@@ -816,7 +953,8 @@
       connectedDevice: null,
       currentTransfer: null,
       sendQueue: [],
-      receivedFiles: []
+      receivedFiles: [],
+      photoIndices: []
     };
 
     const PHONE_MODE = new URLSearchParams(window.location.search).get('mode') === 'phone'
@@ -838,12 +976,6 @@
       setupDropzone();
     }
 
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.textContent = str || '';
-      return div.innerHTML;
-    }
-
     function flattenTreeList(tree, parentId = null) {
       let result = [];
       if (!tree || !Array.isArray(tree)) return result;
@@ -852,7 +984,7 @@
           id: item.id,
           name: item.name || 'Folder',
           parentId: item.parentId || item.parent_id || parentId,
-          color: item.color || '#6C63FF'
+          color: item.color || '#FFFFFF'
         };
         result.push(flatItem);
         if (item.children && Array.isArray(item.children)) {
@@ -879,6 +1011,7 @@
       state.expirySeconds = 240;
       state.sendQueue = [];
       state.receivedFiles = [];
+      state.photoIndices = [];
       state.currentTransfer = null;
       setPhase('waiting');
       
@@ -936,7 +1069,7 @@
               if (qEl) qEl.style.opacity = '0.25';
               const secEl = document.getElementById('timer-sec');
               if (secEl) secEl.innerText = '0s';
-              setStatus(false, 'QR Code Expired');
+              setStatus(false, 'QR CODE EXPIRED');
             } else {
               console.warn('Session expired.');
             }
@@ -945,14 +1078,14 @@
 
         connectWebSocket();
       } catch (err) {
-        setStatus(false, 'Error creating session');
+        setStatus(false, 'ERROR CREATING SESSION');
         console.error(err);
       }
     }
 
     function handlePeerDisconnected() {
       if (state.phase !== 'waiting') {
-        setStatus(false, 'Disconnected by phone');
+        setStatus(false, 'DISCONNECTED BY PHONE');
         document.getElementById('btn-disconnect').style.display = 'none';
         clearInterval(state.timerInterval);
         const oldWs = state.ws;
@@ -970,7 +1103,7 @@
       const el = document.getElementById('timer-sec');
       if (el) el.innerText = `${state.expirySeconds}s`;
       if (state.phase !== 'waiting' && state.connectedDevice) {
-        setStatus(true, `Connected: ${state.connectedDevice} (${state.expirySeconds}s left)`);
+        setStatus(true, `CONNECTED: ${state.connectedDevice.toUpperCase()} (${state.expirySeconds}s LEFT)`);
       }
     }
 
@@ -985,7 +1118,7 @@
       state.ws = ws;
 
       ws.onopen = () => {
-        setStatus(false, 'Waiting for phone...');
+        setStatus(false, 'WAITING FOR PHONE...');
       };
 
       ws.onmessage = async (event) => {
@@ -1006,12 +1139,12 @@
 
     async function handleTextMessage(msg) {
       if (msg.type === 'waiting') {
-        setStatus(false, 'Waiting for phone...');
+        setStatus(false, 'WAITING FOR PHONE...');
       } else if (msg.type === 'paired') {
         state.expirySeconds = 240;
         updateTimerDisplay();
         state.connectedDevice = msg.device || 'Phone App';
-        setStatus(true, `Connected: ${state.connectedDevice} (${state.expirySeconds}s left)`);
+        setStatus(true, `CONNECTED: ${state.connectedDevice.toUpperCase()} (${state.expirySeconds}s LEFT)`);
         document.getElementById('btn-disconnect').style.display = 'block';
         state.cryptoKey = await deriveAESKey(state.sessionId);
         setPhase('paired');
@@ -1032,8 +1165,8 @@
         }
       } else if (msg.type === 'shortcut_ack') {
         setPhase('done');
-        document.getElementById('done-message').innerText = 'Received on iPhone!';
-        document.getElementById('done-subtext').innerText = 'File saved to iPhone Files app';
+        document.getElementById('done-message').innerText = 'RECEIVED ON IPHONE!';
+        document.getElementById('done-subtext').innerText = 'Saved to iPhone Files app';
       } else if (msg.type === 'transfer_init') {
         state.currentTransfer = {
           direction: 'receiving',
@@ -1060,9 +1193,11 @@
     function setStatus(active, text) {
       const dot = document.getElementById('status-dot');
       const txt = document.getElementById('status-text');
-      if (active) dot.classList.add('active');
-      else dot.classList.remove('active');
-      txt.innerText = text;
+      if (dot) {
+        if (active) dot.classList.add('active');
+        else dot.classList.remove('active');
+      }
+      if (txt) txt.innerText = text;
     }
 
     function setPhase(phase) {
@@ -1110,7 +1245,7 @@
       
       const rootSpan = document.createElement('span');
       rootSpan.className = 'breadcrumb-item';
-      rootSpan.textContent = 'Root';
+      rootSpan.textContent = '/ROOT';
       rootSpan.addEventListener('click', () => navigateRoot());
       bcEl.appendChild(rootSpan);
 
@@ -1123,7 +1258,7 @@
 
         const itemSpan = document.createElement('span');
         itemSpan.className = 'breadcrumb-item';
-        itemSpan.textContent = item.name;
+        itemSpan.textContent = item.name.toUpperCase();
         itemSpan.addEventListener('click', () => navigateUpTo(i));
         bcEl.appendChild(itemSpan);
       }
@@ -1136,7 +1271,7 @@
       if (!gridEl) return;
 
       if (children.length === 0) {
-        gridEl.innerHTML = `<p style="color: var(--text-3); font-size: 12px; align-self: center; font-family: var(--mono);">No subfolders inside this directory</p>`;
+        gridEl.innerHTML = `<p style="color: var(--text-3); font-size: 11px; align-self: center; font-family: var(--mono);">NO SUBDIRECTORIES INSIDE THIS DIRECTORY</p>`;
         return;
       }
 
@@ -1144,7 +1279,7 @@
       children.forEach(f => {
         const btn = document.createElement('button');
         btn.className = 'folder-btn';
-        btn.textContent = f.name || 'Folder';
+        btn.textContent = `/${(f.name || 'Folder').toUpperCase()}`;
         btn.addEventListener('click', () => navigateIntoFolder(f.id, f.name || 'Folder'));
         gridEl.appendChild(btn);
       });
@@ -1256,9 +1391,9 @@
     function updateQueueDisplay() {
       const qs = document.getElementById('queue-status');
       if (qs && state.sendQueue.length > 0) {
-        qs.innerText = `${state.sendQueue.length} more file(s) waiting in queue...`;
+        qs.innerText = `${state.sendQueue.length} MORE FILE(S) WAITING IN QUEUE...`;
       } else if (qs) {
-        qs.innerText = 'E2E encrypted · saves directly to phone folder';
+        qs.innerText = 'E2E ENCRYPTED · SAVES DIRECTLY TO TARGET DIRECTORY';
       }
     }
 
@@ -1315,7 +1450,7 @@
         } else {
           setPhase('paired');
           updateQueueDisplay();
-          setStatus(true, `Connected: ${state.connectedDevice} (Last sent: ${transfer ? transfer.filename : 'file'})`);
+          setStatus(true, `CONNECTED: ${state.connectedDevice.toUpperCase()} (LAST SENT: ${transfer ? transfer.filename : 'FILE'})`);
         }
         return;
       }
@@ -1398,7 +1533,7 @@
           } else {
             setPhase('paired');
             updateQueueDisplay();
-            setStatus(true, `Connected: ${state.connectedDevice} (Received: ${transfer.filename})`);
+            setStatus(true, `CONNECTED: ${state.connectedDevice.toUpperCase()} (RECEIVED: ${transfer.filename})`);
             const sec = document.getElementById('received-files-section');
             if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
@@ -1421,16 +1556,33 @@
       }
       section.style.display = 'block';
       list.innerHTML = '';
+
+      state.photoIndices = [];
+      state.receivedFiles.forEach((f, idx) => {
+        const isImage = (f.mimeType && f.mimeType.startsWith('image/')) || f.filename.match(/\.(jpg|jpeg|png|gif|webp|heic|bmp)$/i);
+        if (isImage) state.photoIndices.push(idx);
+      });
+
+      const previewAllBtn = document.getElementById('btn-preview-all');
+      if (previewAllBtn) {
+        if (state.photoIndices.length > 0) {
+          previewAllBtn.style.display = 'inline-block';
+          previewAllBtn.innerText = `[ PREVIEW ALL PHOTOS (${state.photoIndices.length}) ]`;
+        } else {
+          previewAllBtn.style.display = 'none';
+        }
+      }
+
       state.receivedFiles.forEach((f, idx) => {
         const item = document.createElement('div');
         item.className = 'received-item';
-        item.style.cssText = 'padding: 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 10px; margin-top: 10px; font-family: var(--mono);';
+        item.style.cssText = 'padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 0; margin-top: 10px; font-family: var(--mono);';
 
         const isImage = (f.mimeType && f.mimeType.startsWith('image/')) || f.filename.match(/\.(jpg|jpeg|png|gif|webp|heic|bmp)$/i);
         let imgHtml = '';
         if (isImage) {
-          imgHtml = `<div style="margin-bottom: 12px; text-align: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px;">
-            <img src="${f.blobUrl}" alt="${f.filename}" onclick="openPhotoLightbox(${idx})" style="max-height: 240px; max-width: 100%; border-radius: 6px; object-fit: contain; cursor: pointer; transition: transform 0.15s;" />
+          imgHtml = `<div style="margin-bottom: 12px; text-align: center; background: var(--surface-2); padding: 8px; border: 1px solid var(--border);">
+            <img src="${f.blobUrl}" alt="${f.filename}" onclick="openPhotoLightbox(${idx})" style="max-height: 240px; max-width: 100%; border: 1px solid var(--border); object-fit: contain; cursor: pointer; transition: transform 0.15s;" />
           </div>`;
         }
 
@@ -1439,11 +1591,11 @@
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
             <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
               <strong style="font-size: 13px; color: #fff;">${f.filename}</strong><br />
-              <span style="font-size: 11px; color: var(--text-3);">${formatSize(f.size)}</span>
+              <span style="font-size: 11px; color: var(--text-2);">${formatSize(f.size)}</span>
             </div>
             <div style="display: flex; gap: 8px;">
-              <button onclick="openPhotoLightbox(${idx})" style="background: transparent; border: 1px solid var(--border); color: white; padding: 7px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: var(--mono); white-space: nowrap;">Preview</button>
-              <a href="${f.blobUrl}" download="${f.filename}" style="background: var(--primary); color: white; text-decoration: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: 700; white-space: nowrap;">Download</a>
+              <button onclick="openPhotoLightbox(${idx})" style="background: transparent; border: 1px solid var(--border); color: white; padding: 7px 14px; border-radius: 0; font-size: 11px; font-weight: 800; cursor: pointer; font-family: var(--mono); white-space: nowrap;">[ PREVIEW ]</button>
+              <a href="${f.blobUrl}" download="${f.filename}" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); text-decoration: none; padding: 7px 14px; border-radius: 0; font-size: 11px; font-weight: 800; font-family: var(--mono); white-space: nowrap;">[ DOWNLOAD ]</a>
             </div>
           </div>
         `;
@@ -1489,6 +1641,24 @@
         const nonImgDl = document.getElementById('lightbox-nonimage-download');
         nonImgDl.href = item.blobUrl;
         nonImgDl.download = item.filename;
+      }
+
+      const strip = document.getElementById('lightbox-thumb-strip');
+      if (strip) {
+        strip.innerHTML = '';
+        state.receivedFiles.forEach((f, idx) => {
+          const thumbIsImg = (f.mimeType && f.mimeType.startsWith('image/')) || f.filename.match(/\.(jpg|jpeg|png|gif|webp|heic|bmp)$/i);
+          if (thumbIsImg) {
+            const img = document.createElement('img');
+            img.className = 'thumb-item' + (idx === currentLightboxIndex ? ' active' : '');
+            img.src = f.blobUrl;
+            img.onclick = () => {
+              currentLightboxIndex = idx;
+              updatePhotoLightboxView();
+            };
+            strip.appendChild(img);
+          }
+        });
       }
     }
 
@@ -1566,7 +1736,7 @@
       const e = params.get('e');
       if (s && /^[a-zA-Z0-9]{12}$/.test(s)) {
         if (e && parseInt(e, 10) < Date.now()) {
-          alert("QR/Link expired. Please scan a fresh QR code from PC.");
+          alert("QR/Link expired. Please scan a fresh QR code from PC terminal.");
           phoneShowScreen('scanner');
           phoneStartCamera();
           return;
@@ -1637,7 +1807,7 @@
           const parsed = JSON.parse(code.data);
           if (parsed && parsed.s) {
             if (parsed.e && parsed.e < Date.now()) {
-              alert("QR code expired. Please refresh the PC screen.");
+              alert("QR code expired. Please refresh the PC terminal.");
               phoneState.scanFrameId = requestAnimationFrame(phoneScanLoop);
               return;
             }
@@ -1650,7 +1820,7 @@
             const eParam = url.searchParams.get('e');
             if (sParam) {
               if (eParam && parseInt(eParam, 10) < Date.now()) {
-                alert("QR code expired. Please refresh the PC screen.");
+                alert("QR code expired. Please refresh the PC terminal.");
                 phoneState.scanFrameId = requestAnimationFrame(phoneScanLoop);
                 return;
               }
@@ -1688,8 +1858,8 @@
       phoneState.sessionId = sessionId;
       phoneShowScreen('connected');
       const infoEl = document.getElementById('phone-session-info');
-      if (infoEl) infoEl.innerText = `Session ID: ${sessionId}`;
-      phoneSetStatus(false, 'Connecting to PC...');
+      if (infoEl) infoEl.innerText = `SESSION ID: ${sessionId}`;
+      phoneSetStatus(false, 'CONNECTING TO PC TERMINAL...');
 
       try {
         phoneState.cryptoKey = await deriveAESKey(sessionId);
@@ -1710,7 +1880,7 @@
       phoneState.ws = ws;
 
       ws.onopen = () => {
-        phoneSetStatus(true, 'Connected to PC');
+        phoneSetStatus(true, 'CONNECTED TO PC TERMINAL');
       };
 
       ws.onmessage = async (event) => {
@@ -1725,7 +1895,7 @@
       };
 
       ws.onclose = () => {
-        phoneSetStatus(false, 'Disconnected');
+        phoneSetStatus(false, 'DISCONNECTED');
       };
     }
 
@@ -1741,7 +1911,7 @@
 
     function phoneHandleTextMessage(msg) {
       if (msg.type === 'paired') {
-        phoneSetStatus(true, 'Connected to PC');
+        phoneSetStatus(true, 'CONNECTED TO PC TERMINAL');
       } else if (msg.type === 'ready') {
         if (phoneState.currentTransfer && phoneState.currentTransfer.direction === 'sending') {
           phoneStartSendingChunks();
@@ -1767,7 +1937,7 @@
           phoneState.ws.send(JSON.stringify({ type: 'ready' }));
         }
       } else if (msg.type === 'cancelled') {
-        alert('Transfer cancelled by PC');
+        alert('Transfer cancelled by PC terminal');
         phoneResetToConnected();
       }
     }
@@ -1810,7 +1980,7 @@
 
           phoneState.currentTransfer = null;
           phoneShowScreen('done');
-          document.getElementById('phone-done-message').innerText = 'Received from PC!';
+          document.getElementById('phone-done-message').innerText = 'RECEIVED FROM PC!';
           document.getElementById('phone-done-subtext').innerText = transfer.filename;
         }
       } catch (err) {
@@ -1879,7 +2049,7 @@
           phoneProcessNextInQueue();
         } else {
           phoneShowScreen('done');
-          document.getElementById('phone-done-message').innerText = 'Sent to PC!';
+          document.getElementById('phone-done-message').innerText = 'SENT TO PC TERMINAL!';
           document.getElementById('phone-done-subtext').innerText = transfer ? transfer.filename : 'File sent';
         }
         return;
@@ -1929,7 +2099,7 @@
       const nameEl = document.getElementById('phone-transfer-filename');
       const pctEl = document.getElementById('phone-transfer-pct');
       const progEl = document.getElementById('phone-transfer-progress');
-      if (title) title.innerText = (phoneState.currentTransfer && phoneState.currentTransfer.direction === 'sending') ? 'Sending to PC...' : 'Receiving from PC...';
+      if (title) title.innerText = (phoneState.currentTransfer && phoneState.currentTransfer.direction === 'sending') ? 'SENDING TO PC TERMINAL...' : 'RECEIVING FROM PC TERMINAL...';
       if (nameEl) nameEl.innerText = filename;
       if (pctEl) pctEl.innerText = `${pct}%`;
       if (progEl) progEl.value = pct;

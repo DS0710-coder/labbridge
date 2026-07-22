@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:provider/provider.dart';
@@ -39,12 +38,10 @@ class _ScannerScreenState extends State<ScannerScreen> {
         int? expiry;
 
         try {
-          // Try parsing as JSON first: {"s":"abc...","e":...}
           final data = json.decode(value) as Map<String, dynamic>;
           sessionId = data['s'] as String?;
           expiry = data['e'] as int?;
         } catch (_) {
-          // Try parsing as URL: https://.../phone.html?s=abc...&e=...
           final uri = Uri.tryParse(value);
           if (uri != null && uri.queryParameters.containsKey('s')) {
             sessionId = uri.queryParameters['s'];
@@ -60,12 +57,11 @@ class _ScannerScreenState extends State<ScannerScreen> {
         if (expiry != null) {
           final now = DateTime.now().millisecondsSinceEpoch;
           if (now > expiry) {
-            _showError('QR has expired, refresh the PC page');
+            _showError('QR has expired, refresh the PC terminal');
             return;
           }
         }
 
-        // Valid QR - connect and navigate back to dashboard
         _hasNavigated = true;
         await _connectAndReturn(sessionId);
         return;
@@ -102,10 +98,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(message, style: const TextStyle(fontFamily: 'monospace')),
         backgroundColor: const Color(0xFFEF4444),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
@@ -115,42 +110,31 @@ class _ScannerScreenState extends State<ScannerScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: GradientCard(
-          borderRadius: 24,
+        backgroundColor: const Color(0xFF09090B),
+        shape: Border.all(color: const Color(0xFF27272A), width: 1),
+        child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
-                children: [
-                  IconBox(icon: Icons.keyboard_rounded, size: 40, iconSize: 20),
-                  SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Manual Session ID',
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Enter session ID for connection',
-                          style: TextStyle(
-                            color: AppTheme.textSecondary,
-                            fontSize: 12.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+              const Text(
+                'MANUAL SESSION ID',
+                style: TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'monospace',
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Enter session ID displayed on PC Terminal',
+                style: TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                ),
               ),
               const SizedBox(height: 20),
               TextField(
@@ -161,19 +145,17 @@ class _ScannerScreenState extends State<ScannerScreen> {
                   fontFamily: 'monospace',
                   fontSize: 14,
                 ),
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'e.g. lb_session_abc123',
-                  hintStyle: const TextStyle(color: AppTheme.textMuted, fontSize: 13),
+                  hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 13, fontFamily: 'monospace'),
                   filled: true,
-                  fillColor: AppTheme.surface2,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  fillColor: Color(0xFF121214),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
+                    borderSide: BorderSide(color: Color(0xFF27272A)),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppTheme.accent),
+                    borderSide: BorderSide(color: Colors.white),
                   ),
                 ),
               ),
@@ -183,49 +165,23 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppTheme.textSecondary,
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                    ),
-                    child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
                   ),
                   const SizedBox(width: 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      gradient: const LinearGradient(colors: AppTheme.gradPrimary),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.accent.withValues(alpha: 0.35),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () async {
-                          final id = controller.text.trim();
-                          if (id.isNotEmpty) {
-                            Navigator.pop(context);
-                            await _connectAndReturn(id);
-                          }
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 22, vertical: 12),
-                          child: Text(
-                            'Connect',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                    onPressed: () async {
+                      final id = controller.text.trim();
+                      if (id.isNotEmpty) {
+                        Navigator.pop(context);
+                        await _connectAndReturn(id);
+                      }
+                    },
+                    child: const Text('CONNECT', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -242,17 +198,15 @@ class _ScannerScreenState extends State<ScannerScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Camera scanner
           MobileScanner(
             controller: _scannerController,
             onDetect: _onDetect,
           ),
 
-          // Dark overlay with cutout using ColorFiltered or custom Stack overlays
           Positioned.fill(
             child: ColorFiltered(
               colorFilter: ColorFilter.mode(
-                Colors.black.withValues(alpha: 0.65),
+                Colors.black.withValues(alpha: 0.75),
                 BlendMode.srcOut,
               ),
               child: Stack(
@@ -264,9 +218,8 @@ class _ScannerScreenState extends State<ScannerScreen> {
                     child: Container(
                       width: 260,
                       height: 260,
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(24),
                       ),
                     ),
                   ),
@@ -275,284 +228,159 @@ class _ScannerScreenState extends State<ScannerScreen> {
             ),
           ),
 
-          // Glowing scan frame & sweeping laser
           Center(
             child: SizedBox(
               width: 260,
               height: 260,
               child: Stack(
                 children: [
-                  // Gradient border
                   Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        width: 2.5,
-                        color: AppTheme.accent,
+                        width: 1.5,
+                        color: Colors.white,
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.accent.withValues(alpha: 0.35),
-                          blurRadius: 20,
-                          spreadRadius: 2,
-                        ),
-                      ],
                     ),
                   ),
 
-                  // Sweeping laser line
                   Animate(
                     onPlay: (controller) => controller.repeat(reverse: true),
                     effects: [
                       SlideEffect(
                         begin: const Offset(0, 0),
-                        end: const Offset(0, 240 / 2),
-                        duration: 1800.ms,
+                        end: const Offset(0, 256 / 2),
+                        duration: 1600.ms,
                         curve: Curves.easeInOut,
                       ),
                     ],
                     child: Container(
-                      height: 3,
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Colors.transparent,
-                            AppTheme.accent,
-                            Color(0xFF9B8FFF),
-                            AppTheme.accent,
-                            Colors.transparent,
-                          ],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.accent.withValues(alpha: 0.8),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
+                      height: 2,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
                       ),
                     ),
                   ),
-
-                  // Corner indicators
-                  ..._buildCornerIndicators(),
                 ],
               ),
             ),
           ),
 
-          // Top glassmorphic bar
           Positioned(
             top: 0,
             left: 0,
             right: 0,
-            child: ClipRRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
-                  color: AppTheme.bg.withValues(alpha: 0.5),
-                  padding: EdgeInsets.only(
-                    top: MediaQuery.of(context).padding.top + 10,
-                    bottom: 14,
-                    left: 16,
-                    right: 16,
+            child: Container(
+              color: const Color(0xFF09090B),
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 10,
+                bottom: 14,
+                left: 16,
+                right: 16,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF121214),
+                      border: Border.all(color: const Color(0xFF27272A)),
+                    ),
+                    child: IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.arrow_back, color: AppTheme.textPrimary, size: 18),
+                      tooltip: 'Back',
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      // Back pill button
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppTheme.surface.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFF1E1E2E)),
-                        ),
-                        child: IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary, size: 20),
-                          tooltip: 'Back',
-                        ),
+                  const Expanded(
+                    child: Text(
+                      '[ QR TERMINAL SCANNER ]',
+                      style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'monospace',
                       ),
-                      const Expanded(
-                        child: Text(
-                          'Scan QR Code',
-                          style: TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      // Flash / torch toggle pill button
-                      Container(
-                        decoration: BoxDecoration(
-                          color: AppTheme.surface.withValues(alpha: 0.8),
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFF1E1E2E)),
-                        ),
-                        child: IconButton(
-                          onPressed: () => _scannerController.toggleTorch(),
-                          icon: const Icon(Icons.flash_on_rounded, color: AppTheme.accent, size: 20),
-                          tooltip: 'Toggle Flash',
-                        ),
-                      ),
-                    ],
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                ),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF121214),
+                      border: Border.all(color: const Color(0xFF27272A)),
+                    ),
+                    child: IconButton(
+                      onPressed: () => _scannerController.toggleTorch(),
+                      icon: const Icon(Icons.flash_on, color: Colors.white, size: 18),
+                      tooltip: 'Toggle Flash',
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
 
-          // Bottom glassmorphic overlay
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
-            child: ClipRRect(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-                child: Container(
-                  color: AppTheme.bg.withValues(alpha: 0.65),
-                  padding: EdgeInsets.only(
-                    top: 24,
-                    bottom: MediaQuery.of(context).padding.bottom + 20,
-                    left: 24,
-                    right: 24,
+            child: Container(
+              color: const Color(0xFF09090B),
+              padding: EdgeInsets.only(
+                top: 20,
+                bottom: MediaQuery.of(context).padding.bottom + 20,
+                left: 24,
+                right: 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Point camera at the QR code on PC Terminal',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 12,
+                      fontFamily: 'monospace',
+                    ),
                   ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text(
-                        'Point your camera at the QR code displayed on the desktop browser at contextl-web.vercel.app',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 13.5,
-                          height: 1.4,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      // Manual entry pill button
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(30),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AppTheme.surface.withValues(alpha: 0.9),
-                              borderRadius: BorderRadius.circular(30),
-                              border: Border.all(color: const Color(0xFF1E1E2E)),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(30),
-                                onTap: _showManualEntry,
-                                child: const Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.keyboard_rounded, color: AppTheme.accent, size: 18),
-                                      SizedBox(width: 10),
-                                      Text(
-                                        'Enter Session ID Manually',
-                                        style: TextStyle(
-                                          color: AppTheme.textPrimary,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF121214),
+                      border: Border.all(color: const Color(0xFF27272A)),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _showManualEntry,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.keyboard, color: Colors.white, size: 16),
+                              SizedBox(width: 10),
+                              Text(
+                                'ENTER SESSION ID MANUALLY',
+                                style: TextStyle(
+                                  color: AppTheme.textPrimary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'monospace',
                                 ),
                               ),
-                            ),
+                            ],
                           ),
                         ),
-                      ).animate().fadeIn(delay: 200.ms).scale(),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                  ).animate().fadeIn(delay: 200.ms),
+                ],
               ),
             ),
           ),
         ],
       ),
     );
-  }
-
-  List<Widget> _buildCornerIndicators() {
-    const double size = 26;
-    const double stroke = 4;
-    const color = AppTheme.accent;
-
-    return [
-      // Top-left corner
-      Positioned(
-        top: -1,
-        left: -1,
-        child: Container(
-          width: size,
-          height: size,
-          decoration: const BoxDecoration(
-            border: Border(
-              top: BorderSide(color: color, width: stroke),
-              left: BorderSide(color: color, width: stroke),
-            ),
-            borderRadius: BorderRadius.only(topLeft: Radius.circular(24)),
-          ),
-        ),
-      ),
-      // Top-right corner
-      Positioned(
-        top: -1,
-        right: -1,
-        child: Container(
-          width: size,
-          height: size,
-          decoration: const BoxDecoration(
-            border: Border(
-              top: BorderSide(color: color, width: stroke),
-              right: BorderSide(color: color, width: stroke),
-            ),
-            borderRadius: BorderRadius.only(topRight: Radius.circular(24)),
-          ),
-        ),
-      ),
-      // Bottom-left corner
-      Positioned(
-        bottom: -1,
-        left: -1,
-        child: Container(
-          width: size,
-          height: size,
-          decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: color, width: stroke),
-              left: BorderSide(color: color, width: stroke),
-            ),
-            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(24)),
-          ),
-        ),
-      ),
-      // Bottom-right corner
-      Positioned(
-        bottom: -1,
-        right: -1,
-        child: Container(
-          width: size,
-          height: size,
-          decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: color, width: stroke),
-              right: BorderSide(color: color, width: stroke),
-            ),
-            borderRadius: BorderRadius.only(bottomRight: Radius.circular(24)),
-          ),
-        ),
-      ),
-    ];
   }
 }

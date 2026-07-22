@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>CueFlex — Phone</title>
+  <title>CueFlex — Phone PWA</title>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -13,21 +13,14 @@
   <style>
     :root {
       --bg:           #000000;
-      --surface:      #080810;
-      --surface-2:    #0D0D18;
-      --border:       rgba(255, 255, 255, 0.06);
-      --border-hover: rgba(255, 255, 255, 0.12);
-      --primary:      #6C63FF;
-      --primary-dim:  rgba(108, 99, 255, 0.12);
-      --green:        #39FF14;
-      --green-dim:    rgba(57, 255, 20, 0.08);
-      --red:          #EF4444;
-      --red-dim:      rgba(239, 68, 68, 0.08);
+      --surface:      #09090B;
+      --surface-2:    #121214;
+      --border:       #27272A;
+      --border-hover: #FFFFFF;
       --text:         #FFFFFF;
-      --text-2:       rgba(255, 255, 255, 0.5);
-      --text-3:       rgba(255, 255, 255, 0.25);
+      --text-2:       #A1A1AA;
+      --text-3:       #52525B;
       --mono:         'SF Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
-      --sans:         -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     }
 
     * {
@@ -40,16 +33,11 @@
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: var(--sans);
+      font-family: var(--mono);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       padding: 16px;
-      background-image: radial-gradient(
-        ellipse 80% 40% at 50% -10%,
-        rgba(108, 99, 255, 0.10) 0%,
-        transparent 70%
-      );
     }
 
     header {
@@ -64,20 +52,20 @@
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .brand img {
       width: 28px;
       height: 28px;
-      border-radius: 6px;
+      border-radius: 0;
       border: 1px solid var(--border);
     }
 
     .brand-name {
       font-family: var(--mono);
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 15px;
+      font-weight: 800;
       color: var(--text);
       letter-spacing: -0.3px;
     }
@@ -85,12 +73,12 @@
     .status-pill {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 9999px;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 0;
       font-size: 11px;
-      font-weight: 600;
-      background: transparent;
+      font-weight: 700;
+      background: var(--surface);
       border: 1px solid var(--border);
       font-family: var(--mono);
       color: var(--text-2);
@@ -99,15 +87,14 @@
     .status-dot {
       width: 6px;
       height: 6px;
-      border-radius: 50%;
+      border-radius: 0;
       background: var(--text-3);
       flex-shrink: 0;
-      transition: background 0.3s ease;
     }
 
     .status-dot.active {
-      background: var(--green);
-      box-shadow: 0 0 8px var(--green);
+      background: #FFFFFF;
+      box-shadow: 0 0 6px #FFFFFF;
     }
 
     .card {
@@ -121,17 +108,19 @@
 
     h2 {
       font-family: var(--mono);
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 14px;
+      font-weight: 800;
       color: var(--text);
       letter-spacing: -0.3px;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
     }
 
     p {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--text-2);
       line-height: 1.5;
+      font-family: var(--mono);
     }
 
     .input-group {
@@ -142,69 +131,72 @@
 
     input[type="text"] {
       width: 100%;
-      background: transparent;
+      background: var(--surface-2);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 0;
       padding: 12px 14px;
       color: var(--text);
       font-family: var(--mono);
-      font-size: 14px;
+      font-size: 13px;
       outline: none;
       transition: border-color 0.15s;
     }
 
     input[type="text"]:focus {
-      border-color: rgba(108,99,255,0.5);
+      border-color: #FFFFFF;
     }
 
     button {
       width: 100%;
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      border-radius: 8px;
+      background: #FFFFFF;
+      color: #000000;
+      border: 1px solid var(--border);
+      border-radius: 0;
       padding: 14px;
       font-family: var(--mono);
-      font-size: 13px;
-      font-weight: 700;
+      font-size: 12px;
+      font-weight: 800;
       cursor: pointer;
-      letter-spacing: 0.3px;
+      letter-spacing: 0.5px;
       transition: opacity 0.15s;
       min-height: 44px;
+      text-transform: uppercase;
     }
 
     button:active { opacity: 0.8; }
 
     button.secondary {
-      background: transparent;
+      background: var(--surface-2);
       border: 1px solid var(--border);
-      color: var(--text-2);
+      color: var(--text);
     }
 
     #url-warning-banner {
       font-family: var(--mono);
-      color: var(--red);
-      font-size: 12px;
+      color: #FFFFFF;
+      font-size: 11px;
       margin-top: 12px;
-      padding: 8px;
-      background: var(--red-dim);
-      border: 1px solid rgba(239, 68, 68, 0.2);
-      border-radius: 6px;
+      padding: 10px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 0;
+      font-weight: 700;
     }
 
     #dropzone-phone {
-      border: 1px dashed rgba(255,255,255,0.1);
-      border-radius: 10px;
-      padding: 32px 16px;
+      border: 1px dashed var(--border);
+      border-radius: 0;
+      padding: 36px 16px;
       text-align: center;
       position: relative;
       margin-top: 14px;
+      background: var(--surface-2);
       transition: all 0.2s;
     }
 
     #dropzone-phone:active {
-      border-color: rgba(108,99,255,0.4);
-      background: var(--primary-dim);
+      border-color: #FFFFFF;
+      background: var(--surface);
     }
 
     #dropzone-phone input[type="file"] {
@@ -219,18 +211,18 @@
     .progress-track {
       width: 100%;
       height: 2px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 2px;
+      background: var(--surface-2);
+      border-radius: 0;
       overflow: hidden;
-      margin: 12px 0;
+      margin: 14px 0;
+      border: 1px solid var(--border);
     }
 
     .progress-bar {
       height: 100%;
-      background: var(--primary);
+      background: #FFFFFF;
       width: 0%;
       transition: width 0.1s linear;
-      box-shadow: 0 0 6px var(--primary);
     }
 
     .file-item {
@@ -240,29 +232,30 @@
       padding: 14px;
       background: var(--surface-2);
       border: 1px solid var(--border);
-      border-radius: 10px;
+      border-radius: 0;
       margin-top: 10px;
     }
 
     .file-icon {
       width: 36px;
       height: 36px;
-      border-radius: 8px;
-      background: var(--primary-dim);
-      border: 1px solid rgba(108,99,255,0.2);
+      border-radius: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: var(--mono);
-      font-size: 14px;
-      color: var(--primary);
+      font-size: 13px;
+      color: var(--text);
       flex-shrink: 0;
+      font-weight: 800;
     }
 
     .file-name {
       font-family: var(--mono);
       font-size: 13px;
-      font-weight: 600;
+      font-weight: 700;
       color: var(--text);
       white-space: nowrap;
       overflow: hidden;
@@ -272,17 +265,93 @@
     .file-size {
       font-family: var(--mono);
       font-size: 11px;
-      color: var(--text-3);
+      color: var(--text-2);
       margin-top: 2px;
     }
 
     .qr-scanner-box {
       margin-top: 16px;
-      border-radius: 12px;
+      border-radius: 0;
       overflow: hidden;
       display: none;
       background: #000;
       border: 1px solid var(--border);
+    }
+
+    /* Lightbox Modal */
+    #phone-lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 1000;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .lightbox-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 14px;
+    }
+
+    .lightbox-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .thumb-strip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .thumb-item {
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .thumb-item.active {
+      border: 2px solid #FFFFFF;
+    }
+
+    footer {
+      margin-top: auto;
+      padding-top: 24px;
+      text-align: center;
+    }
+
+    .made-by-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 800;
+      text-decoration: none;
+      transition: border-color 0.15s;
+    }
+
+    .made-by-badge:hover {
+      border-color: #FFFFFF;
     }
   </style>
 </head>
@@ -291,36 +360,46 @@
     <div class="brand">
       <img src="logo.png" alt="CueFlex Logo" />
       <div>
-        <div class="brand-name">CueFlex</div>
+        <div class="brand-name">CUEFLEX</div>
       </div>
     </div>
     <div class="status-pill">
       <span id="status-dot" class="status-dot"></span>
-      <span id="status-text">Not Connected</span>
+      <span id="status-text">DISCONNECTED</span>
     </div>
   </header>
 
   <!-- Section 1: Connect / Pairing -->
   <div id="section-connect" class="card">
-    <h2>Connect to PC Session</h2>
-    <p>Scan the QR code displayed on your PC screen or enter the 12-character session ID manually.</p>
+    <div style="background: var(--surface-2); border: 1px solid var(--border); padding: 14px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <span style="font-size: 11px; font-weight: 800; color: #FFFFFF; letter-spacing: 1px;">[ WHAT IS CUEFLEX? ]</span>
+        <a href="install.html" style="background: #FFFFFF; color: #000000; padding: 4px 10px; font-size: 11px; font-weight: 800; text-decoration: none; text-transform: uppercase;">[ GET APK ]</a>
+      </div>
+      <p style="font-size: 12px; color: var(--text-2); line-height: 1.4; font-family: var(--mono);">
+        CueFlex streams files peer-to-peer between your mobile device and PC terminal with 256-bit E2E encryption. Zero cloud storage or login required.
+      </p>
+    </div>
+
+    <h2>CONNECT TO PC SESSION</h2>
+    <p>Scan the QR code displayed on your PC terminal or input the 12-character session identifier.</p>
     
-    <div id="url-warning-banner" style="display:none;">⚠ Update Worker URL in settings</div>
+    <div id="url-warning-banner" style="display:none;">[ ! ] UPDATE SERVER WORKER URL IN SETTINGS</div>
 
     <div style="margin-top: 16px;">
-      <label style="font-size: 11px; font-weight: 600; color: var(--text-3); display: block; margin-bottom: 6px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px;">Server URL (Worker):</label>
+      <label style="font-size: 11px; font-weight: 700; color: var(--text-2); display: block; margin-bottom: 6px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.5px;">SERVER URL (WORKER):</label>
       <input type="text" id="worker-url-input" placeholder="e.g. http://192.168.1.5:8787" />
     </div>
 
     <div class="input-group">
       <input type="text" id="session-input" placeholder="e.g. a1b2c3d4e5f6" maxlength="12" />
     </div>
-    <div style="margin-top: 10px;">
-      <button onclick="connectManual()">Connect</button>
+    <div style="margin-top: 12px;">
+      <button onclick="connectManual()">[ CONNECT TO SESSION ]</button>
     </div>
 
-    <div style="margin-top: 14px; text-align: center;">
-      <button class="secondary" onclick="toggleScanner()">Scan PC QR Code</button>
+    <div style="margin-top: 12px; text-align: center;">
+      <button class="secondary" onclick="toggleScanner()">[ SCAN PC QR CODE ]</button>
     </div>
 
     <div id="qr-reader" class="qr-scanner-box"></div>
@@ -329,22 +408,21 @@
   <!-- Section 2: Connected Dashboard -->
   <div id="section-dashboard" style="display: none;">
     <div id="card-connected" class="card">
-      <h2>Connected to PC Session</h2>
-      <p id="session-info-text">Ready to stream high-speed encrypted files directly over WebSockets.</p>
+      <h2>CONNECTED TO PC SESSION</h2>
+      <p id="session-info-text">Ready to transfer high-speed encrypted files over WebSockets.</p>
       
       <div id="dropzone-phone">
         <input type="file" id="phone-file-input" multiple onchange="handlePhoneFilesSelected(event)" />
-        <div style="font-family: var(--mono); font-size: 18px; color: var(--text-3); margin-bottom: 8px;">↑</div>
-        <div style="font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text);">Tap to send files to PC</div>
-        <div style="font-size: 12px; color: var(--text-3); margin-top: 4px;">Photos · Files · iCloud Drive</div>
+        <div style="font-family: var(--mono); font-size: 14px; font-weight: 800; color: var(--text); margin-bottom: 8px;">[ + ] TAP TO SEND FILES TO PC</div>
+        <div style="font-size: 11px; color: var(--text-2);">PHOTOS · DOCUMENTS · ARCHIVES</div>
       </div>
     </div>
 
     <!-- Active Transfer -->
     <div id="section-transferring" class="card" style="display: none;">
-      <h2 id="transfer-title">Receiving File...</h2>
+      <h2 id="transfer-title">RECEIVING FILE...</h2>
       <div class="file-item">
-        <div class="file-icon">↓</div>
+        <div class="file-icon">[ ↓ ]</div>
         <div style="flex: 1; overflow: hidden;">
           <div id="transfer-filename" class="file-name">file.pdf</div>
           <div id="transfer-pct" class="file-size">0%</div>
@@ -354,16 +432,48 @@
       <div class="progress-track">
         <div id="transfer-bar" class="progress-bar"></div>
       </div>
-      <button class="secondary" style="color: var(--red); border-color: rgba(239, 68, 68, 0.3); margin-top: 8px;" onclick="cancelTransfer()">Cancel Transfer</button>
+      <button class="secondary" style="color: #EF4444; border-color: #27272A; margin-top: 12px;" onclick="cancelTransfer()">[ CANCEL TRANSFER ]</button>
     </div>
 
-    <!-- Completed Files -->
+    <!-- Completed Files & Multi-Photo Preview Gallery -->
     <div id="section-completed" class="card" style="display: none;">
-      <h2>Received Files</h2>
-      <p>Tap a file below to open, save to iPhone Files app, or AirDrop.</p>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h2>RECEIVED FILES</h2>
+        <button id="phone-gallery-btn" style="width: auto; padding: 6px 12px; font-size: 11px; min-height: 32px; display: none;" onclick="openPhoneGallery(0)">[ PREVIEW ALL PHOTOS ]</button>
+      </div>
+      <p>Select any item below to open, save to iPhone Files app, share, or preview.</p>
       <div id="completed-files-list"></div>
     </div>
   </div>
+
+  <!-- Phone Multi-Photo Lightbox -->
+  <div id="phone-lightbox">
+    <div class="lightbox-header">
+      <div>
+        <div id="phone-lightbox-title" style="font-size: 13px; font-weight: 800; color: #FFFFFF;">filename.jpg</div>
+        <div id="phone-lightbox-counter" style="font-size: 11px; color: var(--text-2); margin-top: 2px;">1 / 1</div>
+      </div>
+      <button style="width: auto; min-height: 34px; padding: 6px 14px; background: var(--surface); color: #FFFFFF; border: 1px solid var(--border);" onclick="closePhoneGallery()">[ CLOSE ]</button>
+    </div>
+
+    <div style="flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; margin: 16px 0;">
+      <img id="phone-lightbox-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid var(--border);" />
+    </div>
+
+    <div class="lightbox-nav">
+      <button style="flex: 1; min-height: 40px; background: var(--surface);" onclick="changePhoneGallery(-1)">[ PREV ]</button>
+      <button id="phone-lightbox-save" style="flex: 1.5; min-height: 40px; background: #FFFFFF; color: #000000;" onclick="saveCurrentPhonePhoto()">[ SAVE / SHARE ]</button>
+      <button style="flex: 1; min-height: 40px; background: var(--surface);" onclick="changePhoneGallery(1)">[ NEXT ]</button>
+    </div>
+
+    <div id="phone-thumb-strip" class="thumb-strip"></div>
+  </div>
+
+  <footer>
+    <a href="https://github.com/DS0710-coder" target="_blank" class="made-by-badge">
+      <span>MADE BY DS0710-CODER</span>
+    </a>
+  </footer>
 
   <script>
     const state = {
@@ -374,8 +484,12 @@
       receiving: null,
       sending: null,
       phoneSendQueue: [],
-      scanner: null
+      scanner: null,
+      completedFilesMap: {},
+      photoKeys: []
     };
+
+    let currentPhoneGalleryIndex = 0;
 
     window.addEventListener('DOMContentLoaded', () => {
       const params = new URLSearchParams(window.location.search);
@@ -406,7 +520,7 @@
 
       if ((isLocalhostUrl || isPlaceholder) && isPhoneBrowser && warningBanner) {
         warningBanner.style.display = 'block';
-        warningBanner.innerHTML = '⚠ Update Worker URL in settings';
+        warningBanner.innerHTML = '[ ! ] UPDATE SERVER WORKER URL IN SETTINGS';
       }
 
       if (s && s.length === 12) {
@@ -485,7 +599,7 @@
         document.getElementById('qr-reader').style.display = 'none';
       }
 
-      setStatus(false, 'Connecting...');
+      setStatus(false, 'CONNECTING...');
       state.cryptoKey = await deriveAESKey(sessionId);
 
       const wsUrl = state.workerHttpUrl.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
@@ -498,10 +612,10 @@
       ws.onopen = () => {
         opened = true;
         state.ws = ws;
-        setStatus(true, 'Connected to PC');
+        setStatus(true, 'CONNECTED');
         document.getElementById('section-connect').style.display = 'none';
         document.getElementById('section-dashboard').style.display = 'block';
-        document.getElementById('session-info-text').innerText = `Session ID: ${sessionId} — E2E Encrypted`;
+        document.getElementById('session-info-text').innerText = `SESSION ID: ${sessionId} — E2E ENCRYPTED`;
       };
 
       ws.onmessage = async (event) => {
@@ -514,20 +628,20 @@
       };
 
       ws.onclose = () => {
-        setStatus(false, 'Disconnected');
+        setStatus(false, 'DISCONNECTED');
         document.getElementById('section-connect').style.display = 'block';
         document.getElementById('section-dashboard').style.display = 'none';
         if (!opened) {
           const banner = document.getElementById('url-warning-banner');
           if (banner) {
             banner.style.display = 'block';
-            banner.innerHTML = '⚠ Update Worker URL in settings';
+            banner.innerHTML = '[ ! ] UPDATE SERVER WORKER URL IN SETTINGS';
           }
         }
       };
 
       ws.onerror = () => {
-        setStatus(false, 'Connection Error');
+        setStatus(false, 'CONNECTION ERROR');
       };
     }
 
@@ -562,7 +676,7 @@
         };
         document.getElementById('card-connected').style.display = 'none';
         document.getElementById('section-transferring').style.display = 'block';
-        document.getElementById('transfer-title').innerText = 'Receiving from PC...';
+        document.getElementById('transfer-title').innerText = 'RECEIVING FILE...';
         document.getElementById('transfer-filename').innerText = state.receiving.filename;
         updateProgress(0);
 
@@ -643,7 +757,6 @@
       if (prog) prog.value = pct;
     }
 
-    state.completedFilesMap = state.completedFilesMap || {};
     let fileCounter = 0;
 
     function finalizeReceivedFile() {
@@ -656,23 +769,36 @@
       const url = URL.createObjectURL(blob);
       const fileId = 'file_' + (++fileCounter);
       const fileObj = new File([blob], rec.filename, { type: rec.mime_type });
-      state.completedFilesMap[fileId] = { url, file: fileObj, filename: rec.filename, mimeType: rec.mime_type };
+      
+      const isImage = (rec.mime_type && rec.mime_type.startsWith('image/')) || rec.filename.match(/\.(jpg|jpeg|png|gif|webp|heic|bmp)$/i);
+      
+      state.completedFilesMap[fileId] = { url, file: fileObj, filename: rec.filename, mimeType: rec.mime_type, isImage };
+      if (isImage) {
+        state.photoKeys.push(fileId);
+      }
 
       const list = document.getElementById('completed-files-list');
       document.getElementById('section-completed').style.display = 'block';
+
+      if (state.photoKeys.length > 0) {
+        const galBtn = document.getElementById('phone-gallery-btn');
+        galBtn.style.display = 'inline-block';
+        galBtn.innerText = `[ PREVIEW ALL PHOTOS (${state.photoKeys.length}) ]`;
+      }
 
       const div = document.createElement('div');
       div.className = 'file-item';
       div.innerHTML = `
         <div style="display:flex; align-items:center; overflow:hidden; flex:1;">
-          <div class="file-icon">↓</div>
-          <div style="flex:1; overflow:hidden;">
+          <div class="file-icon">[ ↓ ]</div>
+          <div style="flex:1; overflow:hidden; padding-right: 8px;">
             <div class="file-name">${rec.filename}</div>
-            <div class="file-size">${formatSize(rec.size)} — Ready</div>
+            <div class="file-size">${formatSize(rec.size)} — READY</div>
           </div>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button style="padding: 8px 14px; font-size:12px; background:var(--primary); color:#fff; font-weight:700; border-radius:6px; min-height:36px;" onclick="shareOrSaveFileById('${fileId}')">Save / Open</button>
+        <div style="display:flex; gap:6px;">
+          ${isImage ? `<button style="padding: 8px 12px; font-size:11px; background:var(--surface); color:#FFF; border: 1px solid var(--border); min-height:36px;" onclick="openPhoneGalleryById('${fileId}')">[ PREVIEW ]</button>` : ''}
+          <button style="padding: 8px 12px; font-size:11px; background:#FFFFFF; color:#000000; border: 1px solid var(--border); font-weight:800; min-height:36px;" onclick="shareOrSaveFileById('${fileId}')">[ SAVE ]</button>
         </div>
       `;
       list.prepend(div);
@@ -682,6 +808,61 @@
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
       return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function openPhoneGalleryById(fileId) {
+      const idx = state.photoKeys.indexOf(fileId);
+      openPhoneGallery(idx >= 0 ? idx : 0);
+    }
+
+    function openPhoneGallery(index) {
+      if (state.photoKeys.length === 0) return;
+      currentPhoneGalleryIndex = index;
+      if (currentPhoneGalleryIndex < 0) currentPhoneGalleryIndex = 0;
+      if (currentPhoneGalleryIndex >= state.photoKeys.length) currentPhoneGalleryIndex = state.photoKeys.length - 1;
+      updatePhoneGalleryView();
+      document.getElementById('phone-lightbox').style.display = 'flex';
+    }
+
+    function updatePhoneGalleryView() {
+      const fileId = state.photoKeys[currentPhoneGalleryIndex];
+      const item = state.completedFilesMap[fileId];
+      if (!item) return;
+
+      document.getElementById('phone-lightbox-title').innerText = item.filename;
+      document.getElementById('phone-lightbox-counter').innerText = `${currentPhoneGalleryIndex + 1} / ${state.photoKeys.length}`;
+      document.getElementById('phone-lightbox-img').src = item.url;
+
+      const strip = document.getElementById('phone-thumb-strip');
+      strip.innerHTML = '';
+      state.photoKeys.forEach((key, i) => {
+        const photo = state.completedFilesMap[key];
+        const img = document.createElement('img');
+        img.className = 'thumb-item' + (i === currentPhoneGalleryIndex ? ' active' : '');
+        img.src = photo.url;
+        img.onclick = () => {
+          currentPhoneGalleryIndex = i;
+          updatePhoneGalleryView();
+        };
+        strip.appendChild(img);
+      });
+    }
+
+    function changePhoneGallery(delta) {
+      if (state.photoKeys.length === 0) return;
+      currentPhoneGalleryIndex += delta;
+      if (currentPhoneGalleryIndex < 0) currentPhoneGalleryIndex = state.photoKeys.length - 1;
+      if (currentPhoneGalleryIndex >= state.photoKeys.length) currentPhoneGalleryIndex = 0;
+      updatePhoneGalleryView();
+    }
+
+    function closePhoneGallery() {
+      document.getElementById('phone-lightbox').style.display = 'none';
+    }
+
+    function saveCurrentPhonePhoto() {
+      const fileId = state.photoKeys[currentPhoneGalleryIndex];
+      if (fileId) shareOrSaveFileById(fileId);
     }
 
     async function shareOrSaveFileById(fileId) {
@@ -718,7 +899,7 @@
       if (!state.sending) {
         processNextPhoneSend();
       } else {
-        document.getElementById('transfer-title').innerText = `Sending (${state.phoneSendQueue.length} more in queue)...`;
+        document.getElementById('transfer-title').innerText = `SENDING (${state.phoneSendQueue.length} IN QUEUE)...`;
       }
     }
 
@@ -745,9 +926,9 @@
       document.getElementById('card-connected').style.display = 'none';
       document.getElementById('section-transferring').style.display = 'block';
       if (state.phoneSendQueue.length > 0) {
-        document.getElementById('transfer-title').innerText = `Sending to PC (${state.phoneSendQueue.length} remaining)...`;
+        document.getElementById('transfer-title').innerText = `SENDING TO PC (${state.phoneSendQueue.length} REMAINING)...`;
       } else {
-        document.getElementById('transfer-title').innerText = 'Sending to PC...';
+        document.getElementById('transfer-title').innerText = 'SENDING TO PC...';
       }
       document.getElementById('transfer-filename').innerText = file.name;
       updateProgress(0);

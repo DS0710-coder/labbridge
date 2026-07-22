@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,29 +8,28 @@ import 'screens/files_screen.dart';
 import 'screens/settings_screen.dart';
 
 class AppTheme {
-  // Backgrounds
-  static const bg         = Color(0xFF080810);   // near black, slightly blue
-  static const surface    = Color(0xFF0F0F1A);   // card background
-  static const surface2   = Color(0xFF151525);   // elevated card
+  // Backgrounds (ContextL pure pitch black monochrome)
+  static const bg         = Color(0xFF000000);
+  static const surface    = Color(0xFF09090B);
+  static const surface2   = Color(0xFF121214);
 
-  // Gradients (use as LinearGradient)
-  static const gradPrimary = [Color(0xFF6C63FF), Color(0xFF9B8FFF)];  // indigo → lavender
-  static const gradGreen   = [Color(0xFF22C55E), Color(0xFF16A34A)];  // success
-  static const gradRed     = [Color(0xFFEF4444), Color(0xFFDC2626)];  // error
-  static const gradOrange  = [Color(0xFFF97316), Color(0xFFEA580C)];  // warning
-  static const gradBlue    = [Color(0xFF3B82F6), Color(0xFF2563EB)];  // info
+  // Flat monochrome borders and highlights
+  static const gradPrimary = [Color(0xFFFFFFFF), Color(0xFFE4E4E7)];
+  static const gradGreen   = [Color(0xFF22C55E), Color(0xFF16A34A)];
+  static const gradRed     = [Color(0xFFEF4444), Color(0xFFDC2626)];
+  static const gradOrange  = [Color(0xFFF97316), Color(0xFFEA580C)];
+  static const gradBlue    = [Color(0xFF3B82F6), Color(0xFF2563EB)];
 
-  // Gradient borders
-  static const borderGrad = [Color(0xFF2A2A4A), Color(0xFF1A1A30)]; // subtle dark gradient border
+  static const borderGrad = [Color(0xFF27272A), Color(0xFF27272A)];
 
   // Text
-  static const textPrimary   = Color(0xFFF0F0FF);  // near white, slightly blue
-  static const textSecondary = Color(0xFF8080A0);  // muted
-  static const textMuted     = Color(0xFF4A4A6A);  // very muted
+  static const textPrimary   = Color(0xFFFFFFFF);
+  static const textSecondary = Color(0xFFA1A1AA);
+  static const textMuted     = Color(0xFF52525B);
 
   // Accent
-  static const accent       = Color(0xFF6C63FF);
-  static const accentGlow   = Color(0x336C63FF);  // for glow effects
+  static const accent       = Color(0xFFFFFFFF);
+  static const accentGlow   = Color(0x1AFFFFFF);
 }
 
 class GradientCard extends StatelessWidget {
@@ -45,7 +43,7 @@ class GradientCard extends StatelessWidget {
     super.key,
     required this.child,
     this.padding,
-    this.borderRadius = 20,
+    this.borderRadius = 0,
     this.borderColors = AppTheme.borderGrad,
     this.backgroundColor = AppTheme.surface,
   });
@@ -55,21 +53,11 @@ class GradientCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: borderColors,
-        ),
+        border: Border.all(color: borderColors.first, width: 1),
+        color: backgroundColor,
       ),
-      padding: const EdgeInsets.all(1),
-      child: Container(
-        padding: padding,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(borderRadius - 1),
-        ),
-        child: child,
-      ),
+      padding: padding ?? EdgeInsets.zero,
+      child: child,
     );
   }
 }
@@ -83,9 +71,9 @@ class IconBox extends StatelessWidget {
   const IconBox({
     super.key,
     required this.icon,
-    this.color = AppTheme.accent,
-    this.size = 44,
-    this.iconSize = 22,
+    this.color = AppTheme.textPrimary,
+    this.size = 40,
+    this.iconSize = 20,
   });
 
   @override
@@ -94,12 +82,8 @@ class IconBox extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * 0.32),
-        gradient: LinearGradient(
-          colors: [color.withValues(alpha: 0.3), color.withValues(alpha: 0.1)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: const Color(0xFF121214),
+        border: Border.all(color: const Color(0xFF27272A)),
       ),
       child: Icon(icon, color: color, size: iconSize),
     );
@@ -126,13 +110,13 @@ class CueFlexApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           colorScheme: const ColorScheme.dark(
-            primary: Color(0xFF6C63FF),
-            surface: Color(0xFF0F0F1A),
-            onSurface: Color(0xFFF0F0FF),
+            primary: Color(0xFFFFFFFF),
+            surface: Color(0xFF09090B),
+            onSurface: Color(0xFFFFFFFF),
           ),
-          scaffoldBackgroundColor: const Color(0xFF080810),
+          scaffoldBackgroundColor: const Color(0xFF000000),
           useMaterial3: true,
-          fontFamily: 'SF Pro Display',
+          fontFamily: 'monospace',
         ),
         home: const MainShell(),
       ),
@@ -158,39 +142,37 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
     return Scaffold(
+      backgroundColor: AppTheme.bg,
       body: Stack(
         children: [
           Padding(
-            padding: const EdgeInsets.only(bottom: 88),
+            padding: EdgeInsets.only(bottom: 64 + bottomInset),
             child: IndexedStack(
               index: _currentIndex,
               children: _screens,
             ),
           ),
           Positioned(
-            bottom: 24,
-            left: 24,
-            right: 24,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F0F1A).withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: const Color(0xFF2A2A4A)),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildNavItem(0, Icons.home_outlined, Icons.home_rounded, 'Home'),
-                      _buildNavItem(1, Icons.folder_outlined, Icons.folder_rounded, 'Files'),
-                      _buildNavItem(2, Icons.settings_outlined, Icons.settings_rounded, 'Settings'),
-                    ],
-                  ),
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.only(bottom: bottomInset),
+              decoration: const BoxDecoration(
+                color: Color(0xFF09090B),
+                border: Border(top: BorderSide(color: Color(0xFF27272A), width: 1)),
+              ),
+              child: SizedBox(
+                height: 64,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(0, Icons.terminal_rounded, 'TERMINAL'),
+                    _buildNavItem(1, Icons.folder_open_rounded, 'FILES'),
+                    _buildNavItem(2, Icons.settings_rounded, 'CONFIG'),
+                  ],
                 ),
               ),
             ),
@@ -200,42 +182,38 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label) {
+  Widget _buildNavItem(int index, IconData icon, String label) {
     final isActive = _currentIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _currentIndex = index),
       behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF6C63FF).withValues(alpha: 0.18) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          color: isActive ? const Color(0xFF18181B) : Colors.transparent,
           border: isActive
-              ? Border.all(color: const Color(0xFF6C63FF).withValues(alpha: 0.4))
-              : Border.all(color: Colors.transparent),
+              ? Border.all(color: const Color(0xFFFFFFFF), width: 1)
+              : Border.all(color: Colors.transparent, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              isActive ? activeIcon : icon,
-              color: isActive ? AppTheme.accent : AppTheme.textSecondary,
-              size: 20,
+              icon,
+              color: isActive ? AppTheme.textPrimary : AppTheme.textSecondary,
+              size: 16,
             ),
-            if (isActive) ...[
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  letterSpacing: -0.2,
-                ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? AppTheme.textPrimary : AppTheme.textSecondary,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 11,
+                letterSpacing: 1.2,
+                fontFamily: 'monospace',
               ),
-            ],
+            ),
           ],
         ),
       ),

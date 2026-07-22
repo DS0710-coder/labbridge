@@ -1,42 +1,45 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:uuid/uuid.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
 import '../models/folder.dart';
 import '../models/file_item.dart';
 import '../services/db_service.dart';
-import '../services/transfer_service.dart';
 import '../widgets/folder_tile.dart';
 import '../widgets/file_tile.dart';
-import 'files_batch_mixin.dart';
 import '../main.dart';
+import 'files_batch_mixin.dart';
 
 class FilesScreen extends StatefulWidget {
-  const FilesScreen({super.key});
+  final String? initialFolderId;
+
+  const FilesScreen({super.key, this.initialFolderId});
 
   @override
   State<FilesScreen> createState() => _FilesScreenState();
 }
 
-class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScreen> {
+class _FilesScreenState extends State<FilesScreen>
+    with FilesBatchMixin<FilesScreen> {
   final DbService _dbService = DbService();
-  static const _uuid = Uuid();
-  StreamSubscription<String>? _completionSub;
+  final Uuid _uuid = const Uuid();
 
+  String? _currentFolderId;
   List<Folder> _folders = [];
   List<FileItem> _files = [];
   List<Folder> _breadcrumbs = [];
-  String? _currentFolderId;
   bool _loading = true;
+
+  final Set<String> _selectedFolderIds = {};
+  final Set<String> _selectedFileIds = {};
+  bool _selectionMode = false;
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'All';
-
   final List<String> _tabs = ['All', 'Documents', 'Images', 'Media', 'Archives', 'Code'];
 
   @override
@@ -56,27 +59,16 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
   @override
   void loadFolder(String? folderId) => _loadFolder(folderId);
 
-  bool _selectionMode = false;
-  final Set<String> _selectedFolderIds = {};
-  final Set<String> _selectedFileIds = {};
-
   @override
   void initState() {
     super.initState();
-    _loadFolder(null);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final transferService = Provider.of<TransferService>(context, listen: false);
-      _completionSub = transferService.completions.listen((_) {
-        if (mounted) _loadFolder(_currentFolderId);
-      });
-    });
+    _currentFolderId = widget.initialFolderId;
+    _loadFolder(_currentFolderId);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _completionSub?.cancel();
     super.dispose();
   }
 
@@ -86,14 +78,13 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final folders = await _dbService.getChildFolders(folderId);
     final files = await _dbService.getFilesInFolder(folderId);
 
-    // Build breadcrumbs
-    final crumbs = <Folder>[];
-    String? id = folderId;
-    while (id != null) {
-      final folder = await _dbService.getFolder(id);
-      if (folder != null) {
-        crumbs.insert(0, folder);
-        id = folder.parentId;
+    List<Folder> crumbs = [];
+    String? cid = folderId;
+    while (cid != null) {
+      final f = await _dbService.getFolder(cid);
+      if (f != null) {
+        crumbs.insert(0, f);
+        cid = f.parentId;
       } else {
         break;
       }
@@ -119,7 +110,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
 
   String _sanitizeFolderName(String raw) {
     var clean = raw.trim().replaceAll(RegExp(r'[\\/]+'), '');
-    if (clean.isEmpty || clean == '.' || clean == '..') clean = 'Folder';
+    if (clean.isEmpty || clean == '.' || clean == '..') clean = 'DIR';
     if (clean.length > 100) clean = clean.substring(0, 100);
     return clean;
   }
@@ -129,49 +120,44 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF1E1E2E)),
-        ),
+        backgroundColor: const Color(0xFF09090B),
+        shape: Border.all(color: const Color(0xFF27272A), width: 1),
         title: const Text(
-          'New Folder',
-          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700),
+          'NEW DIRECTORY',
+          style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontFamily: 'monospace'),
         ),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: 100,
-          style: const TextStyle(color: AppTheme.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'Folder name',
-            hintStyle: const TextStyle(color: AppTheme.textSecondary),
-            counterStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+          style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace'),
+          decoration: const InputDecoration(
+            hintText: 'DIRECTORY NAME',
+            hintStyle: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace'),
+            counterStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontFamily: 'monospace'),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
+              borderSide: BorderSide(color: Color(0xFF27272A)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppTheme.accent),
+              borderSide: BorderSide(color: Colors.white),
             ),
             filled: true,
-            fillColor: AppTheme.surface2,
+            fillColor: Color(0xFF121214),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Create'),
+            child: const Text('CREATE', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -196,70 +182,71 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
   void _showFolderOptions(Folder folder) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: const Color(0xFF09090B),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E2E),
-                borderRadius: BorderRadius.circular(2),
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: Color(0xFF27272A))),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 2,
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                color: const Color(0xFF27272A),
               ),
-            ),
-            Text(
-              folder.name,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
+              Text(
+                '/${folder.name.toUpperCase()}',
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'monospace',
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            _buildSheetOption(
-              Icons.checklist_rounded,
-              'Select',
-              () {
-                Navigator.pop(context);
-                setState(() {
-                  _selectionMode = true;
-                  _selectedFolderIds.add(folder.id);
-                });
-              },
-            ),
-            _buildSheetOption(
-              Icons.edit_rounded,
-              'Rename',
-              () {
-                Navigator.pop(context);
-                _showRenameFolderDialog(folder);
-              },
-            ),
-            _buildSheetOption(
-              Icons.palette_rounded,
-              'Change Color',
-              () {
-                Navigator.pop(context);
-                _showColorPicker(folder);
-              },
-            ),
-            _buildSheetOption(
-              Icons.delete_rounded,
-              'Delete',
-              () {
-                Navigator.pop(context);
-                _deleteFolder(folder);
-              },
-              color: const Color(0xFFEF4444),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+              _buildSheetOption(
+                Icons.check_box_outlined,
+                'SELECT DIRECTORY',
+                () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _selectionMode = true;
+                    _selectedFolderIds.add(folder.id);
+                  });
+                },
+              ),
+              _buildSheetOption(
+                Icons.edit_outlined,
+                'RENAME DIRECTORY',
+                () {
+                  Navigator.pop(context);
+                  _showRenameFolderDialog(folder);
+                },
+              ),
+              _buildSheetOption(
+                Icons.palette_outlined,
+                'CHANGE COLOR TAG',
+                () {
+                  Navigator.pop(context);
+                  _showColorPicker(folder);
+                },
+              ),
+              _buildSheetOption(
+                Icons.delete_outline,
+                'DELETE DIRECTORY',
+                () {
+                  Navigator.pop(context);
+                  _deleteFolder(folder);
+                },
+                color: const Color(0xFFEF4444),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -270,44 +257,39 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final name = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF1E1E2E)),
-        ),
-        title: const Text('Rename Folder', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
+        backgroundColor: const Color(0xFF09090B),
+        shape: Border.all(color: const Color(0xFF27272A), width: 1),
+        title: const Text('RENAME DIRECTORY', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontFamily: 'monospace')),
         content: TextField(
           controller: controller,
           autofocus: true,
           maxLength: 100,
-          style: const TextStyle(color: AppTheme.textPrimary),
-          decoration: InputDecoration(
-            counterStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 10),
+          style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace'),
+          decoration: const InputDecoration(
+            counterStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 10, fontFamily: 'monospace'),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
+              borderSide: BorderSide(color: Color(0xFF27272A)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppTheme.accent),
+              borderSide: BorderSide(color: Colors.white),
             ),
             filled: true,
-            fillColor: AppTheme.surface2,
+            fillColor: Color(0xFF121214),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Rename'),
+            child: const Text('RENAME', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -325,28 +307,30 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
 
   void _showColorPicker(Folder folder) {
     final colors = [
-      '#6C63FF', '#22C55E', '#EF4444', '#F97316',
-      '#3B82F6', '#A855F7', '#EC4899', '#F59E0B',
+      '#FFFFFF', '#A1A1AA', '#71717A', '#52525B',
+      '#3F3F46', '#27272A', '#18181B', '#09090B',
     ];
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: const Color(0xFF09090B),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       builder: (context) => SafeArea(
-        child: Padding(
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: Color(0xFF27272A))),
+          ),
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Choose Color',
+                'CHOOSE MONOCHROME TAG',
                 style: TextStyle(
                   color: AppTheme.textPrimary,
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'monospace',
                 ),
               ),
               const SizedBox(height: 20),
@@ -365,17 +349,17 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                       _loadFolder(_currentFolderId);
                     },
                     child: Container(
-                      width: 48,
-                      height: 48,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
                         color: colorVal,
-                        shape: BoxShape.circle,
-                        border: isSelected
-                            ? Border.all(color: Colors.white, width: 3)
-                            : null,
+                        border: Border.all(
+                          color: isSelected ? Colors.white : const Color(0xFF3F3F46),
+                          width: isSelected ? 2 : 1,
+                        ),
                       ),
                       child: isSelected
-                          ? const Icon(Icons.check, color: Colors.white, size: 20)
+                          ? Icon(Icons.check, color: hex == '#FFFFFF' ? Colors.black : Colors.white, size: 20)
                           : null,
                     ),
                   );
@@ -393,29 +377,26 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF1E1E2E)),
-        ),
-        title: const Text('Delete Folder?', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
+        backgroundColor: const Color(0xFF09090B),
+        shape: Border.all(color: const Color(0xFF27272A), width: 1),
+        title: const Text('DELETE DIRECTORY?', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontFamily: 'monospace')),
         content: Text(
-          'Delete "${folder.name}"? Sub-folders will be moved up.',
-          style: const TextStyle(color: AppTheme.textSecondary),
+          'Delete "/${folder.name.toUpperCase()}"? Sub-directories will be unlinked.',
+          style: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace', fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: const Text('DELETE', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -431,87 +412,88 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
   void _showFileOptions(FileItem file) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      backgroundColor: const Color(0xFF09090B),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
       builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E1E2E),
-                borderRadius: BorderRadius.circular(2),
+        child: Container(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: Color(0xFF27272A))),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 2,
+                margin: const EdgeInsets.only(top: 12, bottom: 20),
+                color: const Color(0xFF27272A),
               ),
-            ),
-            Text(
-              file.name,
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
+              Text(
+                file.name,
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  fontFamily: 'monospace',
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 16),
-            _buildSheetOption(
-              Icons.checklist_rounded,
-              'Select',
-              () {
-                Navigator.pop(context);
-                setState(() {
-                  _selectionMode = true;
-                  _selectedFileIds.add(file.id);
-                });
-              },
-            ),
-            _buildSheetOption(
-              Icons.open_in_new_rounded,
-              'Open',
-              () {
-                Navigator.pop(context);
-                OpenFile.open(file.localPath);
-              },
-            ),
-            _buildSheetOption(
-              Icons.share_rounded,
-              'Share',
-              () {
-                Navigator.pop(context);
-                SharePlus.instance.share(ShareParams(files: [XFile(file.localPath)]));
-              },
-            ),
-            _buildSheetOption(
-              Icons.drive_file_move_rounded,
-              'Move to Folder',
-              () {
-                Navigator.pop(context);
-                _showMoveFolderPicker(file);
-              },
-            ),
-            _buildSheetOption(
-              Icons.label_rounded,
-              'Edit Tags',
-              () {
-                Navigator.pop(context);
-                _showEditTagsDialog(file);
-              },
-            ),
-            _buildSheetOption(
-              Icons.delete_rounded,
-              'Delete',
-              () {
-                Navigator.pop(context);
-                _deleteFile(file);
-              },
-              color: const Color(0xFFEF4444),
-            ),
-            const SizedBox(height: 16),
-          ],
+              const SizedBox(height: 16),
+              _buildSheetOption(
+                Icons.check_box_outlined,
+                'SELECT FILE',
+                () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _selectionMode = true;
+                    _selectedFileIds.add(file.id);
+                  });
+                },
+              ),
+              _buildSheetOption(
+                Icons.open_in_new,
+                'OPEN FILE',
+                () {
+                  Navigator.pop(context);
+                  OpenFile.open(file.localPath);
+                },
+              ),
+              _buildSheetOption(
+                Icons.share_outlined,
+                'SHARE FILE',
+                () {
+                  Navigator.pop(context);
+                  SharePlus.instance.share(ShareParams(files: [XFile(file.localPath)]));
+                },
+              ),
+              _buildSheetOption(
+                Icons.drive_file_move_outlined,
+                'MOVE TO DIRECTORY',
+                () {
+                  Navigator.pop(context);
+                  _showMoveFolderPicker(file);
+                },
+              ),
+              _buildSheetOption(
+                Icons.tag,
+                'EDIT TAGS',
+                () {
+                  Navigator.pop(context);
+                  _showEditTagsDialog(file);
+                },
+              ),
+              _buildSheetOption(
+                Icons.delete_outline,
+                'DELETE FILE',
+                () {
+                  Navigator.pop(context);
+                  _deleteFile(file);
+                },
+                color: const Color(0xFFEF4444),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
       ),
     );
@@ -524,30 +506,29 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final selectedId = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF1E1E2E)),
+        backgroundColor: const Color(0xFF09090B),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: Color(0xFF27272A)),
         ),
-        title: const Text('Move to Folder', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
+        title: const Text('MOVE TO DIRECTORY', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontFamily: 'monospace')),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
             shrinkWrap: true,
             children: [
               ListTile(
-                leading: const Icon(Icons.folder_rounded, color: AppTheme.textSecondary),
-                title: const Text('Root', style: TextStyle(color: AppTheme.textPrimary)),
+                leading: const Icon(Icons.folder_outlined, color: Colors.white, size: 18),
+                title: const Text('/ROOT', style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace', fontWeight: FontWeight.w700)),
                 onTap: () => Navigator.pop(context, '__root__'),
               ),
               ...allFolders.map((f) => ListTile(
-                    leading: Icon(
-                      Icons.folder_rounded,
-                      color: Color(
-                        int.parse('FF${f.color.replaceAll('#', '')}', radix: 16),
-                      ),
+                    leading: const Icon(
+                      Icons.folder_outlined,
+                      color: Colors.white,
+                      size: 18,
                     ),
-                    title: Text(f.name, style: const TextStyle(color: AppTheme.textPrimary)),
+                    title: Text('/${f.name.toUpperCase()}', style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace')),
                     onTap: () => Navigator.pop(context, f.id),
                   )),
             ],
@@ -573,43 +554,41 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final tags = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF1E1E2E)),
+        backgroundColor: const Color(0xFF09090B),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: Color(0xFF27272A)),
         ),
-        title: const Text('Edit Tags', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
+        title: const Text('EDIT TAGS', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontFamily: 'monospace')),
         content: TextField(
           controller: controller,
-          style: const TextStyle(color: AppTheme.textPrimary),
-          decoration: InputDecoration(
-            hintText: 'Comma-separated tags',
-            hintStyle: const TextStyle(color: AppTheme.textSecondary),
+          style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace'),
+          decoration: const InputDecoration(
+            hintText: 'comma, separated, tags',
+            hintStyle: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace'),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF1E1E2E)),
+              borderSide: BorderSide(color: Color(0xFF27272A)),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppTheme.accent),
+              borderSide: BorderSide(color: Colors.white),
             ),
             filled: true,
-            fillColor: AppTheme.surface2,
+            fillColor: Color(0xFF121214),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save'),
+            child: const Text('SAVE', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -626,29 +605,29 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: AppTheme.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF1E1E2E)),
+        backgroundColor: const Color(0xFF09090B),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
+          side: BorderSide(color: Color(0xFF27272A)),
         ),
-        title: const Text('Delete File?', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700)),
+        title: const Text('DELETE FILE?', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontFamily: 'monospace')),
         content: Text(
           'Delete "${file.name}"?',
-          style: const TextStyle(color: AppTheme.textSecondary),
+          style: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace', fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary)),
+            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFEF4444),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: const Text('DELETE', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -738,13 +717,14 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
   Widget _buildSheetOption(IconData icon, String label, VoidCallback onTap,
       {Color? color}) {
     return ListTile(
-      leading: Icon(icon, color: color ?? AppTheme.textPrimary, size: 22),
+      leading: Icon(icon, color: color ?? AppTheme.textPrimary, size: 20),
       title: Text(
         label,
         style: TextStyle(
           color: color ?? AppTheme.textPrimary,
-          fontSize: 15,
-          fontWeight: FontWeight.w500,
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          fontFamily: 'monospace',
         ),
       ),
       onTap: onTap,
@@ -759,25 +739,24 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: AppTheme.surface2,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFF1E1E2E)),
+          color: const Color(0xFF121214),
+          border: Border.all(color: const Color(0xFF27272A)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color ?? AppTheme.accent, size: 22),
+            Icon(icon, color: color ?? Colors.white, size: 18),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
                 color: color ?? AppTheme.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'monospace',
               ),
             ),
           ],
@@ -796,21 +775,15 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
       floatingActionButton: !_selectionMode
           ? Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(30),
-                gradient: const LinearGradient(colors: AppTheme.gradPrimary),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.accent.withValues(alpha: 0.35),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+                color: Colors.white,
+                border: Border.all(color: const Color(0xFF27272A)),
               ),
               child: FloatingActionButton(
                 backgroundColor: Colors.transparent,
                 elevation: 0,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                 onPressed: _showCreateFolderDialog,
-                child: const Icon(Icons.create_new_folder_rounded, color: Colors.white, size: 26),
+                child: const Icon(Icons.create_new_folder_outlined, color: Colors.black, size: 24),
               ),
             ).animate().scale(delay: 200.ms, curve: Curves.easeOutBack)
           : null,
@@ -818,26 +791,26 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
           ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: const BoxDecoration(
-                color: AppTheme.surface,
-                border: Border(top: BorderSide(color: Color(0xFF1E1E28))),
+                color: Color(0xFF09090B),
+                border: Border(top: BorderSide(color: Color(0xFF27272A))),
               ),
               child: SafeArea(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     _buildBatchActionButton(
-                      icon: Icons.folder_shared_rounded,
-                      label: 'Move / Shift',
+                      icon: Icons.folder_shared_outlined,
+                      label: 'MOVE',
                       onTap: batchMoveSelected,
                     ),
                     _buildBatchActionButton(
-                      icon: Icons.unarchive_rounded,
-                      label: 'Extract',
+                      icon: Icons.unarchive_outlined,
+                      label: 'EXTRACT',
                       onTap: batchExtractSelected,
                     ),
                     _buildBatchActionButton(
-                      icon: Icons.delete_rounded,
-                      label: 'Delete',
+                      icon: Icons.delete_outline,
+                      label: 'DELETE',
                       color: const Color(0xFFEF4444),
                       onTap: batchDeleteSelected,
                     ),
@@ -850,7 +823,6 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header / Action Bar
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
               child: !_selectionMode
@@ -858,17 +830,17 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         const Text(
-                          'Files',
+                          '> DIRECTORY_INDEX',
                           style: TextStyle(
                             color: AppTheme.textPrimary,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: -0.8,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            fontFamily: 'monospace',
                           ),
                         ),
                         if (_folders.isNotEmpty || _files.isNotEmpty)
                           IconButton(
-                            icon: const Icon(Icons.checklist_rounded, color: AppTheme.accent, size: 26),
+                            icon: const Icon(Icons.check_box_outlined, color: Colors.white, size: 22),
                             tooltip: 'Select multiple items',
                             onPressed: () {
                               setState(() {
@@ -884,7 +856,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                         Row(
                           children: [
                             IconButton(
-                              icon: const Icon(Icons.close_rounded, color: AppTheme.textPrimary),
+                              icon: const Icon(Icons.close, color: AppTheme.textPrimary),
                               onPressed: () {
                                 setState(() {
                                   _selectionMode = false;
@@ -895,50 +867,49 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              '${_selectedFolderIds.length + _selectedFileIds.length} Selected',
+                              '${_selectedFolderIds.length + _selectedFileIds.length} SELECTED',
                               style: const TextStyle(
                                 color: AppTheme.textPrimary,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                fontFamily: 'monospace',
                               ),
                             ),
                           ],
                         ),
                         TextButton.icon(
                           onPressed: _selectAll,
-                          icon: const Icon(Icons.select_all_rounded, color: AppTheme.accent, size: 20),
+                          icon: const Icon(Icons.select_all, color: Colors.white, size: 18),
                           label: Text(
                             _selectedFolderIds.length + _selectedFileIds.length == filteredFolders.length + filteredFiles.length
-                                ? 'Deselect all'
-                                : 'Select all',
-                            style: const TextStyle(color: AppTheme.accent, fontWeight: FontWeight.w600),
+                                ? 'DESELECT ALL'
+                                : 'SELECT ALL',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontFamily: 'monospace', fontSize: 11),
                           ),
                         ),
                       ],
                     ).animate().fadeIn(),
             ),
 
-            // Search Bar at top (#111118 input with #1E1E28 border, search icon, filter icon)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
                 decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF1E1E28)),
+                  color: const Color(0xFF09090B),
+                  border: Border.all(color: const Color(0xFF27272A)),
                 ),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
                   children: [
-                    const Icon(Icons.search_rounded, color: AppTheme.textSecondary, size: 22),
+                    const Icon(Icons.search, color: AppTheme.textSecondary, size: 18),
                     const SizedBox(width: 10),
                     Expanded(
                       child: TextField(
                         controller: _searchController,
-                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14),
+                        style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13, fontFamily: 'monospace'),
                         decoration: const InputDecoration(
-                          hintText: 'Search files and folders...',
-                          hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+                          hintText: 'FILTER FILES AND DIRECTORIES...',
+                          hintStyle: TextStyle(color: AppTheme.textSecondary, fontSize: 13, fontFamily: 'monospace'),
                           border: InputBorder.none,
                           isDense: true,
                           contentPadding: EdgeInsets.symmetric(vertical: 14),
@@ -956,17 +927,16 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                           _searchController.clear();
                           setState(() => _searchQuery = '');
                         },
-                        child: const Icon(Icons.close_rounded, color: AppTheme.textSecondary, size: 18),
+                        child: const Icon(Icons.close, color: AppTheme.textSecondary, size: 18),
                       )
                     else
-                      const Icon(Icons.tune_rounded, color: AppTheme.textSecondary, size: 20),
+                      const Icon(Icons.filter_alt_outlined, color: AppTheme.textSecondary, size: 18),
                   ],
                 ),
               ),
             ).animate().fadeIn(delay: 100.ms),
             const SizedBox(height: 14),
 
-            // Filter chips row below search: [All] [Documents] [Images] [Media] [Archives] [Code] — animated pill selection
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -981,33 +951,22 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                         _selectedTab = tab;
                       });
                     },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOut,
+                    child: Container(
                       margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.accent : AppTheme.surface,
-                        borderRadius: BorderRadius.circular(20),
+                        color: isSelected ? Colors.white : const Color(0xFF09090B),
                         border: Border.all(
-                          color: isSelected ? AppTheme.accent : const Color(0xFF1E1E28),
+                          color: isSelected ? Colors.white : const Color(0xFF27272A),
                         ),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: AppTheme.accent.withValues(alpha: 0.3),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ]
-                            : null,
                       ),
                       child: Text(
-                        tab,
+                        tab.toUpperCase(),
                         style: TextStyle(
-                          color: isSelected ? Colors.white : AppTheme.textSecondary,
-                          fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                          color: isSelected ? Colors.black : AppTheme.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'monospace',
                         ),
                       ),
                     ),
@@ -1017,15 +976,13 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
             ),
             const SizedBox(height: 16),
 
-            // Breadcrumb trail with subtle background #111118, rounded 12px pill
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF1E1E28)),
+                  color: const Color(0xFF09090B),
+                  border: Border.all(color: const Color(0xFF27272A)),
                 ),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -1036,17 +993,18 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                         child: Row(
                           children: [
                             Icon(
-                              Icons.home_rounded,
-                              size: 16,
-                              color: _currentFolderId == null ? AppTheme.accent : AppTheme.textSecondary,
+                              Icons.folder_outlined,
+                              size: 14,
+                              color: _currentFolderId == null ? Colors.white : AppTheme.textSecondary,
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              'Root',
+                              '/ROOT',
                               style: TextStyle(
-                                color: _currentFolderId == null ? AppTheme.accent : AppTheme.textSecondary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
+                                color: _currentFolderId == null ? Colors.white : AppTheme.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'monospace',
                               ),
                             ),
                           ],
@@ -1058,20 +1016,17 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                           children: [
                             const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 6),
-                              child: Icon(
-                                Icons.chevron_right_rounded,
-                                color: AppTheme.textMuted,
-                                size: 16,
-                              ),
+                              child: Text('/', style: TextStyle(color: AppTheme.textMuted, fontSize: 12, fontFamily: 'monospace')),
                             ),
                             GestureDetector(
                               onTap: () => _navigateToFolder(crumb.id),
                               child: Text(
-                                crumb.name,
+                                crumb.name.toUpperCase(),
                                 style: TextStyle(
-                                  color: isLast ? AppTheme.accent : AppTheme.textSecondary,
-                                  fontSize: 13,
-                                  fontWeight: isLast ? FontWeight.w600 : FontWeight.w500,
+                                  color: isLast ? Colors.white : AppTheme.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: isLast ? FontWeight.w700 : FontWeight.w500,
+                                  fontFamily: 'monospace',
                                 ),
                               ),
                             ),
@@ -1085,73 +1040,67 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
             ).animate().fadeIn(delay: 150.ms),
             const SizedBox(height: 16),
 
-            // Content
             Expanded(
               child: _loading
                   ? const Center(
-                      child: CircularProgressIndicator(color: AppTheme.accent),
+                      child: CircularProgressIndicator(valueColor: AlwaysStoppedAnimation(Colors.white)),
                     )
                   : (filteredFolders.isEmpty && filteredFiles.isEmpty)
                       ? Center(
                           child: Container(
-                            margin: const EdgeInsets.all(24),
+                            margin: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(24),
-                              gradient: const LinearGradient(colors: AppTheme.borderGrad),
+                              color: const Color(0xFF09090B),
+                              border: Border.all(color: const Color(0xFF27272A)),
                             ),
-                            padding: const EdgeInsets.all(1.5),
-                            child: Container(
-                              padding: const EdgeInsets.all(32),
-                              decoration: BoxDecoration(
-                                color: AppTheme.surface,
-                                borderRadius: BorderRadius.circular(22.5),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 72,
-                                    height: 72,
-                                    decoration: BoxDecoration(
-                                      color: AppTheme.accent.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Icon(
-                                      Icons.folder_open_rounded,
-                                      color: AppTheme.accent,
-                                      size: 36,
-                                    ),
+                            padding: const EdgeInsets.all(32),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF121214),
+                                    border: Border.all(color: const Color(0xFF27272A)),
                                   ),
-                                  const SizedBox(height: 20),
-                                  Text(
-                                    _searchQuery.isNotEmpty || _selectedTab != 'All'
-                                        ? 'No matching files'
-                                        : 'Empty folder',
-                                    style: const TextStyle(
-                                      color: AppTheme.textPrimary,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                  child: const Icon(
+                                    Icons.folder_open,
+                                    color: Colors.white,
+                                    size: 28,
                                   ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    _searchQuery.isNotEmpty || _selectedTab != 'All'
-                                        ? 'Try checking other categories or adjusting search terms'
-                                        : 'Create a folder or transfer files from PC',
-                                    style: const TextStyle(
-                                      color: AppTheme.textSecondary,
-                                      fontSize: 14,
-                                    ),
-                                    textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 18),
+                                Text(
+                                  _searchQuery.isNotEmpty || _selectedTab != 'All'
+                                      ? 'NO MATCHING ITEMS'
+                                      : 'EMPTY DIRECTORY',
+                                  style: const TextStyle(
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'monospace',
                                   ),
-                                ],
-                              ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _searchQuery.isNotEmpty || _selectedTab != 'All'
+                                      ? 'Adjust filter criteria or search query.'
+                                      : 'Create a new directory or transfer items from PC.',
+                                  style: const TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 12,
+                                    fontFamily: 'monospace',
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
                             ),
-                          ).animate().fadeIn().scale(begin: const Offset(0.95, 0.95)),
+                          ).animate().fadeIn().scale(),
                         )
                       : RefreshIndicator(
-                          color: AppTheme.accent,
-                          backgroundColor: AppTheme.surface,
+                          color: Colors.white,
+                          backgroundColor: const Color(0xFF09090B),
                           onRefresh: () => _loadFolder(_currentFolderId),
                           child: ListView(
                             padding: const EdgeInsets.only(bottom: 100),
@@ -1182,7 +1131,7 @@ class _FilesScreenState extends State<FilesScreen> with FilesBatchMixin<FilesScr
                               if (filteredFolders.isNotEmpty && filteredFiles.isNotEmpty)
                                 const Padding(
                                   padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                                  child: Divider(color: Color(0xFF1E1E2E), height: 1),
+                                  child: Divider(color: Color(0xFF27272A), height: 1),
                                 ),
                               ...filteredFiles.asMap().entries.map((entry) {
                                 final idx = entry.key;

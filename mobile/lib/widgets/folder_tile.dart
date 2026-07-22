@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/constants.dart';
 import '../models/folder.dart';
 import '../main.dart';
 
@@ -21,65 +20,35 @@ class FolderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final folderColor = AppColors.fromHex(folder.color);
-
-    final borderColors = isSelected
-        ? AppTheme.gradPrimary
-        : AppTheme.borderGrad;
-
-    final bgColor = isSelected
-        ? AppTheme.accent.withValues(alpha: 0.12)
-        : AppTheme.surface;
+    final borderColor = isSelected ? const Color(0xFFFFFFFF) : const Color(0xFF27272A);
+    final bgColor = isSelected ? const Color(0xFF18181B) : const Color(0xFF09090B);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: borderColors,
-        ),
-        boxShadow: isSelected
-            ? [
-                BoxShadow(
-                  color: AppTheme.accent.withValues(alpha: 0.25),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                )
-              ]
-            : null,
-      ),
-      padding: const EdgeInsets.all(1),
-      child: Material(
         color: bgColor,
-        borderRadius: BorderRadius.circular(19),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Material(
+        color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(19),
           onTap: onTap,
           onLongPress: onLongPress,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: LinearGradient(
-                      colors: [
-                        folderColor.withValues(alpha: 0.28),
-                        folderColor.withValues(alpha: 0.08)
-                      ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    color: const Color(0xFF121214),
+                    border: Border.all(color: const Color(0xFF27272A)),
                   ),
-                  child: Icon(
-                    Icons.folder_rounded,
-                    color: folderColor,
-                    size: 22,
+                  child: const Icon(
+                    Icons.folder_outlined,
+                    color: Colors.white,
+                    size: 18,
                   ),
                 ),
                 const SizedBox(width: 14),
@@ -88,34 +57,33 @@ class FolderTile extends StatelessWidget {
                     folder.name,
                     style: const TextStyle(
                       color: AppTheme.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -0.3,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'monospace',
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (selectionMode)
                   Container(
-                    width: 24,
-                    height: 24,
+                    width: 18,
+                    height: 18,
                     decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.accent : Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
+                      color: isSelected ? Colors.white : Colors.transparent,
                       border: Border.all(
-                        color: isSelected ? AppTheme.accent : AppTheme.textMuted,
-                        width: 2,
+                        color: isSelected ? Colors.white : const Color(0xFF52525B),
+                        width: 1.5,
                       ),
                     ),
                     child: isSelected
-                        ? const Icon(Icons.check_rounded, color: Colors.white, size: 16)
+                        ? const Icon(Icons.check, color: Colors.black, size: 14)
                         : null,
                   )
                 else
                   const Icon(
-                    Icons.chevron_right_rounded,
+                    Icons.chevron_right,
                     color: AppTheme.textSecondary,
-                    size: 20,
+                    size: 18,
                   ),
               ],
             ),

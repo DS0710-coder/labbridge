@@ -1,4 +1,4 @@
-const CACHE_NAME = 'labbridge-pwa-v9';
+const CACHE_NAME = 'cueflex-pwa-v10';
 const ASSETS = [
   '/',
   '/index.html',

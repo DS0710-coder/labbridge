@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/folder.dart';
 import '../services/db_service.dart';
@@ -52,7 +53,6 @@ class _TransferScreenState extends State<TransferScreen> {
   }
 
   Future<void> _init() async {
-    // Set up listeners
     _statusSub = _transferService.connectionStatus.listen((status) {
       if (mounted) {
         setState(() => _connectionStatus = status);
@@ -83,7 +83,6 @@ class _TransferScreenState extends State<TransferScreen> {
       }
     });
 
-    // Auto-connect if session ID provided
     if (widget.sessionId != null) {
       await _connect();
     }
@@ -122,6 +121,13 @@ class _TransferScreenState extends State<TransferScreen> {
     await _transferService.sendFile(file);
   }
 
+  Future<void> _launchGithub() async {
+    final uri = Uri.parse('https://github.com/DS0710-coder');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   void dispose() {
     _statusSub?.cancel();
@@ -142,8 +148,8 @@ class _TransferScreenState extends State<TransferScreen> {
         foregroundColor: AppTheme.textPrimary,
         elevation: 0,
         title: const Text(
-          'Transfer',
-          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 20),
+          '> TRANSFER_RELAY',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, fontFamily: 'monospace'),
         ),
         actions: [
           if (isConnected)
@@ -152,7 +158,7 @@ class _TransferScreenState extends State<TransferScreen> {
                 await _transferService.disconnect();
                 if (context.mounted) Navigator.pop(context);
               },
-              icon: const Icon(Icons.close_rounded, color: Color(0xFFEF4444)),
+              icon: const Icon(Icons.close, color: Color(0xFFEF4444)),
               tooltip: 'Disconnect',
             ),
         ],
@@ -161,33 +167,28 @@ class _TransferScreenState extends State<TransferScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            // Connection status pill banner
-            _buildConnectionStatus().animate().fadeIn().slideY(begin: -0.1),
+            _buildConnectionStatus().animate().fadeIn().slideY(begin: -0.05),
             const SizedBox(height: 20),
 
-            // Error message banner
             if (_error != null) ...[
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFEF4444).withValues(alpha: 0.35),
-                  ),
+                  color: const Color(0xFF09090B),
+                  border: Border.all(color: const Color(0xFFEF4444), width: 1),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline_rounded,
-                        color: Color(0xFFEF4444), size: 22),
+                    const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 18),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         _error!,
                         style: const TextStyle(
                           color: Color(0xFFEF4444),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'monospace',
                         ),
                       ),
                     ),
@@ -197,24 +198,27 @@ class _TransferScreenState extends State<TransferScreen> {
               const SizedBox(height: 16),
             ],
 
-            // Folder selector inside GradientCard
             if (isConnected) ...[
-              GradientCard(
-                borderRadius: 20,
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF09090B),
+                  border: Border.all(color: const Color(0xFF27272A), width: 1),
+                ),
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.folder_shared_rounded, color: AppTheme.accent, size: 20),
+                        Icon(Icons.folder_open, color: Colors.white, size: 18),
                         SizedBox(width: 8),
                         Text(
-                          'Save Location',
+                          'SAVE LOCATION',
                           style: TextStyle(
                             color: AppTheme.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            fontFamily: 'monospace',
                           ),
                         ),
                       ],
@@ -227,24 +231,27 @@ class _TransferScreenState extends State<TransferScreen> {
               const SizedBox(height: 20),
             ],
 
-            // Active transfer progress inside GradientCard
             if (_currentProgress != null) ...[
-              GradientCard(
-                borderRadius: 20,
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF09090B),
+                  border: Border.all(color: const Color(0xFF27272A), width: 1),
+                ),
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.sync_rounded, color: AppTheme.accent, size: 20),
+                        Icon(Icons.sync, color: Colors.white, size: 18),
                         SizedBox(width: 8),
                         Text(
-                          'Active Transfer',
+                          'ACTIVE TRANSFER',
                           style: TextStyle(
                             color: AppTheme.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            fontFamily: 'monospace',
                           ),
                         ),
                       ],
@@ -260,38 +267,30 @@ class _TransferScreenState extends State<TransferScreen> {
               const SizedBox(height: 20),
             ],
 
-            // Send file button (Gradient Button)
             if (widget.sendMode && isConnected && _currentProgress == null) ...[
               Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  gradient: const LinearGradient(colors: AppTheme.gradPrimary),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.accent.withValues(alpha: 0.3),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
+                width: double.infinity,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
                 ),
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
                     onTap: _pickAndSendFile,
                     child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 18),
+                      padding: EdgeInsets.symmetric(vertical: 16),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.upload_file_rounded, color: Colors.white, size: 22),
+                          Icon(Icons.upload_file, color: Colors.black, size: 20),
                           SizedBox(width: 10),
                           Text(
-                            'Pick File to Send',
+                            'PICK FILE TO SEND',
                             style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              fontFamily: 'monospace',
                             ),
                           ),
                         ],
@@ -303,66 +302,69 @@ class _TransferScreenState extends State<TransferScreen> {
               const SizedBox(height: 24),
             ],
 
-            // Empty state when connected and no active/completed transfers
             if (isConnected && _currentProgress == null && _completedFiles.isEmpty && !widget.sendMode) ...[
-              GradientCard(
-                borderRadius: 20,
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF09090B),
+                  border: Border.all(color: const Color(0xFF27272A), width: 1),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 68,
-                      height: 68,
+                      width: 60,
+                      height: 60,
                       decoration: BoxDecoration(
-                        color: AppTheme.accent.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
+                        color: const Color(0xFF121214),
+                        border: Border.all(color: const Color(0xFF27272A)),
                       ),
-                      child: const Icon(Icons.cloud_sync_rounded, color: AppTheme.accent, size: 36),
+                      child: const Icon(Icons.cloud_sync_outlined, color: Colors.white, size: 30),
                     ),
                     const SizedBox(height: 18),
                     const Text(
-                      'Ready for Transfer',
+                      'READY FOR TRANSFER',
                       style: TextStyle(
                         color: AppTheme.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'monospace',
                       ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Drop files on your PC browser to instantly transfer them here, or pick a file to send.',
+                      'Drop files on your PC terminal to transfer, or pick a local file to send.',
                       style: TextStyle(
                         color: AppTheme.textSecondary,
-                        fontSize: 13.5,
+                        fontSize: 12,
                         height: 1.4,
+                        fontFamily: 'monospace',
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 20),
                     Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(14),
-                        gradient: const LinearGradient(colors: AppTheme.gradPrimary),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
                       ),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
                           onTap: _pickAndSendFile,
                           child: const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.upload_file_rounded, color: Colors.white, size: 18),
+                                Icon(Icons.upload_file, color: Colors.black, size: 16),
                                 SizedBox(width: 8),
                                 Text(
-                                  'Send a File',
+                                  'SEND A FILE',
                                   style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'monospace',
                                   ),
                                 ),
                               ],
@@ -376,25 +378,18 @@ class _TransferScreenState extends State<TransferScreen> {
               ).animate().fadeIn(delay: 200.ms).scale(),
             ],
 
-            // Completed transfers list inside GradientCards
             if (_completedFiles.isNotEmpty) ...[
-              Row(
+              const Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.check_rounded, color: Color(0xFF22C55E), size: 16),
-                  ),
-                  const SizedBox(width: 10),
+                  Icon(Icons.check, color: Color(0xFF22C55E), size: 16),
+                  SizedBox(width: 8),
                   Text(
-                    'Completed Transfers (${_completedFiles.length})',
-                    style: const TextStyle(
+                    'COMPLETED TRANSFERS',
+                    style: TextStyle(
                       color: AppTheme.textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'monospace',
                     ),
                   ),
                 ],
@@ -404,21 +399,16 @@ class _TransferScreenState extends State<TransferScreen> {
                 final idx = entry.key;
                 final name = entry.value;
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: GradientCard(
-                    borderRadius: 16,
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF09090B),
+                      border: Border.all(color: const Color(0xFF27272A), width: 1),
+                    ),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     child: Row(
                       children: [
-                        Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF22C55E).withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(Icons.check_circle_rounded, color: Color(0xFF22C55E), size: 20),
-                        ),
+                        const Icon(Icons.check_circle_outline, color: Color(0xFF22C55E), size: 18),
                         const SizedBox(width: 14),
                         Expanded(
                           child: Column(
@@ -428,8 +418,9 @@ class _TransferScreenState extends State<TransferScreen> {
                                 name,
                                 style: const TextStyle(
                                   color: AppTheme.textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  fontFamily: 'monospace',
                                 ),
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -438,7 +429,8 @@ class _TransferScreenState extends State<TransferScreen> {
                                 'Received successfully',
                                 style: TextStyle(
                                   color: AppTheme.textSecondary,
-                                  fontSize: 12,
+                                  fontSize: 11,
+                                  fontFamily: 'monospace',
                                 ),
                               ),
                             ],
@@ -450,70 +442,56 @@ class _TransferScreenState extends State<TransferScreen> {
                 );
               }),
               const SizedBox(height: 12),
-              const Center(
-                child: Text(
-                  'Stay connected for more files',
-                  style: TextStyle(
-                    color: AppTheme.textMuted,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
             ],
 
-            // Disconnected clean empty state (when not connected and no session)
             if (widget.sessionId == null && !widget.sendMode && !isConnected) ...[
-              GradientCard(
-                borderRadius: 24,
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF09090B),
+                  border: Border.all(color: const Color(0xFF27272A), width: 1),
+                ),
                 padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 76,
-                      height: 76,
+                      width: 64,
+                      height: 64,
                       decoration: BoxDecoration(
-                        color: AppTheme.accent.withValues(alpha: 0.12),
-                        shape: BoxShape.circle,
+                        color: const Color(0xFF121214),
+                        border: Border.all(color: const Color(0xFF27272A)),
                       ),
-                      child: const Icon(Icons.qr_code_scanner_rounded, color: AppTheme.accent, size: 38),
+                      child: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 30),
                     ),
                     const SizedBox(height: 20),
                     const Text(
-                      'No Active Session',
+                      'NO ACTIVE SESSION',
                       style: TextStyle(
                         color: AppTheme.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'monospace',
                       ),
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'Scan the QR code displayed on your desktop or browser at contextl-web.vercel.app to link devices.',
+                      'Scan the QR code displayed on your desktop or PC terminal to link devices.',
                       style: TextStyle(
                         color: AppTheme.textSecondary,
-                        fontSize: 14,
+                        fontSize: 12,
                         height: 1.4,
+                        fontFamily: 'monospace',
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 26),
                     Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: const LinearGradient(colors: AppTheme.gradPrimary),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppTheme.accent.withValues(alpha: 0.35),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
                       ),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
                           onTap: () {
                             Navigator.push(
                               context,
@@ -521,18 +499,19 @@ class _TransferScreenState extends State<TransferScreen> {
                             );
                           },
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 20),
+                                Icon(Icons.qr_code_scanner, color: Colors.black, size: 18),
                                 SizedBox(width: 10),
                                 Text(
-                                  'Scan QR Code',
+                                  'SCAN QR TERMINAL',
                                   style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
+                                    color: Colors.black,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'monospace',
                                   ),
                                 ),
                               ],
@@ -546,26 +525,56 @@ class _TransferScreenState extends State<TransferScreen> {
               ).animate().fadeIn(delay: 200.ms).scale(),
             ],
 
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
-            // Disconnect button
             if (isConnected)
               OutlinedButton.icon(
                 onPressed: () async {
                   await _transferService.disconnect();
                   if (context.mounted) Navigator.pop(context);
                 },
-                icon: const Icon(Icons.link_off_rounded, size: 18),
-                label: const Text('Disconnect from PC'),
+                icon: const Icon(Icons.link_off, size: 16),
+                label: const Text('DISCONNECT FROM PC', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: const Color(0xFFEF4444),
                   side: const BorderSide(color: Color(0xFFEF4444)),
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                 ),
               ).animate().fadeIn(delay: 300.ms),
+
+            const SizedBox(height: 32),
+
+            // Made By DS0710-CODER Badge
+            Center(
+              child: InkWell(
+                onTap: _launchGithub,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF121214),
+                    border: Border.all(color: const Color(0xFF27272A)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.code, color: Colors.white, size: 14),
+                      SizedBox(width: 8),
+                      Text(
+                        'MADE BY DS0710-CODER',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -579,69 +588,60 @@ class _TransferScreenState extends State<TransferScreen> {
 
     switch (_connectionStatus) {
       case ConnectionStatus.connected:
-        icon = Icons.link_rounded;
-        label = 'Connected to PC browser';
+        icon = Icons.check_circle_outline;
+        label = '[ CONNECTED TO TERMINAL ]';
         color = const Color(0xFF22C55E);
         break;
       case ConnectionStatus.connecting:
-        icon = Icons.sync_rounded;
-        label = 'Connecting...';
+        icon = Icons.sync;
+        label = '[ CONNECTING... ]';
         color = const Color(0xFFF59E0B);
         break;
       case ConnectionStatus.error:
-        icon = Icons.error_rounded;
-        label = 'Connection error';
+        icon = Icons.error_outline;
+        label = '[ CONNECTION ERROR ]';
         color = const Color(0xFFEF4444);
         break;
       case ConnectionStatus.disconnected:
-        icon = Icons.link_off_rounded;
-        label = 'Disconnected';
+        icon = Icons.link_off;
+        label = '[ DISCONNECTED ]';
         color = AppTheme.textSecondary;
         break;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        color: const Color(0xFF09090B),
+        border: Border.all(color: color, width: 1),
       ),
       child: Row(
         children: [
           Container(
-            width: 10,
-            height: 10,
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(
               color: color,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.5),
-                  blurRadius: 6,
-                  spreadRadius: 2,
-                ),
-              ],
             ),
-          ).animate(onPlay: (controller) => controller.repeat(reverse: true))
-           .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.3, 1.3), duration: 800.ms),
+          ),
           const SizedBox(width: 14),
-          Icon(icon, color: color, size: 22),
+          Icon(icon, color: color, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               label,
               style: TextStyle(
                 color: color,
-                fontSize: 14.5,
-                fontWeight: FontWeight.w600,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'monospace',
               ),
             ),
           ),
           if (_connectionStatus == ConnectionStatus.connecting)
             SizedBox(
-              width: 18,
-              height: 18,
+              width: 16,
+              height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 valueColor: AlwaysStoppedAnimation(color),
@@ -656,12 +656,11 @@ class _TransferScreenState extends State<TransferScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Breadcrumb
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: AppTheme.surface2,
-            borderRadius: BorderRadius.circular(10),
+            color: const Color(0xFF121214),
+            border: Border.all(color: const Color(0xFF27272A)),
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -675,19 +674,20 @@ class _TransferScreenState extends State<TransferScreen> {
                   child: Row(
                     children: [
                       Icon(
-                        Icons.home_rounded,
-                        size: 15,
-                        color: _folderBreadcrumbs.isEmpty ? AppTheme.accent : AppTheme.textSecondary,
+                        Icons.folder,
+                        size: 14,
+                        color: _folderBreadcrumbs.isEmpty ? Colors.white : AppTheme.textSecondary,
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        'Root',
+                        '/ROOT',
                         style: TextStyle(
                           color: _folderBreadcrumbs.isEmpty
-                              ? AppTheme.accent
+                              ? Colors.white
                               : AppTheme.textSecondary,
-                          fontSize: 13,
-                          fontWeight: _folderBreadcrumbs.isEmpty ? FontWeight.w600 : FontWeight.w500,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'monospace',
                         ),
                       ),
                     ],
@@ -701,8 +701,7 @@ class _TransferScreenState extends State<TransferScreen> {
                     children: [
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 6),
-                        child: Icon(Icons.chevron_right_rounded,
-                            color: AppTheme.textMuted, size: 14),
+                        child: Text('/', style: TextStyle(color: AppTheme.textMuted, fontSize: 12, fontFamily: 'monospace')),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -712,13 +711,14 @@ class _TransferScreenState extends State<TransferScreen> {
                           _loadFolderChildren(crumb.id);
                         },
                         child: Text(
-                          crumb.name,
+                          crumb.name.toUpperCase(),
                           style: TextStyle(
                             color: isLast
-                                ? AppTheme.accent
+                                ? Colors.white
                                 : AppTheme.textSecondary,
-                            fontSize: 13,
-                            fontWeight: isLast ? FontWeight.w600 : FontWeight.w500,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            fontFamily: 'monospace',
                           ),
                         ),
                       ),
@@ -731,26 +731,25 @@ class _TransferScreenState extends State<TransferScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Current save location indicator
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: AppTheme.accent.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.accent.withValues(alpha: 0.35)),
+            color: const Color(0xFF121214),
+            border: Border.all(color: const Color(0xFF27272A)),
           ),
           child: Row(
             children: [
-              const Icon(Icons.save_rounded, color: AppTheme.accent, size: 16),
+              const Icon(Icons.save, color: Colors.white, size: 14),
               const SizedBox(width: 10),
               Text(
                 _folderBreadcrumbs.isEmpty
-                    ? 'Saving to: Root'
-                    : 'Saving to: ${_folderBreadcrumbs.last.name}',
+                    ? 'SAVING TO: /ROOT'
+                    : 'SAVING TO: /${_folderBreadcrumbs.last.name.toUpperCase()}',
                 style: const TextStyle(
-                  color: AppTheme.accent,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: 'monospace',
                 ),
               ),
             ],
@@ -758,13 +757,12 @@ class _TransferScreenState extends State<TransferScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Folder list
         if (_currentFolderChildren.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
             child: Text(
-              'No subfolders inside this directory — incoming files will save right here.',
-              style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
+              'No sub-directories. Incoming files will save right here.',
+              style: TextStyle(color: AppTheme.textSecondary, fontSize: 11, fontFamily: 'monospace'),
             ),
           )
         else
@@ -772,37 +770,33 @@ class _TransferScreenState extends State<TransferScreen> {
             spacing: 8,
             runSpacing: 8,
             children: _currentFolderChildren.map((folder) {
-              final folderColor = Color(
-                int.parse('FF${folder.color.replaceAll('#', '')}', radix: 16),
-              );
               return GestureDetector(
                 onTap: () {
                   setState(() => _folderBreadcrumbs.add(folder));
                   _loadFolderChildren(folder.id);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.surface2,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF1E1E28)),
+                    color: const Color(0xFF121214),
+                    border: Border.all(color: const Color(0xFF27272A)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.folder_rounded, color: folderColor, size: 18),
+                      const Icon(Icons.folder_outlined, color: Colors.white, size: 16),
                       const SizedBox(width: 8),
                       Text(
-                        folder.name,
+                        folder.name.toUpperCase(),
                         style: const TextStyle(
                           color: AppTheme.textPrimary,
-                          fontSize: 13.5,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          fontFamily: 'monospace',
                         ),
                       ),
                       const SizedBox(width: 6),
-                      const Icon(Icons.chevron_right_rounded,
-                          color: AppTheme.textSecondary, size: 16),
+                      const Icon(Icons.chevron_right, color: AppTheme.textSecondary, size: 16),
                     ],
                   ),
                 ),

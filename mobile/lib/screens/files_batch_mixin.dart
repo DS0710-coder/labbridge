@@ -9,6 +9,7 @@ import 'package:archive/archive_io.dart';
 import '../models/folder.dart';
 import '../models/file_item.dart';
 import '../services/db_service.dart';
+import '../main.dart';
 import 'files_screen.dart';
 
 /// Top-level compute isolate function for extracting ZIP archives safely via streams without OOM.
@@ -69,21 +70,26 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111118),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Selected Items?', style: TextStyle(color: Color(0xFFE8E8F0))),
+        backgroundColor: const Color(0xFF09090B),
+        shape: Border.all(color: const Color(0xFF27272A), width: 1),
+        title: const Text('DELETE SELECTED ITEMS?', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontFamily: 'monospace')),
         content: Text(
-          'Are you sure you want to delete $count selected item(s)? Sub-folders will be moved up.',
-          style: const TextStyle(color: Color(0xFF6B6B80)),
+          'Are you sure you want to delete $count selected item(s)? Sub-directories will be unlinked.',
+          style: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace', fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444))),
+            child: const Text('DELETE', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -124,29 +130,28 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
     final destId = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111118),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Move Selected to Folder', style: TextStyle(color: Color(0xFFE8E8F0))),
+        backgroundColor: const Color(0xFF09090B),
+        shape: Border.all(color: const Color(0xFF27272A), width: 1),
+        title: const Text('MOVE SELECTED TO DIRECTORY', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontFamily: 'monospace')),
         content: SizedBox(
           width: double.maxFinite,
           child: ListView(
             shrinkWrap: true,
             children: [
               ListTile(
-                leading: const Icon(Icons.folder_rounded, color: Color(0xFF6B6B80)),
-                title: const Text('Root', style: TextStyle(color: Color(0xFFE8E8F0))),
+                leading: const Icon(Icons.folder_outlined, color: Colors.white, size: 18),
+                title: const Text('/ROOT', style: TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace', fontWeight: FontWeight.w700)),
                 onTap: () => Navigator.pop(context, '__root__'),
               ),
               ...allFolders
                   .where((f) => !selectedFolderIds.contains(f.id) && !_isDescendantOfSelected(f, allFolders))
                   .map((f) => ListTile(
-                        leading: Icon(
-                          Icons.folder_rounded,
-                          color: Color(
-                            int.parse('FF${f.color.replaceAll('#', '')}', radix: 16),
-                          ),
+                        leading: const Icon(
+                          Icons.folder_outlined,
+                          color: Colors.white,
+                          size: 18,
                         ),
-                        title: Text(f.name, style: const TextStyle(color: Color(0xFFE8E8F0))),
+                        title: Text('/${f.name.toUpperCase()}', style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace')),
                         onTap: () => Navigator.pop(context, f.id),
                       )),
             ],
@@ -193,21 +198,26 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
       final confirmZip = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: const Color(0xFF111118),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Extract Zip Archive(s)?', style: TextStyle(color: Color(0xFFE8E8F0))),
+          backgroundColor: const Color(0xFF09090B),
+          shape: Border.all(color: const Color(0xFF27272A), width: 1),
+          title: const Text('EXTRACT ZIP ARCHIVES?', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontFamily: 'monospace')),
           content: Text(
-            'Extract ${zipFiles.length} Zip archive(s) into the current folder?',
-            style: const TextStyle(color: Color(0xFF6B6B80)),
+            'Extract ${zipFiles.length} Zip archive(s) into the current directory?',
+            style: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace', fontSize: 13),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+              child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
             ),
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              ),
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Extract', style: TextStyle(color: Color(0xFF6C63FF))),
+              child: const Text('EXTRACT', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
             ),
           ],
         ),
@@ -244,7 +254,7 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
         if (extractedCount > 0) {
           messenger.showSnackBar(
             SnackBar(
-              content: Text('Successfully extracted $extractedCount file(s)!'),
+              content: Text('Successfully extracted $extractedCount file(s)!', style: const TextStyle(fontFamily: 'monospace')),
               backgroundColor: const Color(0xFF22C55E),
             ),
           );
@@ -258,21 +268,26 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
     final confirmUnpack = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF111118),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Unpack / Extract to Parent Directory?', style: TextStyle(color: Color(0xFFE8E8F0))),
+        backgroundColor: const Color(0xFF09090B),
+        shape: Border.all(color: const Color(0xFF27272A), width: 1),
+        title: const Text('UNPACK TO PARENT DIRECTORY?', style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800, fontFamily: 'monospace')),
         content: Text(
-          'Move $count selected item(s) up to the parent directory (${breadcrumbs.length > 1 ? breadcrumbs[breadcrumbs.length - 2].name : 'Root'})?',
-          style: const TextStyle(color: Color(0xFF6B6B80)),
+          'Move $count selected item(s) up to the parent directory (${breadcrumbs.length > 1 ? breadcrumbs[breadcrumbs.length - 2].name.toUpperCase() : 'ROOT'})?',
+          style: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace', fontSize: 13),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B6B80))),
+            child: const Text('CANCEL', style: TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace')),
           ),
-          TextButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: Colors.black,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Unpack', style: TextStyle(color: Color(0xFF6C63FF))),
+            child: const Text('UNPACK', style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
