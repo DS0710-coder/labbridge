@@ -378,21 +378,10 @@
     </div>
   </header>
 
-  <!-- Android APK Suggestion Banner -->
-  <div id="android-apk-banner" class="card" style="display: none; background: var(--surface-2); border: 1px solid var(--border); padding: 18px; margin-bottom: 20px;">
-    <div style="display: flex; flex-direction: column; gap: 12px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-        <span style="font-size: 13px; font-weight: 800; color: #FFFFFF; letter-spacing: 0.5px;">[ ANDROID NATIVE APK RECOMMENDED ]</span>
-        <button onclick="dismissAndroidBanner()" style="background: transparent; border: none; color: var(--text-3); font-size: 16px; padding: 0; cursor: pointer; font-family: var(--mono); font-weight: 800;">[ X ]</button>
-      </div>
-      <p style="font-size: 13px; color: var(--text-2); line-height: 1.5; margin: 0; font-family: var(--mono);">
-        You are running the Web Terminal on Android. For zero-latency background syncing, hardware acceleration, and offline storage, install the native Android APK.
-      </p>
-      <a href="cueflex-app.apk" download="cueflex-app.apk" onclick="dismissAndroidBanner()" style="display: inline-flex; align-items: center; justify-content: center; background: #FFFFFF; color: #000000; font-family: var(--mono); font-size: 14px; font-weight: 800; padding: 12px 18px; text-decoration: none; border: 1px solid #FFFFFF; margin-top: 4px;">
-        [ DOWNLOAD CUEFLEX APK (~80 MB) ]
-      </a>
-    </div>
-  </div>
+  <!-- Permanent Android APK Button -->
+  <a id="android-apk-btn" href="cueflex-app.apk" download="cueflex-app.apk" style="display: none; width: 100%; text-align: center; background: #FFFFFF; color: #000000; padding: 14px; font-family: var(--mono); font-size: 12px; font-weight: 800; text-decoration: none; text-transform: uppercase; border: 1px solid var(--border); margin-bottom: 16px;">
+    [ DOWNLOAD NATIVE ANDROID APK ]
+  </a>
 
   <!-- Section 1: Connect / Pairing -->
   <div id="section-connect" class="card">
@@ -508,11 +497,6 @@
       };
     }
 
-    function dismissAndroidBanner() {
-      localStorage.setItem('cueflex_dismissed_apk_banner', '1');
-      const b = document.getElementById('android-apk-banner');
-      if (b) b.style.display = 'none';
-    }
 
     const state = {
       ws: null,
@@ -531,10 +515,8 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       if (/android/i.test(navigator.userAgent)) {
-        const banner = document.getElementById('android-apk-banner');
-        if (banner && !localStorage.getItem('cueflex_dismissed_apk_banner')) {
-          banner.style.display = 'block';
-        }
+        const btn = document.getElementById('android-apk-btn');
+        if (btn) btn.style.display = 'block';
       }
 
       const params = new URLSearchParams(window.location.search);
