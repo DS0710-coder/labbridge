@@ -1,5 +1,9 @@
 # CueFlex
 
+<p align="center">
+  <img src="preview.png" alt="CueFlex Preview" width="100%">
+</p>
+
 Secure file transfer for students. Scan a QR on any lab PC to send files directly to your phone.
 
 No accounts. No cloud storage. Files go straight to your phone.
