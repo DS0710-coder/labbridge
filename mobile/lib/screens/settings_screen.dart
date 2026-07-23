@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/db_service.dart';
 import '../core/formatters.dart';
+import '../core/config.dart';
 import '../main.dart';
 
 class SettingsScreen extends StatefulWidget {
