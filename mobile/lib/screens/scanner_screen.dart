@@ -14,15 +14,33 @@ class ScannerScreen extends StatefulWidget {
   State<ScannerScreen> createState() => _ScannerScreenState();
 }
 
-class _ScannerScreenState extends State<ScannerScreen> {
+class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserver {
   final MobileScannerController _scannerController = MobileScannerController();
   bool _hasNavigated = false;
   bool _isProcessing = false;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scannerController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _scannerController.stop();
+    } else if (state == AppLifecycleState.resumed) {
+      if (!_hasNavigated) {
+        _scannerController.start();
+      }
+    }
   }
 
   void _onDetect(BarcodeCapture capture) async {

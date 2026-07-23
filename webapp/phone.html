@@ -1089,6 +1089,13 @@
       }
     }
 
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && state.scanner) {
+        try { state.scanner.stop(); } catch(e){}
+        document.getElementById('qr-reader').style.display = 'none';
+      }
+    });
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('sw.js').catch(() => {});
