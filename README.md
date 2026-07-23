@@ -1,7 +1,7 @@
 # CueFlex
 
 <p align="center">
-  <img src="preview.png" alt="CueFlex Preview" width="100%">
+  <img src="preview.jpg" alt="CueFlex Preview" width="100%">
 </p>
 
 Secure file transfer for students. Scan a QR on any lab PC to send files directly to your phone.
