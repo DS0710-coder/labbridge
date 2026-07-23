@@ -949,8 +949,7 @@
       if (navigator.canShare && navigator.canShare({ files: [item.file] })) {
         try {
           await navigator.share({
-            files: [item.file],
-            title: item.filename
+            files: [item.file]
           });
           return;
         } catch (err) {
