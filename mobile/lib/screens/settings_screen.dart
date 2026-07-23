@@ -15,7 +15,6 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final DbService _dbService = DbService();
-  final TextEditingController _urlController = TextEditingController();
 
   int _filesCount = 0;
   int _foldersCount = 0;
@@ -26,19 +25,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _loadStats();
-    _loadWorkerUrl();
-  }
-
-  Future<void> _loadWorkerUrl() async {
-    final url = await AppConfig.getWorkerUrl();
-    if (mounted) {
-      setState(() => _urlController.text = url);
-    }
   }
 
   @override
   void dispose() {
-    _urlController.dispose();
     super.dispose();
   }
 
@@ -136,115 +126,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ).animate().fadeIn(),
                   const SizedBox(height: 24),
-
-                  _buildSectionTitle('CLOUD RELAY CONFIGURATION'),
-                  const SizedBox(height: 10),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF09090B),
-                      border: Border.all(color: const Color(0xFF27272A), width: 1),
-                    ),
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            IconBox(icon: Icons.cloud_sync_outlined, size: 36, iconSize: 18),
-                            SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Cloudflare Worker URL',
-                                    style: TextStyle(
-                                      color: AppTheme.textPrimary,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      fontFamily: 'monospace',
-                                    ),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    'Signaling relay for WebSockets',
-                                    style: TextStyle(
-                                      color: AppTheme.textSecondary,
-                                      fontSize: 11,
-                                      fontFamily: 'monospace',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 18),
-                        TextField(
-                          controller: _urlController,
-                          style: const TextStyle(
-                            color: AppTheme.textPrimary,
-                            fontSize: 12,
-                            fontFamily: 'monospace',
-                          ),
-                          decoration: const InputDecoration(
-                            hintText: 'wss://cueflex.YOUR_SUBDOMAIN.workers.dev',
-                            hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 12, fontFamily: 'monospace'),
-                            filled: true,
-                            fillColor: Color(0xFF121214),
-                            prefixIcon: Icon(Icons.link, color: AppTheme.textPrimary, size: 18),
-                            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                            enabledBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Color(0xFF27272A)),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: BorderSide(color: Colors.white),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        Container(
-                          width: double.infinity,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () async {
-                                final url = _urlController.text.trim();
-                                if (url.isEmpty) return;
-                                await AppConfig.setWorkerUrl(url);
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Worker URL saved successfully', style: TextStyle(fontFamily: 'monospace')),
-                                    backgroundColor: Color(0xFF22C55E),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              },
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 14),
-                                child: Center(
-                                  child: Text(
-                                    'SAVE CONFIGURATION',
-                                    style: TextStyle(
-                                      color: Colors.black,
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13,
-                                      fontFamily: 'monospace',
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.05),
-                  const SizedBox(height: 28),
 
                   _buildSectionTitle('STORAGE & CACHE'),
                   const SizedBox(height: 10),
