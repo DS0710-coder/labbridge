@@ -705,7 +705,11 @@
         try { oldWs.close(); } catch (e) {}
       }
       if (state.scanner) {
-        try { state.scanner.stop(); } catch (e) {}
+        try { 
+          state.scanner.stop().catch(()=>{}); 
+          state.scanner.clear();
+        } catch (e) {}
+        state.scanner = null;
         const qrBox = document.getElementById('qr-reader');
         if (qrBox) qrBox.style.display = 'none';
       }

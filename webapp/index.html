@@ -982,7 +982,8 @@
     };
 
     const PHONE_MODE = new URLSearchParams(window.location.search).get('mode') === 'phone'
-      || (navigator.maxTouchPoints > 1 && window.innerWidth <= 768);
+      || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+      || (navigator.maxTouchPoints > 0 && window.innerWidth <= 768);
 
     if (PHONE_MODE) {
       document.title = 'CueFlex — Phone';
@@ -1018,7 +1019,11 @@
       return result;
     }
 
+    let isCreatingSession = false;
     async function createSession() {
+      if (isCreatingSession) return;
+      isCreatingSession = true;
+      try {
       clearInterval(state.timerInterval);
       if (state.ws) {
         const oldWs = state.ws;
@@ -1030,9 +1035,11 @@
         try { oldWs.close(); } catch (e) {}
       }
       if (state.receivedFiles) {
-        state.receivedFiles.forEach(f => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
+        closePhotoLightbox();
+      state.receivedFiles.forEach(f => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
       }
-      state.expirySeconds = 240;
+      if (state.timerInterval) clearInterval(state.timerInterval);
+        state.expirySeconds = 240;
       state.sendQueue = [];
       state.receivedFiles = [];
       state.photoIndices = [];
@@ -1056,7 +1063,8 @@
         if (data.expires_at) {
           state.expirySeconds = Math.max(0, Math.floor((new Date(data.expires_at).getTime() - Date.now()) / 1000));
         } else {
-          state.expirySeconds = 240;
+          if (state.timerInterval) clearInterval(state.timerInterval);
+        state.expirySeconds = 240;
         }
         updateTimerDisplay();
 
@@ -1076,7 +1084,7 @@
         });
 
         state.timerInterval = setInterval(() => {
-          state.expirySeconds--;
+          state.expirySeconds = Math.max(0, state.expirySeconds - 1);
           updateTimerDisplay();
           if (state.expirySeconds <= 0) {
             clearInterval(state.timerInterval);
@@ -1108,6 +1116,9 @@
     }
 
     function handlePeerDisconnected() {
+      if (state.phase === 'transferring') {
+        alert('Peer disconnected during transfer.');
+      }
       if (state.phase !== 'waiting') {
         setStatus(false, 'DISCONNECTED BY PHONE');
         document.getElementById('btn-disconnect').style.display = 'none';
@@ -1148,6 +1159,11 @@
       ws.onmessage = async (event) => {
         if (typeof event.data === 'string') {
           const msg = JSON.parse(event.data);
+        if (msg.type === 'transfer_init' && (!msg.total_chunks || msg.total_chunks <= 0)) {
+          console.error('Invalid transfer_init: total_chunks must be > 0');
+          state.ws.send(JSON.stringify({ type: 'error', message: 'Invalid transfer size' }));
+          return;
+        }
           handleTextMessage(msg);
         } else {
           let buffer = event.data;
@@ -1165,13 +1181,18 @@
       if (msg.type === 'waiting') {
         setStatus(false, 'WAITING FOR PHONE...');
       } else if (msg.type === 'paired') {
+        if (state.timerInterval) clearInterval(state.timerInterval);
         state.expirySeconds = 240;
         updateTimerDisplay();
         state.connectedDevice = msg.device || 'Phone App';
         setStatus(true, `CONNECTED: ${state.connectedDevice.toUpperCase()} (${state.expirySeconds}s LEFT)`);
         document.getElementById('btn-disconnect').style.display = 'block';
-        state.cryptoKey = await deriveAESKey(state.sessionId);
-        setPhase('paired');
+        if (!state.cryptoKey) {
+          state.cryptoKey = await deriveAESKey(state.sessionId);
+        }
+        if (state.phase !== 'paired' && state.phase !== 'transferring') {
+          setPhase('paired');
+        }
         if (msg.shortcut_mode) {
           document.getElementById('shortcut-mode-hint').style.display = 'block';
         }
@@ -1230,6 +1251,10 @@
       document.getElementById('phase-paired').style.display = (phase === 'paired') ? 'flex' : 'none';
       document.getElementById('phase-transferring').style.display = (phase === 'transferring') ? 'flex' : 'none';
       document.getElementById('phase-done').style.display = (phase === 'done') ? 'flex' : 'none';
+      if (phase === 'waiting') {
+        const hint = document.getElementById('shortcut-mode-hint');
+        if (hint) hint.style.display = 'none';
+      }
       if (phase === 'paired') {
         renderFolders();
         renderReceivedFiles();
@@ -1395,6 +1420,10 @@
     function queueFiles(files) {
       if (state.phase !== 'paired' && state.phase !== 'transferring') return;
       const validFiles = files.filter(f => {
+        if (!f.type && f.size === 0) {
+          alert(`Folders are not supported directly. Please drop individual files or zip the folder.`);
+          return false;
+        }
         if (f.size > 500 * 1024 * 1024) {
           console.warn(`File ${f.name} is too large. Maximum size is 500MB.`);
           alert(`File ${f.name} is too large. Maximum size is 500MB.`);
@@ -1494,11 +1523,12 @@
       const transfer = state.currentTransfer;
       if (!transfer || transfer.direction !== 'sending') return;
       
-      state.expirySeconds = 240;
+      if (state.timerInterval) clearInterval(state.timerInterval);
+        state.expirySeconds = 240;
       updateTimerDisplay();
 
       transfer.sentChunks++;
-      const pct = Math.round((transfer.sentChunks / transfer.total_chunks) * 100);
+      const pct = Math.min(100, Math.round((transfer.sentChunks / transfer.total_chunks) * 100));
       updateProgressDisplay(transfer.filename, transfer.size, pct);
 
       sendNextChunk(chunkIndex + 1);
@@ -1508,7 +1538,8 @@
       const transfer = state.currentTransfer;
       if (!transfer || transfer.direction !== 'receiving') return;
 
-      state.expirySeconds = 240;
+      if (state.timerInterval) clearInterval(state.timerInterval);
+        state.expirySeconds = 240;
       updateTimerDisplay();
 
       try {
@@ -1522,15 +1553,21 @@
         }
         transfer.receivedChunks = receivedCount;
 
-        const pct = Math.round((receivedCount / transfer.total_chunks) * 100);
+        const pct = Math.min(100, Math.round((receivedCount / transfer.total_chunks) * 100));
         updateProgressDisplay(transfer.filename, transfer.size, pct);
 
         if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
+          phoneState.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
         }
 
         if (receivedCount >= transfer.total_chunks) {
-          const finalBlob = new Blob(transfer.chunksData, { type: transfer.mime_type });
+          // Ensure all chunks exist and none are undefined/holes
+          const validChunks = transfer.chunksData.filter(Boolean);
+          if (validChunks.length !== transfer.total_chunks) {
+            console.error('Incomplete chunks received for final blob creation');
+            return;
+          }
+          const finalBlob = new Blob(validChunks, { type: transfer.mime_type });
           transfer.chunksData = null;
           const blobUrl = URL.createObjectURL(finalBlob);
           state.receivedFiles = state.receivedFiles || [];
@@ -1565,7 +1602,7 @@
       } catch (err) {
         console.error('Failed to decrypt incoming chunk:', err);
         if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: transfer.receivedChunks }));
+          phoneState.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
         }
       }
     }
@@ -1610,16 +1647,23 @@
           </div>`;
         }
 
+        const escapeHtml = (text) => {
+          const div = document.createElement('div');
+          div.textContent = text;
+          return div.innerHTML;
+        };
+        const safeFilename = escapeHtml(f.filename);
+
         item.innerHTML = `
           ${imgHtml}
           <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
             <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
-              <strong style="font-size: 13px; color: #fff;">${f.filename}</strong><br />
+              <strong style="font-size: 13px; color: #fff;">${safeFilename}</strong><br />
               <span style="font-size: 11px; color: var(--text-2);">${formatSize(f.size)}</span>
             </div>
             <div style="display: flex; gap: 8px;">
               <button onclick="openPhotoLightbox(${idx})" style="background: transparent; border: 1px solid var(--border); color: white; padding: 7px 14px; border-radius: 0; font-size: 11px; font-weight: 800; cursor: pointer; font-family: var(--mono); white-space: nowrap;">[ PREVIEW ]</button>
-              <a href="${f.blobUrl}" download="${f.filename}" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); text-decoration: none; padding: 7px 14px; border-radius: 0; font-size: 11px; font-weight: 800; font-family: var(--mono); white-space: nowrap;">[ DOWNLOAD ]</a>
+              <a href="${f.blobUrl}" download="${safeFilename}" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); text-decoration: none; padding: 7px 14px; border-radius: 0; font-size: 11px; font-weight: 800; font-family: var(--mono); white-space: nowrap;">[ DOWNLOAD ]</a>
             </div>
           </div>
         `;
@@ -1695,6 +1739,7 @@
     }
 
     function closePhotoLightbox() {
+      window.removeEventListener('keydown', handlePhotoLightboxKey);
       document.getElementById('photo-lightbox').style.display = 'none';
       window.removeEventListener('keydown', handlePhotoLightboxKey);
     }
@@ -1733,6 +1778,7 @@
     }
 
     function formatSize(bytes) {
+      if (!bytes || bytes <= 0 || isNaN(bytes)) return '0 B';
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
       return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
@@ -1817,10 +1863,15 @@
         phoneState.scanFrameId = requestAnimationFrame(phoneScanLoop);
         return;
       }
-      const canvas = document.createElement('canvas');
+      // Reuse a single canvas to avoid GC pressure on every frame (BUG-08 fix)
+      if (!window._scanCanvas) {
+        window._scanCanvas = document.createElement('canvas');
+        window._scanCtx = window._scanCanvas.getContext('2d');
+      }
+      const canvas = window._scanCanvas;
+      const ctx = window._scanCtx;
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
@@ -1898,7 +1949,7 @@
       }
 
       const proto = window.location.protocol === 'http:' ? 'ws:' : 'wss:';
-      const wsUrl = `${proto}//${window.location.host}/session/${sessionId}/phone`;
+      const wsUrl = `${WORKER_URL.replace('http', 'ws')}/session/${sessionId}/phone`;
       const ws = new WebSocket(wsUrl);
       ws.binaryType = 'arraybuffer';
       phoneState.ws = ws;
@@ -1910,6 +1961,11 @@
       ws.onmessage = async (event) => {
         if (typeof event.data === 'string') {
           const msg = JSON.parse(event.data);
+        if (msg.type === 'transfer_init' && (!msg.total_chunks || msg.total_chunks <= 0)) {
+          console.error('Invalid transfer_init: total_chunks must be > 0');
+          state.ws.send(JSON.stringify({ type: 'error', message: 'Invalid transfer size' }));
+          return;
+        }
           phoneHandleTextMessage(msg);
         } else {
           let buffer = event.data;
@@ -1981,11 +2037,11 @@
         }
         transfer.receivedChunks = receivedCount;
 
-        const pct = Math.round((receivedCount / transfer.total_chunks) * 100);
+        const pct = Math.min(100, Math.round((receivedCount / transfer.total_chunks) * 100));
         phoneUpdateProgressDisplay(transfer.filename, transfer.size, pct);
 
         if (phoneState.ws && phoneState.ws.readyState === WebSocket.OPEN) {
-          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
+          phoneState.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
         }
 
         if (receivedCount >= transfer.total_chunks) {
@@ -2094,7 +2150,7 @@
       if (!transfer || transfer.direction !== 'sending') return;
 
       transfer.sentChunks++;
-      const pct = Math.round((transfer.sentChunks / transfer.total_chunks) * 100);
+      const pct = Math.min(100, Math.round((transfer.sentChunks / transfer.total_chunks) * 100));
       phoneUpdateProgressDisplay(transfer.filename, transfer.size, pct);
 
       phoneSendNextChunk(chunkIndex + 1);

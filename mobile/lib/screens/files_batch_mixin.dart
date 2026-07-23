@@ -25,7 +25,7 @@ Future<List<Map<String, dynamic>>> extractZipStreamWorker(Map<String, String> ar
     for (final file in archive) {
       if (file.isFile) {
         final safeName = p.basename(file.name.replaceAll(RegExp(r'[\\/]+'), '_'));
-        if (safeName.isEmpty || safeName == '_' || safeName == '.') continue;
+        if (safeName.isEmpty || safeName == '_' || safeName == '.' || safeName.startsWith('.')) continue;
 
         final destPath = p.join(parentDirPath, 'lb_ext_${const Uuid().v4()}_$safeName');
         if (!p.isWithin(parentDirPath, destPath)) continue;
@@ -259,6 +259,7 @@ mixin FilesBatchMixin<T extends FilesScreen> on State<T> {
             ),
           );
         }
+        if (!mounted) return;
         loadFolder(currentFolderId);
         return;
       }

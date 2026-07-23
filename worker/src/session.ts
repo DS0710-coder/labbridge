@@ -273,6 +273,8 @@ export class Session extends DurableObject {
   /* ------------------------------------------------------------------ */
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    // Reset TTL
+    await this.extendAlarm(5 * 60 * 1000);
     const sockets = this.ctx.getWebSockets();
     const other = getOtherSocket(sockets, ws);
 
@@ -330,7 +332,12 @@ export class Session extends DurableObject {
           return;
         }
 
-        if (parsed.type === "transfer_init") {
+  if (parsed.type === "transfer_init") {
+        // Clear all buffered chunks from any previous transfer
+        const keys = await this.ctx.storage.list({ prefix: "chunk_" });
+        for (const key of keys.keys()) {
+          await this.ctx.storage.delete(key);
+        }
           const record = parsed as Record<string, unknown>;
           if (
             typeof record.size !== "number" ||
@@ -391,6 +398,11 @@ export class Session extends DurableObject {
       if (parsed.type === "folders") {
         const record = parsed as Record<string, unknown>;
         if (Array.isArray(record.folders)) {
+          if (record.folders.length > 5000) {
+            ws.close(1008, "Folders array too large");
+            other?.close(1008, "Folders array too large");
+            return;
+          }
           await this.ctx.storage.put("folders", record.folders);
         }
       }
@@ -421,7 +433,6 @@ export class Session extends DurableObject {
         // Already closed — ignore
       }
     }
-    await this.ctx.storage.deleteAll();
   }
 
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
@@ -434,7 +445,6 @@ export class Session extends DurableObject {
         // Already closed — ignore
       }
     }
-    await this.ctx.storage.deleteAll();
   }
 
   /* ------------------------------------------------------------------ */

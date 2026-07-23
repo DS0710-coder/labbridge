@@ -207,7 +207,7 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
           ),
         ),
       ),
-    );
+    ).then((_) => controller.dispose());
   }
 
   @override

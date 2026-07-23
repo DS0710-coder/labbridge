@@ -73,6 +73,7 @@ class TransferService extends ChangeNotifier {
 
   // State for sending
   bool _isSending = false;
+  bool _isConnecting = false;
   Completer<void>? _readyCompleter;
   Completer<int>? _ackCompleter;
 
@@ -81,6 +82,8 @@ class TransferService extends ChangeNotifier {
 
   /// Connect to the Worker WebSocket
   Future<void> connect(String sessionId, [String? workerUrlOverride]) async {
+    if (_isConnecting || _status == ConnectionStatus.connected) return;
+    _isConnecting = true;
     _status = ConnectionStatus.connecting;
     _connectionStatusController.add(ConnectionStatus.connecting);
     notifyListeners();
@@ -126,6 +129,8 @@ class TransferService extends ChangeNotifier {
       _connectionStatusController.add(ConnectionStatus.error);
       notifyListeners();
       _errorController.add('Connection failed: $e');
+    } finally {
+      _isConnecting = false;
     }
   }
 
@@ -165,6 +170,8 @@ class TransferService extends ChangeNotifier {
           break;
         case 'error':
           _errorController.add(data['message'] as String? ?? 'Unknown error');
+          if (_readyCompleter != null && !_readyCompleter!.isCompleted) _readyCompleter!.completeError(StateError(data['message'] as String? ?? 'Unknown error'));
+          if (_ackCompleter != null && !_ackCompleter!.isCompleted) _ackCompleter!.completeError(StateError(data['message'] as String? ?? 'Unknown error'));
           break;
       }
     } catch (e) {
@@ -216,7 +223,7 @@ class TransferService extends ChangeNotifier {
 
     // Prepare temp file
     final tempDir = await getTemporaryDirectory();
-    final tempPath = p.join(tempDir.path, 'lb_${_uuid.v4()}');
+    final tempPath = p.join(tempDir.path, 'lb_${_uuid.v4()}_${DateTime.now().millisecondsSinceEpoch}');
     _tempFile = File(tempPath);
     _tempSink = _tempFile!.openWrite();
 
@@ -242,6 +249,9 @@ class TransferService extends ChangeNotifier {
       final result = _cryptoService.decryptChunk(data, _derivedKey!, _receivedChunks);
       final decrypted = result.plaintext;
       final chunkIndex = result.chunkIndex;
+      if (chunkIndex != _receivedChunks) {
+        throw Exception('Out of order chunk received: expected $_receivedChunks but got $chunkIndex');
+      }
 
       // Write to temp file
       _tempSink!.add(decrypted);
@@ -417,8 +427,12 @@ class TransferService extends ChangeNotifier {
             0,
           );
           _ackCompleter = Completer<int>();
-          _channel!.sink.add(encrypted);
-          await _ackCompleter!.future.timeout(const Duration(seconds: 15));
+          _channel?.sink.add(encrypted);
+          try {
+            await _ackCompleter!.future.timeout(const Duration(seconds: 15));
+          } on StateError {
+            return;
+          }
           _ackCompleter = null;
           
           _progressController.add(TransferProgress(
@@ -442,10 +456,15 @@ class TransferService extends ChangeNotifier {
             );
 
             _ackCompleter = Completer<int>();
-            _channel!.sink.add(encrypted);
+            _channel?.sink.add(encrypted);
 
             // Wait for peer to ACK this chunk
-            await _ackCompleter!.future.timeout(const Duration(seconds: 15));
+            try {
+              await _ackCompleter!.future.timeout(const Duration(seconds: 15));
+            } on StateError {
+              // Disconnected intentionally
+              return;
+            }
             _ackCompleter = null;
 
             transferred += chunk.length;
@@ -567,6 +586,15 @@ class TransferService extends ChangeNotifier {
     _channel = null;
     _derivedKey = null;
     _currentSessionId = null;
+
+    if (_readyCompleter != null && !_readyCompleter!.isCompleted) {
+      _readyCompleter!.completeError(StateError('Disposed'));
+    }
+    if (_ackCompleter != null && !_ackCompleter!.isCompleted) {
+      _ackCompleter!.completeError(StateError('Disposed'));
+    }
+    _readyCompleter = null;
+    _ackCompleter = null;
     _tempSink?.close();
     _tempSink = null;
     _tempFile = null;

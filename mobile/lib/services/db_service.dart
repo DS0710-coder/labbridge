@@ -45,12 +45,19 @@ class DbService {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2, // Bumped to version 2 to trigger onUpgrade if needed
       onConfigure: (db) async {
         // Enable FK enforcement so ON DELETE SET NULL / CASCADE fire correctly.
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: _onCreate,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        // Simple strategy for ephemeral data: drop and recreate
+        await db.execute('DROP TABLE IF EXISTS transfers');
+        await db.execute('DROP TABLE IF EXISTS files');
+        await db.execute('DROP TABLE IF EXISTS folders');
+        await _createTables(db);
+      },
     );
   }
 
@@ -326,34 +333,37 @@ class DbService {
 
   Future<void> clearAllData() async {
     final db = await database;
-    final allFiles = await db.query('files');
-    for (final map in allFiles) {
-      final localPath = map['local_path'] as String?;
-      if (localPath != null && localPath.isNotEmpty) {
-        try {
-          final file = File(localPath);
-          if (await file.exists()) {
-            await file.delete();
-          }
-        } catch (_) {}
-      }
-    }
-    try {
-      if (!Platform.environment.containsKey('FLUTTER_TEST')) {
-        final docsDir = await getApplicationDocumentsDirectory();
-        final cueFlexDir = Directory(p.join(docsDir.path, 'CueFlex'));
-        if (await cueFlexDir.exists()) {
-          await cueFlexDir.delete(recursive: true);
-          await cueFlexDir.create();
-        }
-      }
-    } catch (_) {}
-
+    
     await db.transaction((txn) async {
+      final allFiles = await txn.query('files');
+      
       await txn.delete('transfers');
       await txn.delete('files');
       await txn.delete('folders');
       await _createTables(txn);
+      
+      // Delete physical files only after DB tables are cleared
+      for (final map in allFiles) {
+        final localPath = map['local_path'] as String?;
+        if (localPath != null && localPath.isNotEmpty) {
+          try {
+            final file = File(localPath);
+            if (await file.exists()) {
+              await file.delete();
+            }
+          } catch (_) {}
+        }
+      }
+      try {
+        if (!Platform.environment.containsKey('FLUTTER_TEST')) {
+          final docsDir = await getApplicationDocumentsDirectory();
+          final cueFlexDir = Directory(p.join(docsDir.path, 'CueFlex'));
+          if (await cueFlexDir.exists()) {
+            await cueFlexDir.delete(recursive: true);
+            await cueFlexDir.create();
+          }
+        }
+      } catch (_) {}
     });
   }
 }

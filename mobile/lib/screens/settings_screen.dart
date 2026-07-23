@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/db_service.dart';
-import '../core/config.dart';
 import '../core/formatters.dart';
 import '../main.dart';
 
@@ -15,6 +14,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final DbService _dbService = DbService();
+  final TextEditingController _workerUrlController = TextEditingController();
 
   int _filesCount = 0;
   int _foldersCount = 0;
@@ -29,16 +29,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   void dispose() {
+    _workerUrlController.dispose();
     super.dispose();
   }
 
   Future<void> _loadStats() async {
+    final workerUrl = await AppConfig.getWorkerUrl();
     final files = await _dbService.getFilesCount();
     final folders = await _dbService.getFoldersCount();
     final storage = await _dbService.getStorageUsed();
 
     if (mounted) {
       setState(() {
+        _workerUrlController.text = workerUrl;
         _filesCount = files;
         _foldersCount = folders;
         _storageUsed = storage;
@@ -81,6 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (confirm == true) {
       await _dbService.clearAllData();
+      if (!mounted) return;
       await _loadStats();
 
       if (mounted) {
@@ -126,6 +130,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ).animate().fadeIn(),
                   const SizedBox(height: 24),
+
+                  _buildSectionTitle('NETWORK CONFIG'),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _workerUrlController,
+                    style: const TextStyle(color: AppTheme.textPrimary, fontFamily: 'monospace', fontSize: 13),
+                    decoration: InputDecoration(
+                      labelText: 'WORKER URL',
+                      labelStyle: const TextStyle(color: AppTheme.textSecondary, fontFamily: 'monospace'),
+                      filled: true,
+                      fillColor: const Color(0xFF09090B),
+                      enabledBorder: const OutlineInputBorder(borderSide: BorderSide(color: Color(0xFF27272A))),
+                      focusedBorder: const OutlineInputBorder(borderSide: BorderSide(color: Colors.white)),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.save, color: AppTheme.textSecondary),
+                        onPressed: () async {
+                          await AppConfig.saveWorkerUrl(_workerUrlController.text.trim());
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text('Worker URL saved', style: TextStyle(fontFamily: 'monospace')),
+                              backgroundColor: Color(0xFF22C55E),
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
 
                   _buildSectionTitle('STORAGE & CACHE'),
                   const SizedBox(height: 10),

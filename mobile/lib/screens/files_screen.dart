@@ -79,8 +79,11 @@ class _FilesScreenState extends State<FilesScreen>
     final files = await _dbService.getFilesInFolder(folderId);
 
     List<Folder> crumbs = [];
+    Set<String> visited = {};
     String? cid = folderId;
     while (cid != null) {
+      if (visited.contains(cid)) break;
+      visited.add(cid);
       final f = await _dbService.getFolder(cid);
       if (f != null) {
         crumbs.insert(0, f);
@@ -163,6 +166,7 @@ class _FilesScreenState extends State<FilesScreen>
       ),
     );
 
+    controller.dispose();
     if (!mounted) return;
     if (name != null) {
       final cleanName = _sanitizeFolderName(name);
@@ -295,6 +299,7 @@ class _FilesScreenState extends State<FilesScreen>
       ),
     );
 
+    controller.dispose();
     if (!mounted) return;
     if (name != null) {
       final cleanName = _sanitizeFolderName(name);
@@ -594,6 +599,7 @@ class _FilesScreenState extends State<FilesScreen>
       ),
     );
 
+    controller.dispose();
     if (!mounted) return;
     if (tags != null) {
       await _dbService.updateFile(file.copyWith(tags: tags));

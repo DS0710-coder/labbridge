@@ -235,6 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   backgroundColor: const Color(0xFFEF4444),
                                                   behavior: SnackBarBehavior.floating,
                                                 ));
+                                                break; // Stop sending subsequent files on error
                                               }
                                             }
                                           }
@@ -435,7 +436,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 color: Color(0xFF18181B),
                               ),
                               child: LinearProgressIndicator(
-                                value: (_storageUsed / (1024 * 1024 * 500)).clamp(0.05, 1.0),
+                                value: (_storageUsed <= 0 || _storageUsed.isNaN)
+                                    ? 0.05
+                                    : (_storageUsed / (1024 * 1024 * 500)).clamp(0.05, 1.0),
                                 backgroundColor: Colors.transparent,
                                 valueColor: const AlwaysStoppedAnimation(Colors.white),
                                 minHeight: 6,

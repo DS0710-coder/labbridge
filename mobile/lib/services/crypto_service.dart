@@ -92,7 +92,8 @@ class CryptoService {
     final iv = combined.sublist(0, 12);
     final ciphertextWithTag = combined.sublist(12);
 
-    final extractedIndex = ((iv[8] & 0xFF) << 24) | ((iv[9] & 0xFF) << 16) | ((iv[10] & 0xFF) << 8) | (iv[11] & 0xFF);
+    final ivData = ByteData.sublistView(iv);
+    final extractedIndex = ivData.getUint32(8, Endian.big);
     final chunkIndex = (extractedIndex >= 0) ? extractedIndex : fallbackIndex;
 
     final cipher = GCMBlockCipher(AESEngine())
