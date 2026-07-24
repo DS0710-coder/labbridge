@@ -64,7 +64,20 @@
       gap: 24px;
     }
 
-    @media (max-width: 800px) {
+    @media (max-width: 992px) {
+      .container {
+        padding: 24px;
+        gap: 20px;
+      }
+      .qr-box {
+        padding: 16px !important;
+      }
+      #qrcode {
+        width: 220px !important;
+        height: 220px !important;
+      }
+    }
+    @media (max-width: 600px) {
       .container {
         padding: 16px;
         gap: 16px;
@@ -747,7 +760,7 @@
 
     <!-- Phase 1: Waiting -->
     <div id="phase-waiting" style="width: 100%;">
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 32px; align-items: stretch; width: 100%;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 32px; align-items: stretch; width: 100%;">
         <!-- Left Column: Specs, Onboarding & Instructions -->
         <div style="display: flex; flex-direction: column; justify-content: space-between; gap: 24px; background: var(--surface-2); border: 1px solid var(--border); padding: 28px;">
           <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -758,7 +771,7 @@
             <p style="font-size: 14px; color: var(--text-2); line-height: 1.6; font-family: var(--mono);">
               CueFlex is a serverless, zero-install peer-to-peer file transfer utility for rapid data movement between desktop terminals and mobile devices.
             </p>
-            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px; color: var(--text-3); font-family: var(--mono); border-top: 1px solid var(--border); padding-top: 16px;">
+            <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px; color: var(--text-2); font-family: var(--mono); border-top: 1px solid var(--border); padding-top: 16px;">
               <div>• <strong style="color: #FFFFFF;">ZERO CLOUD STORAGE:</strong> Files stream directly between devices via WebSocket memory relay without server caching.</div>
               <div>• <strong style="color: #FFFFFF;">E2E ENCRYPTED:</strong> 256-bit AES-GCM encryption derived from the ephemeral session ID ensures zero interception.</div>
               <div>• <strong style="color: #FFFFFF;">INSTANT PAIRING:</strong> Point your CueFlex app or iPhone camera at the QR code to connect in &lt;1 second.</div>
@@ -876,6 +889,11 @@
         <span id="phone-status-text">DISCONNECTED</span>
       </div>
     </header>
+
+    <!-- Permanent Android APK Button -->
+    <a id="android-apk-btn" href="cueflex-app.apk" download="cueflex-app.apk" style="display: none; width: 100%; text-align: center; background: #FFFFFF; color: #000000; padding: 14px; font-family: var(--mono); font-size: 12px; font-weight: 800; text-decoration: none; text-transform: uppercase; border: 1px solid var(--border); margin-bottom: 16px;">
+      [ DOWNLOAD NATIVE ANDROID APK ]
+    </a>
 
     <!-- Screen 1: Scanner -->
     <div id="phone-screen-scanner" style="display: flex; flex-direction: column; gap: 16px;">
@@ -1054,8 +1072,22 @@
       updateTimerDisplay();
 
       try {
-        const res = await fetch(`${HTTP_URL}/session/new`);
-        const data = await res.json();
+        const savedId = localStorage.getItem('labbridge_session_id');
+        const savedExpiry = parseInt(localStorage.getItem('labbridge_session_expiry') || '0', 10);
+        let data = null;
+
+        if (savedId && savedExpiry && savedExpiry > Date.now() + 10000) {
+          data = {
+            session_id: savedId,
+            expires_at: new Date(savedExpiry).toISOString()
+          };
+        } else {
+          const res = await fetch(`${HTTP_URL}/session/new`);
+          data = await res.json();
+          localStorage.setItem('labbridge_session_id', data.session_id);
+          localStorage.setItem('labbridge_session_expiry', new Date(data.expires_at).getTime().toString());
+        }
+
         state.sessionId = data.session_id;
         const dispEl = document.getElementById('display-session-id');
         if (dispEl) dispEl.innerText = data.session_id;
@@ -1113,13 +1145,19 @@
         setStatus(false, 'ERROR CREATING SESSION');
         console.error(err);
       }
+      } finally {
+        isCreatingSession = false;
+      }
     }
 
     function handlePeerDisconnected() {
       if (state.phase === 'transferring') {
         alert('Peer disconnected during transfer.');
       }
-      if (state.phase !== 'waiting') {
+      if (state.phase === 'waiting') {
+        // Reconnect silently if dropped while waiting (e.g. idle timeout)
+        setTimeout(connectWebSocket, 1000);
+      } else {
         setStatus(false, 'DISCONNECTED BY PHONE');
         document.getElementById('btn-disconnect').style.display = 'none';
         clearInterval(state.timerInterval);
@@ -1262,6 +1300,8 @@
     }
 
     function disconnectSession() {
+      localStorage.removeItem('labbridge_session_id');
+      localStorage.removeItem('labbridge_session_expiry');
       if (state.ws) {
         const oldWs = state.ws;
         state.ws = null;
@@ -1542,9 +1582,10 @@
         state.expirySeconds = 240;
       updateTimerDisplay();
 
+      let idx = transfer.receivedChunks;
       try {
         const result = await decryptChunk(buffer, state.cryptoKey, transfer.receivedChunks);
-        const idx = typeof result.chunkIndex === 'number' ? result.chunkIndex : transfer.receivedChunks;
+        idx = typeof result.chunkIndex === 'number' ? result.chunkIndex : transfer.receivedChunks;
         transfer.chunksData[idx] = new Blob([result.plaintext]);
         
         let receivedCount = 0;
@@ -1557,7 +1598,7 @@
         updateProgressDisplay(transfer.filename, transfer.size, pct);
 
         if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-          phoneState.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
+          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
         }
 
         if (receivedCount >= transfer.total_chunks) {
@@ -1579,14 +1620,7 @@
           });
           renderReceivedFiles();
 
-          try {
-            const a = document.createElement('a');
-            a.href = blobUrl;
-            a.download = transfer.filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          } catch (e) {}
+          // Removed auto-download
 
           state.currentTransfer = null;
           if (state.sendQueue.length > 0) {
@@ -1602,9 +1636,32 @@
       } catch (err) {
         console.error('Failed to decrypt incoming chunk:', err);
         if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-          phoneState.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
+          state.ws.send(JSON.stringify({ type: 'ack', chunk_index: idx }));
         }
       }
+    }
+
+    let currentReceivedViewIndex = 0;
+
+    function navReceivedFiles(dir) {
+      currentReceivedViewIndex += dir;
+      renderReceivedFiles();
+    }
+
+    function downloadAllReceived() {
+      if (!state.receivedFiles) return;
+      state.receivedFiles.forEach((f, i) => {
+        setTimeout(() => {
+          try {
+            const a = document.createElement('a');
+            a.href = f.blobUrl;
+            a.download = f.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } catch (e) {}
+        }, i * 250);
+      });
     }
 
     function renderReceivedFiles() {
@@ -1618,14 +1675,61 @@
       section.style.display = 'block';
       list.innerHTML = '';
 
-      state.photoIndices = [];
-      state.receivedFiles.forEach((f, idx) => {
-        const isImage = (f.mimeType && f.mimeType.startsWith('image/')) || f.filename.match(/\.(jpg|jpeg|png|gif|webp|heic|bmp)$/i);
-        if (isImage) state.photoIndices.push(idx);
-      });
+      if (currentReceivedViewIndex >= state.receivedFiles.length) {
+        currentReceivedViewIndex = state.receivedFiles.length - 1;
+      }
+      if (currentReceivedViewIndex < 0) currentReceivedViewIndex = 0;
+
+      const f = state.receivedFiles[currentReceivedViewIndex];
+      const isImage = (f.mimeType && f.mimeType.startsWith('image/')) || f.filename.match(/\\.(jpg|jpeg|png|gif|webp|heic|bmp)$/i);
+      
+      let imgHtml = '';
+      if (isImage) {
+        imgHtml = `<div style="margin-bottom: 12px; text-align: center; background: var(--surface-2); padding: 8px; border: 1px solid var(--border);">
+          <img src="${f.blobUrl}" alt="${f.filename}" onclick="openPhotoLightbox(${currentReceivedViewIndex})" style="max-height: 240px; max-width: 100%; border: 1px solid var(--border); object-fit: contain; cursor: pointer; transition: transform 0.15s;" />
+        </div>`;
+      } else {
+        imgHtml = `<div style="margin-bottom: 12px; height: 120px; display: flex; align-items: center; justify-content: center; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); font-family: var(--mono); font-size: 12px;">
+          [ NO PREVIEW AVAILABLE ]
+        </div>`;
+      }
+
+      const escapeHtml = (text) => {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+      };
+      const safeFilename = escapeHtml(f.filename);
+      const hasMultiple = state.receivedFiles.length > 1;
+
+      list.innerHTML = `
+        <div class="received-item" style="padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 0; margin-top: 10px; font-family: var(--mono);">
+          ${hasMultiple ? `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+              <button onclick="navReceivedFiles(-1)" style="background: transparent; border: 1px solid var(--border); color: white; padding: 6px 12px; cursor: pointer; font-family: var(--mono); font-weight: bold; font-size: 11px;" ${currentReceivedViewIndex === 0 ? 'opacity:0.5; pointer-events:none;' : ''}>&lt; PREV</button>
+              <span style="font-size: 11px; color: var(--text-2);">FILE ${currentReceivedViewIndex + 1} OF ${state.receivedFiles.length}</span>
+              <button onclick="navReceivedFiles(1)" style="background: transparent; border: 1px solid var(--border); color: white; padding: 6px 12px; cursor: pointer; font-family: var(--mono); font-weight: bold; font-size: 11px;" ${currentReceivedViewIndex === state.receivedFiles.length - 1 ? 'opacity:0.5; pointer-events:none;' : ''}>NEXT &gt;</button>
+            </div>
+          ` : ''}
+          ${imgHtml}
+          <div style="text-align: center; margin-bottom: 16px;">
+            <strong style="font-size: 13px; color: #fff; word-break: break-all;">${safeFilename}</strong><br />
+            <span style="font-size: 11px; color: var(--text-2);">${formatSize(f.size)}</span>
+          </div>
+          <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+            <a href="${f.blobUrl}" download="${safeFilename}" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); text-decoration: none; padding: 9px 18px; border-radius: 0; font-size: 11px; font-weight: 800; font-family: var(--mono); white-space: nowrap; cursor: pointer; display: inline-block;">[ DOWNLOAD ]</a>
+            ${hasMultiple ? `<button onclick="downloadAllReceived()" style="background: transparent; color: #FFFFFF; border: 1px solid var(--border); padding: 9px 18px; border-radius: 0; font-size: 11px; font-weight: 800; font-family: var(--mono); white-space: nowrap; cursor: pointer;">[ DOWNLOAD ALL ]</button>` : ''}
+          </div>
+        </div>
+      `;
 
       const previewAllBtn = document.getElementById('btn-preview-all');
       if (previewAllBtn) {
+        state.photoIndices = [];
+        state.receivedFiles.forEach((f2, idx2) => {
+          const isImg2 = (f2.mimeType && f2.mimeType.startsWith('image/')) || f2.filename.match(/\.(jpg|jpeg|png|gif|webp|heic|bmp)$/i);
+          if (isImg2) state.photoIndices.push(idx2);
+        });
         if (state.photoIndices.length > 0) {
           previewAllBtn.style.display = 'inline-block';
           previewAllBtn.innerText = `[ PREVIEW ALL PHOTOS (${state.photoIndices.length}) ]`;
@@ -1633,42 +1737,6 @@
           previewAllBtn.style.display = 'none';
         }
       }
-
-      state.receivedFiles.forEach((f, idx) => {
-        const item = document.createElement('div');
-        item.className = 'received-item';
-        item.style.cssText = 'padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 0; margin-top: 10px; font-family: var(--mono);';
-
-        const isImage = (f.mimeType && f.mimeType.startsWith('image/')) || f.filename.match(/\.(jpg|jpeg|png|gif|webp|heic|bmp)$/i);
-        let imgHtml = '';
-        if (isImage) {
-          imgHtml = `<div style="margin-bottom: 12px; text-align: center; background: var(--surface-2); padding: 8px; border: 1px solid var(--border);">
-            <img src="${f.blobUrl}" alt="${f.filename}" onclick="openPhotoLightbox(${idx})" style="max-height: 240px; max-width: 100%; border: 1px solid var(--border); object-fit: contain; cursor: pointer; transition: transform 0.15s;" />
-          </div>`;
-        }
-
-        const escapeHtml = (text) => {
-          const div = document.createElement('div');
-          div.textContent = text;
-          return div.innerHTML;
-        };
-        const safeFilename = escapeHtml(f.filename);
-
-        item.innerHTML = `
-          ${imgHtml}
-          <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;">
-              <strong style="font-size: 13px; color: #fff;">${safeFilename}</strong><br />
-              <span style="font-size: 11px; color: var(--text-2);">${formatSize(f.size)}</span>
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button onclick="openPhotoLightbox(${idx})" style="background: transparent; border: 1px solid var(--border); color: white; padding: 7px 14px; border-radius: 0; font-size: 11px; font-weight: 800; cursor: pointer; font-family: var(--mono); white-space: nowrap;">[ PREVIEW ]</button>
-              <a href="${f.blobUrl}" download="${safeFilename}" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); text-decoration: none; padding: 7px 14px; border-radius: 0; font-size: 11px; font-weight: 800; font-family: var(--mono); white-space: nowrap;">[ DOWNLOAD ]</a>
-            </div>
-          </div>
-        `;
-        list.appendChild(item);
-      });
     }
 
     let currentLightboxIndex = 0;
@@ -1801,6 +1869,11 @@
       if (pcEl) pcEl.style.display = 'none';
       if (phoneEl) phoneEl.style.display = 'flex';
 
+      if (/android/i.test(navigator.userAgent)) {
+        const btn = document.getElementById('android-apk-btn');
+        if (btn) btn.style.display = 'block';
+      }
+
       const params = new URLSearchParams(window.location.search);
       const s = params.get('s');
       const e = params.get('e');
@@ -1813,8 +1886,13 @@
         }
         phoneProceedToConnected(s);
       } else {
-        phoneShowScreen('scanner');
-        phoneStartCamera();
+        const saved = localStorage.getItem('labbridge_phone_session_id');
+        if (saved) {
+          phoneProceedToConnected(saved);
+        } else {
+          phoneShowScreen('scanner');
+          phoneStartCamera();
+        }
       }
     }
 
@@ -1874,7 +1952,7 @@
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "dontInvert" });
+      const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: "attemptBoth" });
 
       if (code && code.data) {
         let sessionId = null;
@@ -1931,6 +2009,7 @@
 
     async function phoneProceedToConnected(sessionId) {
       phoneState.sessionId = sessionId;
+      localStorage.setItem('labbridge_phone_session_id', sessionId);
       phoneShowScreen('connected');
       const infoEl = document.getElementById('phone-session-info');
       if (infoEl) infoEl.innerText = `SESSION ID: ${sessionId}`;
