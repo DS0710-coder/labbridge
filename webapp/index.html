@@ -848,6 +848,12 @@
         <p>DROP FILES TO TRANSFER</p>
         <span id="queue-status">E2E ENCRYPTED · SAVES DIRECTLY TO TARGET DIRECTORY</span>
       </div>
+
+      <div class="folder-section" style="margin-top: 16px;">
+        <div class="section-label">SEND TEXT MESSAGE</div>
+        <textarea id="text-message-input" placeholder="Type a message to send as message.txt..." style="width: 100%; height: 80px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 0; padding: 12px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; resize: vertical; margin-bottom: 12px; transition: border-color 0.15s;" onfocus="this.style.borderColor='#FFFFFF'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        <button onclick="sendTextMessage()" class="btn-text" style="width: 100%; font-size: 13px; padding: 12px;">[ SEND MESSAGE ]</button>
+      </div>
     </div>
 
     <!-- Phase 3: Transferring -->
@@ -921,6 +927,12 @@
         <div style="font-family: var(--mono); font-size: 18px; color: var(--text); margin-bottom: 8px;">[ + ]</div>
         <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: var(--text);">TAP TO SEND FILES TO PC</div>
         <div style="font-size: 11px; color: var(--text-2); margin-top: 4px;">PHOTOS · DOCUMENTS · ARCHIVES</div>
+      </div>
+
+      <div style="padding: 16px; background: var(--surface-2); border: 1px solid var(--border); margin-top: 16px;">
+        <div style="font-size: 13px; color: var(--text); font-weight: 800; font-family: var(--mono); margin-bottom: 8px;">SEND TEXT MESSAGE</div>
+        <textarea id="phone-text-message-input" placeholder="Type a message to send as message.txt..." style="width: 100%; height: 80px; background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 12px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; resize: vertical; margin-bottom: 12px; transition: border-color 0.15s;" onfocus="this.style.borderColor='#FFFFFF'" onblur="this.style.borderColor='var(--border)'"></textarea>
+        <button onclick="phoneSendTextMessage()" style="width: 100%; background: #FFFFFF; color: #000000; border: 1px solid var(--border); border-radius: 0; padding: 14px; font-family: var(--mono); font-size: 12px; font-weight: 800; cursor: pointer; text-transform: uppercase;">[ SEND MESSAGE ]</button>
       </div>
 
       <!-- Active Transfer Progress -->
@@ -2264,6 +2276,31 @@
       if (progEl) progEl.value = pct;
       const phoneFill = document.getElementById('phone-transfer-bar');
       if (phoneFill) phoneFill.style.width = pct + '%';
+    }
+
+    function sendTextMessage() {
+      const input = document.getElementById('text-message-input');
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) return;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const file = new File([blob], 'message.txt', { type: 'text/plain' });
+      queueFiles([file]);
+      input.value = '';
+    }
+
+    function phoneSendTextMessage() {
+      const input = document.getElementById('phone-text-message-input');
+      if (!input) return;
+      const text = input.value.trim();
+      if (!text) return;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const file = new File([blob], 'message.txt', { type: 'text/plain' });
+      phoneState.sendQueue.push(file);
+      if (!phoneState.currentTransfer) {
+        phoneProcessNextInQueue();
+      }
+      input.value = '';
     }
   </script>
 </body>
