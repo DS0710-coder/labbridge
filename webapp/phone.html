@@ -843,13 +843,34 @@
 
     let fileCounter = 0;
 
-    function finalizeReceivedFile() {
+    async function finalizeReceivedFile() {
       const rec = state.receiving;
       document.getElementById('section-transferring').style.display = 'none';
       document.getElementById('card-connected').style.display = 'block';
       state.receiving = null;
 
       const blob = new Blob(rec.chunks, { type: rec.mime_type });
+
+      if (rec.filename === 'message.txt' && rec.size < 50 * 1024) {
+        const text = await blob.text();
+        const sec = document.getElementById('phone-received-messages-section');
+        const list = document.getElementById('phone-received-messages-list');
+        if (sec && list) {
+          sec.style.display = 'block';
+          const msgDiv = document.createElement('div');
+          msgDiv.style.padding = '12px';
+          msgDiv.style.background = 'var(--surface)';
+          msgDiv.style.border = '1px solid var(--border)';
+          msgDiv.style.fontFamily = 'var(--mono)';
+          msgDiv.style.fontSize = '13px';
+          msgDiv.style.color = '#FFFFFF';
+          msgDiv.style.whiteSpace = 'pre-wrap';
+          msgDiv.textContent = text;
+          list.prepend(msgDiv);
+        }
+        return;
+      }
+
       const url = URL.createObjectURL(blob);
       const fileId = 'file_' + (++fileCounter);
       const fileObj = new File([blob], rec.filename, { type: rec.mime_type });
