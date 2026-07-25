@@ -731,6 +731,22 @@
             ]
           }));
         }
+      } else if (msg.type === 'text_message') {
+        const sec = document.getElementById('phone-received-messages-section');
+        const list = document.getElementById('phone-received-messages-list');
+        if (sec && list) {
+          sec.style.display = 'block';
+          const msgDiv = document.createElement('div');
+          msgDiv.style.padding = '12px';
+          msgDiv.style.background = 'var(--surface)';
+          msgDiv.style.border = '1px solid var(--border)';
+          msgDiv.style.fontFamily = 'var(--mono)';
+          msgDiv.style.fontSize = '13px';
+          msgDiv.style.color = '#FFFFFF';
+          msgDiv.style.whiteSpace = 'pre-wrap';
+          msgDiv.textContent = msg.text;
+          list.prepend(msgDiv);
+        }
       } else if (msg.type === 'transfer_init') {
         state.receiving = {
           filename: msg.filename || 'received_file',
