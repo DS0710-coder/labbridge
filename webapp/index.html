@@ -1257,8 +1257,11 @@
         if (data.expires_at) {
           state.expirySeconds = Math.max(0, Math.floor((new Date(data.expires_at).getTime() - Date.now()) / 1000));
         } else {
-          if (state.timerInterval) clearInterval(state.timerInterval);
-        state.expirySeconds = 240;
+          if (state.timerInterval) {
+            clearInterval(state.timerInterval);
+            state.timerInterval = null;
+          }
+          state.expirySeconds = 240;
         }
         updateTimerDisplay();
 
