@@ -70,11 +70,17 @@
     }
     .chat-modal-header {
       padding: 16px;
+      padding-top: max(16px, env(safe-area-inset-top));
       border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
       background: var(--surface-2);
+      gap: 12px;
+    }
+    .chat-modal-header div, .chat-modal-header button {
+      white-space: nowrap;
+      flex-shrink: 0;
     }
     .chat-modal-messages {
       flex: 1;
@@ -94,6 +100,18 @@
       display: flex;
       gap: 10px;
       align-items: center;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .chat-modal-footer textarea {
+      flex: 1 1 0% !important;
+      min-width: 0 !important;
+      width: 0 !important;
+    }
+    .chat-modal-footer button {
+      flex: 0 0 auto !important;
+      flex-shrink: 0 !important;
+      white-space: nowrap !important;
     }
 
     header {
@@ -954,9 +972,40 @@
         <div style="display:flex; gap:6px;">
           ${isImage ? `<button style="padding: 8px 12px; font-size:11px; background:var(--surface); color:#FFF; border: 1px solid var(--border); min-height:36px;" onclick="openPhoneGalleryById('${fileId}')">[ PREVIEW ]</button>` : ''}
           <button style="padding: 8px 12px; font-size:11px; background:#FFFFFF; color:#000000; border: 1px solid var(--border); font-weight:800; min-height:36px;" onclick="shareOrSaveFileById('${fileId}')">[ SAVE ]</button>
+          <button style="padding: 8px 12px; font-size:11px; background:transparent; color:#EF4444; border: 1px solid #EF4444; font-weight:800; min-height:36px; cursor:pointer;" onclick="deletePhoneFileById('${fileId}', this)">[ DELETE ]</button>
         </div>
       `;
       list.prepend(div);
+    }
+
+    function deletePhoneFileById(fileId, btnElement) {
+      if (state.completedFilesMap && state.completedFilesMap[fileId]) {
+        if (state.completedFilesMap[fileId].url) {
+          try { URL.revokeObjectURL(state.completedFilesMap[fileId].url); } catch (e) {}
+        }
+        delete state.completedFilesMap[fileId];
+      }
+      const pIdx = state.photoKeys ? state.photoKeys.indexOf(fileId) : -1;
+      if (pIdx >= 0) {
+        state.photoKeys.splice(pIdx, 1);
+      }
+      if (btnElement) {
+        const item = btnElement.closest('.file-item');
+        if (item) item.remove();
+      }
+      const galBtn = document.getElementById('phone-gallery-btn');
+      if (galBtn) {
+        if (state.photoKeys && state.photoKeys.length > 0) {
+          galBtn.innerText = `[ PREVIEW ALL PHOTOS (${state.photoKeys.length}) ]`;
+        } else {
+          galBtn.style.display = 'none';
+        }
+      }
+      const list = document.getElementById('completed-files-list');
+      if (!list || list.children.length === 0) {
+        const sec = document.getElementById('section-completed');
+        if (sec) sec.style.display = 'none';
+      }
     }
 
     function formatSize(bytes) {
