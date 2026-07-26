@@ -296,13 +296,13 @@ export class Session extends DurableObject {
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
     const sockets = this.ctx.getWebSockets();
-    const other = getOtherSocket(sockets, ws);
 
       // Check if sender is PC and peer is not a WebSocket phone (i.e. iOS Shortcut polling mode)
       const senderAtt = ws.deserializeAttachment() as SocketAttachment | null;
       const isFromPc = senderAtt?.role === "pc";
 
       if (message instanceof ArrayBuffer) {
+        const other = getOtherSocket(sockets, ws);
         // For binary frames, check session expiry using cached value
         if (!this._maxExpiresAt) {
           await this.extendAlarm(5 * 60 * 1000);
@@ -363,6 +363,10 @@ export class Session extends DurableObject {
           return;
         }
 
+        // Re-resolve the peer socket fresh for text messages
+        // (after hibernation wake, the socket list may have changed)
+        const other = getOtherSocket(this.ctx.getWebSockets(), ws);
+
         if (parsed.type === "transfer_init") {
           // Reset transfer caps when a new transfer starts
           this._bytesTransferred = 0;
@@ -390,7 +394,8 @@ export class Session extends DurableObject {
           }
 
           // Check if PC is sending to an iOS Shortcut (no WebSocket phone connected)
-          const phoneSocket = sockets.find(s => {
+          const freshSockets = this.ctx.getWebSockets();
+          const phoneSocket = freshSockets.find(s => {
             const att = s.deserializeAttachment() as SocketAttachment | null;
             return att?.role === "phone" && s !== ws;
           });
