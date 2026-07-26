@@ -811,6 +811,10 @@
     }
 
     function disconnectPhoneSession() {
+      clearSendWatchdog();
+      state.sending = null;
+      state.phoneSendQueue = [];
+      state.receiving = null;
       if (state.ws) {
         const oldWs = state.ws;
         state.ws = null;
@@ -831,7 +835,9 @@
       state.cryptoKey = null;
       state.receiving = null;
       state.sending = null;
+      state.phoneSendQueue = [];
       clearChatMessages();
+      document.getElementById('status-dot').classList.remove('active');
       setStatus(false, 'DISCONNECTED');
       const connSec = document.getElementById('section-connect');
       const dashSec = document.getElementById('section-dashboard');
@@ -881,10 +887,12 @@
         }
       } else if (msg.type === 'ack') {
         if (state.sending) {
+          startSendWatchdog();
           state.sending.acked++;
           const pct = Math.round((state.sending.acked / state.sending.total_chunks) * 100);
           updateProgress(pct);
           if (state.sending.acked === state.sending.total_chunks) {
+            clearSendWatchdog();
             state.sending = null;
             if (state.phoneSendQueue && state.phoneSendQueue.length > 0) {
               processNextPhoneSend();
@@ -1257,20 +1265,52 @@
       }
     }
 
-    async function streamNextSendingChunk() {
-      if (!state.sending || state.sending.nextIndex >= state.sending.total_chunks) return;
-      const { file, CHUNK_SIZE, nextIndex } = state.sending;
-      
-      const start = nextIndex * CHUNK_SIZE;
-      const end = Math.min(start + CHUNK_SIZE, file.size);
-      const slice = file.slice(start, end);
-      const buffer = await slice.arrayBuffer();
-
-      const encryptedBuffer = await encryptChunk(buffer, state.cryptoKey, nextIndex);
-      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-        state.ws.send(encryptedBuffer);
+    function streamNextSendingChunk() {
+      if (!state.sending) return;
+      if (state.sending.nextIndex >= state.sending.total_chunks) {
+        // All chunks sent — wait for remaining acks, don't send more
+        return;
       }
+      if (state.ws.readyState !== WebSocket.OPEN) {
+        console.warn('WS not open, pausing send');
+        return;
+      }
+      const chunkIndex = state.sending.nextIndex;
       state.sending.nextIndex++;
+
+      const CHUNK_SIZE = 512 * 1024;
+      const offset = chunkIndex * CHUNK_SIZE;
+      const slice = state.sending.file.slice(offset, offset + CHUNK_SIZE);
+
+      slice.arrayBuffer().then(ab => {
+        return encryptChunk(ab, state.cryptoKey, chunkIndex);
+      }).then(encrypted => {
+        if (!state.sending || state.ws.readyState !== WebSocket.OPEN) return;
+        state.ws.send(encrypted);
+      }).catch(err => {
+        console.error('Chunk encrypt/send error:', err);
+      });
+    }
+
+    // Watchdog: if sending stalls for >10 seconds, reset and show error
+    function startSendWatchdog() {
+      if (state.sendWatchdog) clearTimeout(state.sendWatchdog);
+      state.sendWatchdog = setTimeout(() => {
+        if (state.sending && state.sending.acked < state.sending.total_chunks) {
+          console.warn('Send stalled — resetting');
+          state.sending = null;
+          document.getElementById('section-transferring').style.display = 'none';
+          document.getElementById('card-connected').style.display = 'block';
+          alert('Transfer stalled. Please try again.');
+        }
+      }, 10000);
+    }
+
+    function clearSendWatchdog() {
+      if (state.sendWatchdog) {
+        clearTimeout(state.sendWatchdog);
+        state.sendWatchdog = null;
+      }
     }
 
     function cancelTransfer() {
