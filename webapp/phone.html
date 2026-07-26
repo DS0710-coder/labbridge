@@ -53,183 +53,89 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(6px);
+      background: #000000;
       z-index: 99999;
       align-items: center;
       justify-content: center;
       padding: 0;
     }
     .chat-modal-box {
-      background: var(--surface);
-      border: none;
+      background: #000000;
       width: 100%;
       height: 100%;
       max-height: 100dvh;
       display: flex;
       flex-direction: column;
-      box-shadow: none;
     }
     .chat-modal-header {
-      padding: 16px;
-      padding-top: max(16px, env(safe-area-inset-top));
+      padding: 12px 16px;
+      padding-top: max(12px, env(safe-area-inset-top));
       border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
       background: var(--surface-2);
       gap: 12px;
-    }
-
-    .chat-modal-box header {
-      padding: 16px;
-      padding-top: max(16px, env(safe-area-inset-top));
-      border-bottom: 1px solid #2C2C2E;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: rgba(18, 18, 18, 0.85);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      flex-shrink: 0;
     }
     .chat-modal-messages {
       flex: 1;
-      padding: 16px;
+      padding: 12px 16px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
       background: #000000;
       -webkit-overflow-scrolling: touch;
     }
     .chat-modal-footer {
-      padding: 8px 16px;
-      padding-bottom: max(8px, env(safe-area-inset-bottom));
-      border-top: 1px solid #2C2C2E;
-      background: #121212;
+      padding: 10px 12px;
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+      border-top: 1px solid var(--border);
+      background: var(--surface-2);
       display: flex;
-      gap: 12px;
+      gap: 8px;
       align-items: flex-end;
       width: 100%;
       box-sizing: border-box;
+      flex-shrink: 0;
     }
     .chat-modal-footer textarea {
       flex: 1;
-      min-height: 40px;
-      max-height: 120px;
-      background: var(--surface-2);
+      min-width: 0;
+      height: 38px;
+      min-height: 38px;
+      max-height: 100px;
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 10px 16px;
+      border-radius: 0;
+      padding: 8px 10px;
       color: #FFFFFF;
       font-family: var(--mono);
-      font-size: 14px;
+      font-size: 13px;
       outline: none;
       resize: none;
       line-height: 1.4;
       box-sizing: border-box;
-      transition: border-color 0.15s;
     }
     .chat-modal-footer textarea:focus {
       border-color: #FFFFFF;
     }
     .chat-modal-footer button {
+      flex-shrink: 0;
       background: #FFFFFF;
       color: #000000;
       border: 1px solid var(--border);
-      border-radius: 20px;
+      border-radius: 0;
       font-family: var(--mono);
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 800;
-      padding: 0 16px;
-      height: 40px;
+      padding: 0 12px;
+      height: 38px;
       cursor: pointer;
       text-transform: uppercase;
-      margin-left: 4px;
-      transition: opacity 0.15s;
     }
-    .chat-modal-footer button:active { opacity: 0.8; }
-
-    /* Chat Bubbles */
-    .chat-bubble-wrapper {
-      display: flex;
-      width: 100%;
-      margin-top: 8px;
-    }
-    .chat-bubble-wrapper.me {
-      justify-content: flex-end;
-    }
-    .chat-bubble-wrapper.peer {
-      justify-content: flex-start;
-      overflow: visible;
-    }
-    .chat-bubble {
-      position: relative;
-      padding: 10px 14px;
-      font-family: var(--mono);
-      font-size: 13px;
-      line-height: 1.4;
-      max-width: 75%;
-      word-break: break-word;
-      user-select: text;
-      -webkit-user-select: text;
-      white-space: pre-wrap;
-    }
-    .chat-bubble.me {
-      background: #FFFFFF;
-      color: #000000;
-      border-radius: 14px 14px 0 14px;
-      margin-right: 6px;
-    }
-    .chat-bubble.me::after {
-      content: '';
-      position: absolute;
-      bottom: 0;
-      right: -6px;
-      width: 0;
-      height: 0;
-      border: 6px solid transparent;
-      border-top-color: transparent;
-      border-right-color: transparent;
-      border-bottom-color: #FFFFFF;
-      border-left-color: #FFFFFF;
-    }
-    .chat-bubble.peer {
-      background: var(--surface-2);
-      color: #FFFFFF;
-      border: 1px solid var(--border);
-      border-radius: 14px 14px 14px 0;
-      margin-left: 6px;
-      overflow: visible;
-    }
-    .chat-bubble.peer::before {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: -6px;
-      width: 0;
-      height: 0;
-      border: 6px solid transparent;
-      border-top-color: transparent;
-      border-left-color: transparent;
-      border-bottom-color: var(--surface-2);
-      border-right-color: var(--surface-2);
-    }
-    .chat-bubble.peer::after {
-      /* Fake border for peer tail */
-      content: '';
-      position: absolute;
-      bottom: -2px;
-      left: -8px;
-      width: 0;
-      height: 0;
-      border: 7px solid transparent;
-      border-top-color: transparent;
-      border-left-color: transparent;
-      border-bottom-color: var(--border);
-      border-right-color: var(--border);
-      z-index: 0;
-    }
+    .chat-modal-footer button:active { opacity: 0.7; }
 
     header {
       display: flex;
@@ -685,15 +591,15 @@
   <div id="chat-modal">
     <div class="chat-modal-box">
       <div class="chat-modal-header">
-        <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1;">[ MESSAGES / CHAT ]</div>
-        <button onclick="closeChatModal()" style="background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 6px 12px; font-size: 11px; font-weight: 800; cursor: pointer; text-transform: uppercase; white-space: nowrap; flex-shrink: 0;">[ CLOSE ]</button>
+        <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;">[ MESSAGES / CHAT ]</div>
+        <button onclick="closeChatModal()" style="background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 4px 10px; font-size: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; white-space: nowrap; flex-shrink: 0; font-family: var(--mono);">[ X ]</button>
       </div>
       <div id="chat-modal-messages" class="chat-modal-messages">
         <div id="chat-empty-state" style="margin: auto; color: var(--text-3); font-family: var(--mono); font-size: 12px; text-align: center;">No messages in this session yet.</div>
       </div>
       <div class="chat-modal-footer">
-        <textarea id="chat-modal-input" placeholder="Type a message..." style="flex: 1 1 0%; min-width: 0; height: 44px; background: var(--surface); border: 1px solid var(--border); padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; resize: none; box-sizing: border-box;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
-        <button onclick="sendModalChatMessage()" style="flex: 0 0 auto; flex-shrink: 0; background: #FFFFFF; color: #000000; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; font-weight: 800; padding: 0 14px; height: 44px; cursor: pointer; text-transform: uppercase; margin: 0;">[ SEND ]</button>
+        <textarea id="chat-modal-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
+        <button onclick="sendModalChatMessage()">SEND</button>
       </div>
     </div>
   </div>
@@ -1503,28 +1409,14 @@
       tag.innerText = isMe ? '[ YOU ]' : '[ PEER ]';
 
       const msgDiv = document.createElement('div');
-      msgDiv.style.padding = '10px 14px';
+      msgDiv.style.cssText = 'padding: 8px 12px; font-family: var(--mono); font-size: 13px; color: #FFFFFF; white-space: pre-wrap; max-width: 85%; word-break: break-word;';
       msgDiv.style.background = isMe ? 'var(--surface-2)' : '#18181B';
       msgDiv.style.border = isMe ? '1px solid var(--border)' : '1px solid #3F3F46';
-      msgDiv.style.fontFamily = 'var(--mono)';
-      msgDiv.style.fontSize = '13px';
-      msgDiv.style.color = '#FFFFFF';
-      msgDiv.style.whiteSpace = 'pre-wrap';
-      msgDiv.style.maxWidth = '85%';
-      msgDiv.style.wordBreak = 'break-word';
-      msgDiv.style.borderRadius = '0';
       msgDiv.textContent = text;
 
       const copyBtn = document.createElement('button');
       copyBtn.innerText = '[ COPY ]';
-      copyBtn.style.marginTop = '4px';
-      copyBtn.style.background = 'transparent';
-      copyBtn.style.border = 'none';
-      copyBtn.style.color = 'var(--text-2)';
-      copyBtn.style.fontSize = '10px';
-      copyBtn.style.fontFamily = 'var(--mono)';
-      copyBtn.style.cursor = 'pointer';
-      copyBtn.style.padding = '0';
+      copyBtn.style.cssText = 'margin-top: 2px; background: transparent; border: none; color: var(--text-3); font-size: 9px; font-family: var(--mono); cursor: pointer; padding: 0;';
       copyBtn.onclick = (e) => {
         e.stopPropagation();
         navigator.clipboard.writeText(text);
@@ -1537,16 +1429,11 @@
       wrapper.appendChild(copyBtn);
       list.appendChild(wrapper);
 
-      setTimeout(() => {
-        list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
-      }, 50);
+      list.scrollTop = list.scrollHeight;
 
-      const modal = document.getElementById('chat-modal');
       if (!state.chatModalOpen && !isMe) {
-        if (true) {
-          unreadChatCount++;
-          updateChatBadges();
-        }
+        unreadChatCount++;
+        updateChatBadges();
       }
     }
 
