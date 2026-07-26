@@ -816,6 +816,7 @@
             <span>EXPIRES: <span id="timer-sec" class="mono-accent">240s</span></span>
             <button id="btn-refresh-waiting" onclick="createSession(true)" class="btn-text">[ REFRESH SESSION ]</button>
           </div>
+          <div id="rate-limit-error" style="display:none; color: #EF4444; border: 1px solid #EF4444; background: rgba(239, 68, 68, 0.12); padding: 12px 16px; font-family: var(--mono); font-size: 12px; font-weight: 800; text-align: center; margin-top: 14px; width: 100%;"></div>
         </div>
       </div>
     </div>
@@ -1070,14 +1071,67 @@
       return result;
     }
 
+    const refreshTimestamps = [];
+    let rateLimitCooldownUntil = 0;
+    let rateLimitTimer = null;
+
+    function showRateLimitError(remainingSec) {
+      const errEl = document.getElementById('rate-limit-error');
+      if (errEl) {
+        errEl.style.display = 'block';
+        errEl.innerText = `[ ERROR: REFRESH RATE LIMIT EXCEEDED (5x IN 10s). PLEASE WAIT ${remainingSec}s TO REFRESH AGAIN ]`;
+      }
+    }
+
+    function checkRateLimit() {
+      const now = Date.now();
+      if (now < rateLimitCooldownUntil) {
+        const remaining = Math.ceil((rateLimitCooldownUntil - now) / 1000);
+        showRateLimitError(remaining);
+        return false;
+      }
+
+      while (refreshTimestamps.length > 0 && refreshTimestamps[0] <= now - 10000) {
+        refreshTimestamps.shift();
+      }
+
+      refreshTimestamps.push(now);
+
+      if (refreshTimestamps.length >= 5) {
+        rateLimitCooldownUntil = now + 120000;
+        showRateLimitError(120);
+
+        if (rateLimitTimer) clearInterval(rateLimitTimer);
+        rateLimitTimer = setInterval(() => {
+          const current = Date.now();
+          if (current >= rateLimitCooldownUntil) {
+            clearInterval(rateLimitTimer);
+            rateLimitTimer = null;
+            const errEl = document.getElementById('rate-limit-error');
+            if (errEl) errEl.style.display = 'none';
+          } else {
+            const rem = Math.ceil((rateLimitCooldownUntil - current) / 1000);
+            showRateLimitError(rem);
+          }
+        }, 1000);
+
+        return false;
+      }
+
+      const errEl = document.getElementById('rate-limit-error');
+      if (errEl) errEl.style.display = 'none';
+      return true;
+    }
+
     let isCreatingSession = false;
     async function createSession(forceNew = false) {
-      if (isCreatingSession) return;
-      isCreatingSession = true;
       if (forceNew) {
+        if (!checkRateLimit()) return;
         localStorage.removeItem('labbridge_session_id');
         localStorage.removeItem('labbridge_session_expiry');
       }
+      if (isCreatingSession) return;
+      isCreatingSession = true;
       try {
       clearInterval(state.timerInterval);
       if (state.ws) {
