@@ -564,15 +564,15 @@
   <div id="chat-modal">
     <div class="chat-modal-box">
       <div class="chat-modal-header">
-        <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: #FFFFFF;">[ MESSAGES / CHAT ]</div>
-        <button onclick="closeChatModal()" style="background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 6px 12px; font-size: 11px; font-weight: 800; cursor: pointer; text-transform: uppercase;">[ CLOSE ]</button>
+        <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: #FFFFFF; white-space: nowrap; flex-shrink: 0;">[ MESSAGES / CHAT ]</div>
+        <button onclick="closeChatModal()" style="background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 6px 12px; font-size: 11px; font-weight: 800; cursor: pointer; text-transform: uppercase; white-space: nowrap; flex-shrink: 0;">[ CLOSE ]</button>
       </div>
       <div id="chat-modal-messages" class="chat-modal-messages">
         <div id="chat-empty-state" style="margin: auto; color: var(--text-3); font-family: var(--mono); font-size: 12px; text-align: center;">No messages in this session yet.</div>
       </div>
       <div class="chat-modal-footer">
-        <textarea id="chat-modal-input" placeholder="Type a message to send..." style="flex: 1; height: 44px; background: var(--surface); border: 1px solid var(--border); padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 14px; outline: none; resize: none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
-        <button onclick="sendModalChatMessage()" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; font-weight: 800; padding: 0 18px; height: 44px; cursor: pointer; text-transform: uppercase;">[ SEND ]</button>
+        <textarea id="chat-modal-input" placeholder="Type a message to send..." style="flex: 1 1 0%; min-width: 0; width: 0; height: 44px; background: var(--surface); border: 1px solid var(--border); padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 14px; outline: none; resize: none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
+        <button onclick="sendModalChatMessage()" style="flex: 0 0 auto; flex-shrink: 0; white-space: nowrap; background: #FFFFFF; color: #000000; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; font-weight: 800; padding: 0 18px; height: 44px; cursor: pointer; text-transform: uppercase;">[ SEND ]</button>
       </div>
     </div>
   </div>
