@@ -768,12 +768,27 @@
         document.getElementById('session-info-text').innerText = `SESSION ID: ${sessionId} — E2E ENCRYPTED`;
       };
 
-      ws.onmessage = async (event) => {
+      let isProcessingBinary = false;
+      const binaryQueue = [];
+      
+      async function processBinaryQueue() {
+        if (isProcessingBinary) return;
+        isProcessingBinary = true;
+        while (binaryQueue.length > 0) {
+          let buffer = binaryQueue.shift();
+          if (buffer instanceof Blob) buffer = await buffer.arrayBuffer();
+          await handleBinaryMessage(buffer);
+        }
+        isProcessingBinary = false;
+      }
+
+      ws.onmessage = (event) => {
         if (typeof event.data === 'string') {
           const msg = JSON.parse(event.data);
           handleTextMessage(msg);
         } else {
-          await handleBinaryMessage(event.data);
+          binaryQueue.push(event.data);
+          processBinaryQueue();
         }
       };
 

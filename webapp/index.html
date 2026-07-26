@@ -1371,19 +1371,32 @@
         setStatus(false, 'WAITING FOR PHONE...');
       };
 
-      ws.onmessage = async (event) => {
-        if (typeof event.data === 'string') {
-          const msg = JSON.parse(event.data);
-        if (msg.type === 'transfer_init' && (!msg.total_chunks || msg.total_chunks <= 0)) {
-          console.error('Invalid transfer_init: total_chunks must be > 0');
-          state.ws.send(JSON.stringify({ type: 'error', message: 'Invalid transfer size' }));
-          return;
-        }
-          handleTextMessage(msg);
-        } else {
-          let buffer = event.data;
+      let isProcessingBinary = false;
+      const binaryQueue = [];
+      
+      async function processBinaryQueue() {
+        if (isProcessingBinary) return;
+        isProcessingBinary = true;
+        while (binaryQueue.length > 0) {
+          let buffer = binaryQueue.shift();
           if (buffer instanceof Blob) buffer = await buffer.arrayBuffer();
           await handleIncomingBinaryChunk(buffer);
+        }
+        isProcessingBinary = false;
+      }
+
+      ws.onmessage = (event) => {
+        if (typeof event.data === 'string') {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'transfer_init' && (!msg.total_chunks || msg.total_chunks <= 0)) {
+            console.error('Invalid transfer_init: total_chunks must be > 0');
+            state.ws.send(JSON.stringify({ type: 'error', message: 'Invalid transfer size' }));
+            return;
+          }
+          handleTextMessage(msg);
+        } else {
+          binaryQueue.push(event.data);
+          processBinaryQueue();
         }
       };
 
