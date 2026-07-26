@@ -806,7 +806,7 @@
               <div id="qrcode"></div>
               <div id="qr-expired-overlay" class="qr-expired-overlay">
                 <div class="expired-text">[ QR CODE EXPIRED ]</div>
-                <button onclick="createSession()" class="btn-refresh-qr">[ REFRESH QR ]</button>
+                <button onclick="createSession(true)" class="btn-refresh-qr">[ REFRESH QR ]</button>
               </div>
             </div>
           </div>
@@ -814,7 +814,7 @@
           <div class="session-meta" style="width: 100%; justify-content: space-around; border-top: 1px solid var(--border); padding-top: 20px; font-size: 12px;">
             <span>SESSION: <span id="display-session-id" class="mono-accent">---</span></span>
             <span>EXPIRES: <span id="timer-sec" class="mono-accent">240s</span></span>
-            <button id="btn-refresh-waiting" onclick="createSession()" class="btn-text">[ REFRESH SESSION ]</button>
+            <button id="btn-refresh-waiting" onclick="createSession(true)" class="btn-text">[ REFRESH SESSION ]</button>
           </div>
         </div>
       </div>
@@ -1071,9 +1071,13 @@
     }
 
     let isCreatingSession = false;
-    async function createSession() {
+    async function createSession(forceNew = false) {
       if (isCreatingSession) return;
       isCreatingSession = true;
+      if (forceNew) {
+        localStorage.removeItem('labbridge_session_id');
+        localStorage.removeItem('labbridge_session_expiry');
+      }
       try {
       clearInterval(state.timerInterval);
       if (state.ws) {
