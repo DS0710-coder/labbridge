@@ -1202,7 +1202,10 @@
       if (isCreatingSession) return;
       isCreatingSession = true;
       try {
-      clearInterval(state.timerInterval);
+      if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+        state.timerInterval = null;
+      }
       if (state.ws) {
         const oldWs = state.ws;
         state.ws = null;
@@ -1214,9 +1217,8 @@
       }
       if (state.receivedFiles) {
         closePhotoLightbox();
-      state.receivedFiles.forEach(f => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
+        state.receivedFiles.forEach(f => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
       }
-      if (state.timerInterval) clearInterval(state.timerInterval);
         state.expirySeconds = 240;
       state.sendQueue = [];
       state.receivedFiles = [];
@@ -1660,7 +1662,6 @@
         updateQueueDisplay();
         return;
       }
-      setPhase('paired');
       const file = state.sendQueue.shift();
       updateQueueDisplay();
       initiateSendFile(file);
@@ -2205,9 +2206,8 @@
         try { old.close(); } catch (e) {}
       }
 
-      const proto = window.location.protocol === 'http:' ? 'ws:' : 'wss:';
-      const wsUrl = `${WORKER_URL.replace('http', 'ws')}/session/${sessionId}/phone`;
-      const ws = new WebSocket(wsUrl);
+      const wsUrl = WORKER_URL.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:');
+      const ws = new WebSocket(`${wsUrl}/session/${sessionId}/phone`);
       ws.binaryType = 'arraybuffer';
       phoneState.ws = ws;
 
@@ -2220,7 +2220,7 @@
           const msg = JSON.parse(event.data);
         if (msg.type === 'transfer_init' && (!msg.total_chunks || msg.total_chunks <= 0)) {
           console.error('Invalid transfer_init: total_chunks must be > 0');
-          state.ws.send(JSON.stringify({ type: 'error', message: 'Invalid transfer size' }));
+          if (phoneState.ws) phoneState.ws.send(JSON.stringify({ type: 'error', message: 'Invalid transfer size' }));
           return;
         }
           phoneHandleTextMessage(msg);

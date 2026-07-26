@@ -732,6 +732,15 @@
       };
 
       ws.onclose = () => {
+        if (opened && state.sessionId) {
+          setStatus(false, 'RECONNECTING...');
+          setTimeout(() => {
+            if (state.sessionId && (!state.ws || state.ws.readyState !== WebSocket.OPEN)) {
+              connectToSession(state.sessionId);
+            }
+          }, 1500);
+          return;
+        }
         disconnectPhoneSession();
         if (!opened) {
           const banner = document.getElementById('url-warning-banner');
@@ -951,6 +960,7 @@
     }
 
     function formatSize(bytes) {
+      if (!bytes || bytes <= 0 || isNaN(bytes)) return '0 B';
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
       return (bytes / (1024 * 1024)).toFixed(2) + ' MB';

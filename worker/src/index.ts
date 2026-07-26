@@ -21,6 +21,8 @@ export { Session } from "./session";
 
 interface Env {
   SESSIONS: DurableObjectNamespace;
+  MAX_SESSION_MINUTES?: string;
+  MAX_FILE_SIZE_MB?: string;
 }
 
 const CORS_HEADERS: Record<string, string> = {
@@ -33,14 +35,22 @@ const ipRequests = new Map<string, { count: number; resetAt: number }>();
 
 function checkRateLimit(ip: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
+
+  // Periodic eviction of expired entries
+  if (ipRequests.size > 1000) {
+    for (const [key, val] of ipRequests.entries()) {
+      if (now > val.resetAt) ipRequests.delete(key);
+    }
+  }
+  // Hard cap safeguard
+  if (ipRequests.size > 10000) {
+    const keys = Array.from(ipRequests.keys()).slice(0, 2000);
+    for (const k of keys) ipRequests.delete(k);
+  }
+
   const record = ipRequests.get(ip);
   if (!record || now > record.resetAt) {
     ipRequests.set(ip, { count: 1, resetAt: now + windowMs });
-    if (ipRequests.size > 10000) {
-      for (const [key, val] of ipRequests.entries()) {
-        if (now > val.resetAt) ipRequests.delete(key);
-      }
-    }
     return true;
   }
   if (record.count >= limit) {

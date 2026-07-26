@@ -17,10 +17,17 @@ export function getOtherSocket(
   sockets: WebSocket[],
   currentWs: WebSocket,
 ): WebSocket | null {
+  const currentAtt = currentWs.deserializeAttachment() as { role?: string } | null;
+  const currentRole = currentAtt?.role;
+
   for (const ws of sockets) {
-    if (ws !== currentWs) {
-      return ws;
+    if (ws === currentWs) continue;
+    if (ws.readyState !== WebSocket.OPEN) continue;
+    if (currentRole) {
+      const att = ws.deserializeAttachment() as { role?: string } | null;
+      if (att && att.role === currentRole) continue;
     }
+    return ws;
   }
   return null;
 }

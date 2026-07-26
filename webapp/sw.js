@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cueflex-pwa-v18';
+const CACHE_NAME = 'cueflex-pwa-v19';
 const ASSETS = [
   '/',
   '/index.html',
@@ -16,7 +16,11 @@ const ASSETS = [
 self.addEventListener('install', (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      return Promise.allSettled(
+        ASSETS.map((asset) => cache.add(asset).catch(() => {}))
+      );
+    })
   );
 });
 

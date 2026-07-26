@@ -63,6 +63,7 @@ class TransferService extends ChangeNotifier {
   // State for receiving
   File? _tempFile;
   IOSink? _tempSink;
+  final Map<int, Uint8List> _chunkBuffer = {};
   int _receivedChunks = 0;
   int _totalChunks = 0;
   String _currentFileName = '';
@@ -249,14 +250,18 @@ class TransferService extends ChangeNotifier {
       final result = _cryptoService.decryptChunk(data, _derivedKey!, _receivedChunks);
       final decrypted = result.plaintext;
       final chunkIndex = result.chunkIndex;
-      if (chunkIndex != _receivedChunks) {
-        throw Exception('Out of order chunk received: expected $_receivedChunks but got $chunkIndex');
-      }
 
-      // Write to temp file
-      _tempSink!.add(decrypted);
-      _receivedChunks++;
-      _transferredBytes += decrypted.length;
+      // Store chunk in buffer to tolerate out-of-order delivery
+      _chunkBuffer[chunkIndex] = decrypted;
+
+      // Flush contiguous chunks to disk
+      while (_chunkBuffer.containsKey(_receivedChunks)) {
+        final chunkData = _chunkBuffer.remove(_receivedChunks)!;
+        _tempSink!.add(chunkData);
+        await _tempSink!.flush();
+        _receivedChunks++;
+        _transferredBytes += chunkData.length;
+      }
 
       if (_receivedChunks >= _totalChunks) {
         final sinkToClose = _tempSink;
@@ -321,6 +326,7 @@ class TransferService extends ChangeNotifier {
     required int fileSize,
     String? folderId,
   }) async {
+    _chunkBuffer.clear();
     await sink?.flush();
     await sink?.close();
 
@@ -558,8 +564,10 @@ class TransferService extends ChangeNotifier {
     _ackCompleter = null;
     _isSending = false;
 
+    _chunkBuffer.clear();
     if (_tempSink != null || _tempFile != null) {
       try {
+        await _tempSink?.flush();
         await _tempSink?.close();
       } catch (_) {}
       if (_tempFile != null && await _tempFile!.exists()) {

@@ -60,7 +60,13 @@ const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB max limit per transfer
  */
 export class Session extends DurableObject {
   private async extendAlarm(durationMs = 4 * 60 * 1000): Promise<void> {
-    const maxExpiresAt = (await this.ctx.storage.get<number>("max_expires_at")) ?? (Date.now() + MAX_SESSION_LIFETIME_MS);
+    let createdAt = await this.ctx.storage.get<number>("created_at");
+    if (!createdAt) {
+      createdAt = Date.now();
+      await this.ctx.storage.put("created_at", createdAt);
+    }
+    const maxExpiresAt = createdAt + MAX_SESSION_LIFETIME_MS;
+    await this.ctx.storage.put("max_expires_at", maxExpiresAt);
     const nextAlarm = Math.min(Date.now() + durationMs, maxExpiresAt);
     await this.ctx.storage.setAlarm(nextAlarm);
   }
@@ -82,6 +88,7 @@ export class Session extends DurableObject {
       const expiryMs = now + SESSION_TTL_MS;
       const maxExpiryMs = now + MAX_SESSION_LIFETIME_MS;
       await this.ctx.storage.put("session_id", sessionId);
+      await this.ctx.storage.put("created_at", now);
       await this.ctx.storage.put("max_expires_at", maxExpiryMs);
       await this.ctx.storage.setAlarm(expiryMs);
 
@@ -128,7 +135,7 @@ export class Session extends DurableObject {
         return new Response("Chunk not found", { status: 404 });
       }
       if (url.searchParams.get("decrypt") === "1" || url.searchParams.get("decrypt") === "true") {
-        const sessionId = url.searchParams.get("id") ?? (await this.ctx.storage.get<string>("session_id")) ?? "unknown";
+        const sessionId = (await this.ctx.storage.get<string>("session_id")) ?? "unknown";
         try {
           const plaintext = await deriveAndDecrypt(sessionId, chunkData);
           return new Response(plaintext, {
@@ -182,7 +189,7 @@ export class Session extends DurableObject {
 
     // ── POST /decrypt  (Option A helper for iOS Shortcut) ────────────────
     if (path === "/decrypt" && request.method === "POST") {
-      const sessionId = url.searchParams.get("id") ?? (await this.ctx.storage.get<string>("session_id")) ?? "unknown";
+      const sessionId = (await this.ctx.storage.get<string>("session_id")) ?? "unknown";
       const encryptedData = await request.arrayBuffer();
       try {
         const plaintext = await deriveAndDecrypt(sessionId, encryptedData);
@@ -363,6 +370,11 @@ export class Session extends DurableObject {
           const shortcutMode = isFromPc && !phoneSocket;
 
           if (shortcutMode) {
+            // Buffer mode is capped at 100MB to fit within Durable Object storage limits
+            if ((record.size as number) > 100 * 1024 * 1024) {
+              ws.send(JSON.stringify({ type: "error", message: "Shortcut buffer mode max file size is 100MB" }));
+              return;
+            }
             // Store transfer metadata — chunks will be stored as they arrive
             const pendingFile: PendingFile = {
               filename: String(record.filename ?? "file"),
@@ -440,8 +452,14 @@ export class Session extends DurableObject {
   }
 
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
-    // On error, just close the errored socket. Do not tear down the peer.
+    // On error, notify the peer socket before closing errored socket
     const sockets = this.ctx.getWebSockets();
+    const other = getOtherSocket(sockets, ws);
+    if (other && other.readyState === WebSocket.OPEN) {
+      try {
+        other.send(JSON.stringify({ type: "error", message: "Peer WebSocket encountered an error" }));
+      } catch {}
+    }
     for (const s of sockets) {
       if (s === ws) {
         try {

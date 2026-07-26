@@ -87,8 +87,8 @@ class _ScannerScreenState extends State<ScannerScreen> with WidgetsBindingObserv
     } finally {
       if (mounted && !_hasNavigated) {
         await Future.delayed(const Duration(seconds: 2));
-        _isProcessing = false;
       }
+      _isProcessing = false;
     }
   }
 

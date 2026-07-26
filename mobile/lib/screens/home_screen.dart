@@ -435,14 +435,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               decoration: const BoxDecoration(
                                 color: Color(0xFF18181B),
                               ),
-                              child: LinearProgressIndicator(
-                                value: (_storageUsed <= 0 || _storageUsed.isNaN)
-                                    ? 0.05
-                                    : (_storageUsed / (1024 * 1024 * 500)).clamp(0.05, 1.0),
-                                backgroundColor: Colors.transparent,
-                                valueColor: const AlwaysStoppedAnimation(Colors.white),
-                                minHeight: 6,
-                              ),
+                                child: LinearProgressIndicator(
+                                  value: (_storageUsed <= 0 || _storageUsed.isNaN)
+                                      ? 0.02
+                                      : (_storageUsed / (1024 * 1024 * 1024 * 10)).clamp(0.02, 1.0),
+                                  backgroundColor: Colors.transparent,
+                                  valueColor: const AlwaysStoppedAnimation(Colors.white),
+                                  minHeight: 6,
+                                ),
                             ),
                           ],
                         ),
