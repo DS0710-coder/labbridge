@@ -602,6 +602,75 @@
       color: var(--text);
     }
 
+    /* Chat Modal & Responsive Mobile Optimization */
+    #chat-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(6px);
+      z-index: 99999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .chat-modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      width: 100%;
+      max-width: 540px;
+      height: 520px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.9);
+    }
+    .chat-modal-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface-2);
+    }
+    .chat-modal-messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #09090B;
+      -webkit-overflow-scrolling: touch;
+    }
+    .chat-modal-footer {
+      padding: 12px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-2);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    @media (max-width: 640px) {
+      #chat-modal {
+        padding: 0;
+      }
+      .chat-modal-box {
+        max-width: 100%;
+        height: 100%;
+        max-height: 100dvh;
+        border: none;
+      }
+      .chat-modal-header {
+        padding: 16px;
+      }
+      .chat-modal-footer {
+        padding: 12px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+      }
+    }
+
     /* Lightbox Modal */
     #photo-lightbox {
       display: none;
@@ -833,7 +902,7 @@
 
       <div style="margin-bottom: 16px;">
         <button id="btn-pc-chat" onclick="openChatModal('pc')" style="width: 100%; background: var(--surface-2); border: 1px solid var(--border); padding: 14px; color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; text-transform: uppercase;">
-          <span>[ 💬 OPEN MESSAGE WINDOW ]</span>
+          <span>[ OPEN MESSAGE WINDOW ]</span>
           <span id="pc-chat-badge" style="display:none; background: #FFFFFF; color: #000000; padding: 2px 8px; font-size: 11px; font-weight: 800;">0 NEW</span>
         </button>
       </div>
@@ -935,7 +1004,7 @@
 
       <div style="margin-top: 16px;">
         <button id="btn-phone-chat" onclick="openChatModal('phone')" style="width: 100%; background: var(--surface-2); border: 1px solid var(--border); padding: 14px; color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; text-transform: uppercase;">
-          <span>[ 💬 OPEN MESSAGE WINDOW ]</span>
+          <span>[ OPEN MESSAGE WINDOW ]</span>
           <span id="phone-chat-badge" style="display:none; background: #FFFFFF; color: #000000; padding: 2px 8px; font-size: 11px; font-weight: 800;">0 NEW</span>
         </button>
       </div>
@@ -995,18 +1064,18 @@
   </div>
 
   <!-- Pop-Open Messages Modal -->
-  <div id="chat-modal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(6px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
-    <div style="background: var(--surface); border: 1px solid var(--border); width: 100%; max-width: 540px; height: 500px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 16px 40px rgba(0,0,0,0.9);">
-      <div style="padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface-2);">
-        <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: #FFFFFF;">[ 💬 MESSAGES / CHAT ]</div>
-        <button onclick="closeChatModal()" style="background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 4px 10px; font-size: 11px; font-weight: 800; cursor: pointer; text-transform: uppercase;">[ CLOSE ]</button>
+  <div id="chat-modal">
+    <div class="chat-modal-box">
+      <div class="chat-modal-header">
+        <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: #FFFFFF;">[ MESSAGES / CHAT ]</div>
+        <button onclick="closeChatModal()" style="background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 6px 12px; font-size: 11px; font-weight: 800; cursor: pointer; text-transform: uppercase;">[ CLOSE ]</button>
       </div>
-      <div id="chat-modal-messages" style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #09090B;">
+      <div id="chat-modal-messages" class="chat-modal-messages">
         <div id="chat-empty-state" style="margin: auto; color: var(--text-3); font-family: var(--mono); font-size: 12px; text-align: center;">No messages in this session yet.</div>
       </div>
-      <div style="padding: 12px 14px; border-top: 1px solid var(--border); background: var(--surface-2); display: flex; gap: 10px; align-items: center;">
-        <textarea id="chat-modal-input" placeholder="Type a message to send..." style="flex: 1; height: 42px; background: var(--surface); border: 1px solid var(--border); padding: 10px; color: var(--text); font-family: var(--mono); font-size: 12px; outline: none; resize: none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
-        <button onclick="sendModalChatMessage()" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; font-weight: 800; padding: 0 16px; height: 42px; cursor: pointer; text-transform: uppercase;">[ SEND ]</button>
+      <div class="chat-modal-footer">
+        <textarea id="chat-modal-input" placeholder="Type a message to send..." style="flex: 1; height: 44px; background: var(--surface); border: 1px solid var(--border); padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 14px; outline: none; resize: none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
+        <button onclick="sendModalChatMessage()" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; font-weight: 800; padding: 0 18px; height: 44px; cursor: pointer; text-transform: uppercase;">[ SEND ]</button>
       </div>
     </div>
   </div>
