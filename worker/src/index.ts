@@ -15,7 +15,7 @@ import { ICON_192_BASE64, ICON_512_BASE64 } from "./icon_png";
 import { QR_MIN_JS } from "./qr_min_js";
 import { JS_QR } from "./js_qr";
 import { HTML5_QRCODE } from "./html5_qrcode";
-
+import { FFLATE_MIN_JS } from "./fflate_min_js";
 // Re-export the Durable Object class so wrangler can discover it
 export { Session } from "./session";
 
@@ -105,6 +105,9 @@ export default {
       }
       if (path === "/html5-qrcode.min.js") {
         return corsResponse(HTML5_QRCODE, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8" } });
+      }
+      if (path === "/fflate.min.js") {
+        return corsResponse(FFLATE_MIN_JS, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8" } });
       }
       if (path === "/icon.png" || path === "/icon-192.png") {
         const bin = Uint8Array.from(atob(ICON_192_BASE64), c => c.charCodeAt(0));
