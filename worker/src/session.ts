@@ -308,6 +308,11 @@ export class Session extends DurableObject {
         // Check if we are in shortcut buffering mode (ONLY when PC sends chunks to iOS Shortcut)
         const pending = await this.ctx.storage.get<PendingFile>("pending_file");
         if (isFromPc && pending?.shortcutMode) {
+          // Reject chunks beyond the declared total
+          if (pending.receivedChunks >= pending.totalChunks) {
+            ws.send(JSON.stringify({ type: "error", message: "All chunks already received" }));
+            return;
+          }
           // Buffer this chunk in storage for the Shortcut to fetch
           const chunkIndex = pending.receivedChunks;
           await this.ctx.storage.put(`chunk_${chunkIndex}`, message);
