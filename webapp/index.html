@@ -1210,42 +1210,46 @@
       }
       if (isCreatingSession) return;
       isCreatingSession = true;
-     function disconnectSession() {
-      if (state.timerInterval) clearInterval(state.timerInterval);
-      if (state.transferStallTimer) {
-        clearTimeout(state.transferStallTimer);
-        state.transferStallTimer = null;
-      }
-      state.timerInterval = null;
-      }
-      if (state.ws) {
-        const oldWs = state.ws;
-        state.ws = null;
-        oldWs.onclose = null;
-        if (oldWs.readyState === WebSocket.OPEN && state.phase !== 'waiting') {
-          try { oldWs.send(JSON.stringify({ type: 'cancelled' })); } catch (e) {}
-        }
-        try { oldWs.close(); } catch (e) {}
-      }
-      if (state.receivedFiles) {
-        closePhotoLightbox();
-        state.receivedFiles.forEach(f => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
-      }
-        state.expirySeconds = 240;
-      state.sendQueue = [];
-      state.receivedFiles = [];
-      state.photoIndices = [];
-      state.currentTransfer = null;
-      setPhase('waiting');
-      
-      const overlay = document.getElementById('qr-expired-overlay');
-      if (overlay) overlay.style.display = 'none';
-      const qrcodeEl = document.getElementById('qrcode');
-      if (qrcodeEl) qrcodeEl.style.opacity = '1';
-      
-      updateTimerDisplay();
 
       try {
+        if (state.timerInterval) {
+          clearInterval(state.timerInterval);
+          state.timerInterval = null;
+        }
+        if (state.transferStallTimer) {
+          clearTimeout(state.transferStallTimer);
+          state.transferStallTimer = null;
+        }
+
+        if (state.ws) {
+          const oldWs = state.ws;
+          state.ws = null;
+          oldWs.onclose = null;
+          if (oldWs.readyState === WebSocket.OPEN && state.phase !== 'waiting') {
+            try { oldWs.send(JSON.stringify({ type: 'cancelled' })); } catch (e) {}
+          }
+          try { oldWs.close(); } catch (e) {}
+        }
+        
+        if (state.receivedFiles) {
+          closePhotoLightbox();
+          state.receivedFiles.forEach(f => f.blobUrl && URL.revokeObjectURL(f.blobUrl));
+        }
+        
+        state.expirySeconds = 240;
+        state.sendQueue = [];
+        state.receivedFiles = [];
+        state.photoIndices = [];
+        state.currentTransfer = null;
+        setPhase('waiting');
+        
+        const overlay = document.getElementById('qr-expired-overlay');
+        if (overlay) overlay.style.display = 'none';
+        const qrcodeEl = document.getElementById('qrcode');
+        if (qrcodeEl) qrcodeEl.style.opacity = '1';
+        
+        updateTimerDisplay();
+
         const savedId = localStorage.getItem('cueflex_session_id');
         const savedExpiry = parseInt(localStorage.getItem('cueflex_session_expiry') || '0', 10);
         let data = null;
@@ -1269,10 +1273,6 @@
         if (data.expires_at) {
           state.expirySeconds = Math.max(0, Math.floor((new Date(data.expires_at).getTime() - Date.now()) / 1000));
         } else {
-          if (state.timerInterval) {
-            clearInterval(state.timerInterval);
-            state.timerInterval = null;
-          }
           state.expirySeconds = 240;
         }
         updateTimerDisplay();
@@ -1321,7 +1321,6 @@
       } catch (err) {
         setStatus(false, 'ERROR CREATING SESSION');
         console.error(err);
-      }
       } finally {
         isCreatingSession = false;
       }
