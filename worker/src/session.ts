@@ -27,7 +27,7 @@ async function deriveAndDecrypt(sessionId: string, encryptedBuffer: ArrayBuffer)
     {
       name: "HKDF",
       hash: "SHA-256",
-      salt: enc.encode("labbridge-v2"),
+      salt: enc.encode("cueflex-v2"),
       info: enc.encode("file-transfer")
     },
     baseKey,
