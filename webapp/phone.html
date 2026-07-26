@@ -51,36 +51,30 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.85);
-      backdrop-filter: blur(6px);
+      background: #000000;
       z-index: 99999;
       align-items: center;
       justify-content: center;
       padding: 0;
     }
     .chat-modal-box {
-      background: var(--surface);
-      border: none;
+      background: #000000;
       width: 100%;
       height: 100%;
       max-height: 100dvh;
       display: flex;
       flex-direction: column;
-      box-shadow: none;
     }
     .chat-modal-header {
       padding: 16px;
       padding-top: max(16px, env(safe-area-inset-top));
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid #2C2C2E;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: var(--surface-2);
-      gap: 12px;
-    }
-    .chat-modal-header div, .chat-modal-header button {
-      white-space: nowrap;
-      flex-shrink: 0;
+      background: rgba(18, 18, 18, 0.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
     .chat-modal-messages {
       flex: 1;
@@ -88,30 +82,47 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      background: #09090B;
+      gap: 4px;
+      background: #000000;
       -webkit-overflow-scrolling: touch;
     }
     .chat-modal-footer {
-      padding: 12px;
-      padding-bottom: max(12px, env(safe-area-inset-bottom));
-      border-top: 1px solid var(--border);
-      background: var(--surface-2);
+      padding: 8px 16px;
+      padding-bottom: max(8px, env(safe-area-inset-bottom));
+      border-top: 1px solid #2C2C2E;
+      background: #121212;
       display: flex;
-      gap: 10px;
-      align-items: center;
+      gap: 12px;
+      align-items: flex-end;
       width: 100%;
       box-sizing: border-box;
     }
     .chat-modal-footer textarea {
-      flex: 1 1 0% !important;
-      min-width: 0 !important;
-      width: 0 !important;
+      flex: 1;
+      min-height: 36px;
+      max-height: 120px;
+      background: #1C1C1E;
+      border: 1px solid #3A3A3C;
+      border-radius: 18px;
+      padding: 8px 16px;
+      color: #FFFFFF;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
+      font-size: 15px;
+      outline: none;
+      resize: none;
+      line-height: 1.3;
+      box-sizing: border-box;
     }
     .chat-modal-footer button {
-      flex: 0 0 auto !important;
-      flex-shrink: 0 !important;
-      white-space: nowrap !important;
+      background: transparent;
+      color: #0A84FF;
+      border: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 0 4px;
+      height: 36px;
+      cursor: pointer;
     }
 
     header {
@@ -564,15 +575,15 @@
   <div id="chat-modal">
     <div class="chat-modal-box">
       <div class="chat-modal-header">
-        <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: #FFFFFF; white-space: nowrap; flex-shrink: 0;">[ MESSAGES / CHAT ]</div>
-        <button onclick="closeChatModal()" style="background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 6px 12px; font-size: 11px; font-weight: 800; cursor: pointer; text-transform: uppercase; white-space: nowrap; flex-shrink: 0;">[ CLOSE ]</button>
+        <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 17px; font-weight: 600; color: #FFFFFF;">Chat</div>
+        <button onclick="closeChatModal()" style="background: transparent; border: none; color: #0A84FF; font-size: 17px; cursor: pointer; padding: 0;">Close</button>
       </div>
       <div id="chat-modal-messages" class="chat-modal-messages">
-        <div id="chat-empty-state" style="margin: auto; color: var(--text-3); font-family: var(--mono); font-size: 12px; text-align: center;">No messages in this session yet.</div>
+        <div id="chat-empty-state" style="margin: auto; color: #8E8E93; font-family: -apple-system, sans-serif; font-size: 14px; text-align: center;">No messages yet.</div>
       </div>
       <div class="chat-modal-footer">
-        <textarea id="chat-modal-input" placeholder="Type a message to send..." style="flex: 1 1 0%; min-width: 0; width: 0; height: 44px; background: var(--surface); border: 1px solid var(--border); padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 14px; outline: none; resize: none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
-        <button onclick="sendModalChatMessage()" style="flex: 0 0 auto; flex-shrink: 0; white-space: nowrap; background: #FFFFFF; color: #000000; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; font-weight: 800; padding: 0 18px; height: 44px; cursor: pointer; text-transform: uppercase;">[ SEND ]</button>
+        <textarea id="chat-modal-input" placeholder="Message..." oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
+        <button onclick="sendModalChatMessage()">Send</button>
       </div>
     </div>
   </div>
@@ -1284,48 +1295,30 @@
       wrapper.style.flexDirection = 'column';
       wrapper.style.alignItems = isMe ? 'flex-end' : 'flex-start';
       wrapper.style.width = '100%';
-
-      const tag = document.createElement('span');
-      tag.style.fontFamily = 'var(--mono)';
-      tag.style.fontSize = '10px';
-      tag.style.color = 'var(--text-3)';
-      tag.style.marginBottom = '4px';
-      tag.innerText = isMe ? '[ YOU ]' : '[ PEER ]';
+      wrapper.style.marginTop = '4px';
 
       const msgDiv = document.createElement('div');
       msgDiv.style.padding = '10px 14px';
-      msgDiv.style.background = isMe ? 'var(--surface-2)' : '#18181B';
-      msgDiv.style.border = isMe ? '1px solid var(--border)' : '1px solid #3F3F46';
-      msgDiv.style.fontFamily = 'var(--mono)';
-      msgDiv.style.fontSize = '13px';
+      msgDiv.style.background = isMe ? '#0A84FF' : '#2C2C2E';
+      msgDiv.style.borderRadius = isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px';
+      msgDiv.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif';
+      msgDiv.style.fontSize = '15px';
+      msgDiv.style.lineHeight = '1.4';
       msgDiv.style.color = '#FFFFFF';
       msgDiv.style.whiteSpace = 'pre-wrap';
-      msgDiv.style.maxWidth = '85%';
+      msgDiv.style.maxWidth = '75%';
       msgDiv.style.wordBreak = 'break-word';
+      msgDiv.style.userSelect = 'text';
+      msgDiv.style.webkitUserSelect = 'text';
       msgDiv.textContent = text;
 
-      const copyBtn = document.createElement('button');
-      copyBtn.innerText = '[ COPY ]';
-      copyBtn.style.marginTop = '4px';
-      copyBtn.style.background = 'transparent';
-      copyBtn.style.border = 'none';
-      copyBtn.style.color = 'var(--text-2)';
-      copyBtn.style.fontSize = '10px';
-      copyBtn.style.fontFamily = 'var(--mono)';
-      copyBtn.style.cursor = 'pointer';
-      copyBtn.onclick = (e) => {
-        e.stopPropagation();
-        navigator.clipboard.writeText(text);
-        copyBtn.innerText = '[ COPIED! ]';
-        setTimeout(() => { copyBtn.innerText = '[ COPY ]'; }, 1500);
-      };
-
-      wrapper.appendChild(tag);
       wrapper.appendChild(msgDiv);
-      wrapper.appendChild(copyBtn);
       list.appendChild(wrapper);
-
-      list.scrollTop = list.scrollHeight;
+      
+      // Auto-scroll to bottom
+      setTimeout(() => {
+        list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+      }, 50);
 
       const modal = document.getElementById('chat-modal');
       if (!modal || modal.style.display === 'none') {
