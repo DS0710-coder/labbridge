@@ -53,21 +53,56 @@
       display: none;
       position: fixed;
       inset: 0;
-      background: #000000;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(6px);
       z-index: 99999;
       align-items: center;
       justify-content: center;
       padding: 0;
     }
     .chat-modal-box {
-      background: #000000;
+      background: var(--surface);
+      border: none;
       width: 100%;
       height: 100%;
       max-height: 100dvh;
       display: flex;
       flex-direction: column;
+      box-shadow: none;
     }
     .chat-modal-header {
+      padding: 16px;
+      padding-top: max(16px, env(safe-area-inset-top));
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface-2);
+      gap: 12px;
+    }
+    .chat-modal-messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #09090B;
+      -webkit-overflow-scrolling: touch;
+    }
+    .chat-modal-footer {
+      padding: 12px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      border-top: 1px solid var(--border);
+      background: var(--surface-2);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    header {
       padding: 16px;
       padding-top: max(16px, env(safe-area-inset-top));
       border-bottom: 1px solid #2C2C2E;
@@ -669,15 +704,15 @@
   <div id="chat-modal">
     <div class="chat-modal-box">
       <div class="chat-modal-header">
-        <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 17px; font-weight: 600; color: #FFFFFF;">Chat</div>
-        <button onclick="closeChatModal()" style="background: transparent; border: none; color: #0A84FF; font-size: 17px; cursor: pointer; padding: 0;">Close</button>
+        <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: #FFFFFF; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1;">[ MESSAGES / CHAT ]</div>
+        <button onclick="closeChatModal()" style="background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 6px 12px; font-size: 11px; font-weight: 800; cursor: pointer; text-transform: uppercase; white-space: nowrap; flex-shrink: 0;">[ CLOSE ]</button>
       </div>
       <div id="chat-modal-messages" class="chat-modal-messages">
-        <div id="chat-empty-state" style="margin: auto; color: #8E8E93; font-family: -apple-system, sans-serif; font-size: 14px; text-align: center;">No messages yet.</div>
+        <div id="chat-empty-state" style="margin: auto; color: var(--text-3); font-family: var(--mono); font-size: 12px; text-align: center;">No messages in this session yet.</div>
       </div>
       <div class="chat-modal-footer">
-        <textarea id="chat-modal-input" placeholder="Message..." oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px';" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
-        <button onclick="sendModalChatMessage()">Send</button>
+        <textarea id="chat-modal-input" placeholder="Type a message..." style="flex: 1 1 0%; min-width: 0; width: 0; height: 44px; background: var(--surface); border: 1px solid var(--border); padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; resize: none; border-radius: 0; box-sizing: border-box;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
+        <button onclick="sendModalChatMessage()" style="flex: 0 0 auto; flex-shrink: 0; background: #FFFFFF; color: #000000; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; font-weight: 800; padding: 0 14px; height: 44px; cursor: pointer; text-transform: uppercase; margin: 0; border-radius: 0;">[ SEND ]</button>
       </div>
     </div>
   </div>
@@ -1466,16 +1501,53 @@
 
       const isMe = sender === 'YOU';
       const wrapper = document.createElement('div');
-      wrapper.className = isMe ? 'chat-bubble-wrapper me' : 'chat-bubble-wrapper peer';
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.alignItems = isMe ? 'flex-end' : 'flex-start';
+      wrapper.style.width = '100%';
+
+      const tag = document.createElement('span');
+      tag.style.fontFamily = 'var(--mono)';
+      tag.style.fontSize = '10px';
+      tag.style.color = 'var(--text-3)';
+      tag.style.marginBottom = '4px';
+      tag.innerText = isMe ? '[ YOU ]' : '[ PEER ]';
 
       const msgDiv = document.createElement('div');
-      msgDiv.className = isMe ? 'chat-bubble me' : 'chat-bubble peer';
+      msgDiv.style.padding = '10px 14px';
+      msgDiv.style.background = isMe ? 'var(--surface-2)' : '#18181B';
+      msgDiv.style.border = isMe ? '1px solid var(--border)' : '1px solid #3F3F46';
+      msgDiv.style.fontFamily = 'var(--mono)';
+      msgDiv.style.fontSize = '13px';
+      msgDiv.style.color = '#FFFFFF';
+      msgDiv.style.whiteSpace = 'pre-wrap';
+      msgDiv.style.maxWidth = '85%';
+      msgDiv.style.wordBreak = 'break-word';
+      msgDiv.style.borderRadius = '0';
       msgDiv.textContent = text;
 
+      const copyBtn = document.createElement('button');
+      copyBtn.innerText = '[ COPY ]';
+      copyBtn.style.marginTop = '4px';
+      copyBtn.style.background = 'transparent';
+      copyBtn.style.border = 'none';
+      copyBtn.style.color = 'var(--text-2)';
+      copyBtn.style.fontSize = '10px';
+      copyBtn.style.fontFamily = 'var(--mono)';
+      copyBtn.style.cursor = 'pointer';
+      copyBtn.style.padding = '0';
+      copyBtn.onclick = (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        copyBtn.innerText = '[ COPIED! ]';
+        setTimeout(() => { copyBtn.innerText = '[ COPY ]'; }, 1500);
+      };
+
+      wrapper.appendChild(tag);
       wrapper.appendChild(msgDiv);
+      wrapper.appendChild(copyBtn);
       list.appendChild(wrapper);
-      
-      // Auto-scroll to bottom
+
       setTimeout(() => {
         list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
       }, 50);
