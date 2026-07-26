@@ -73,10 +73,16 @@ export class Session extends DurableObject {
       }
     }
     this._maxExpiresAt = this._createdAt + MAX_SESSION_LIFETIME_MS;
-    const nextAlarm = Math.min(Date.now() + durationMs, this._maxExpiresAt);
-    if (Date.now() - this._lastAlarmSet > 10000) {
+    const now = Date.now();
+    if (now >= this._maxExpiresAt) {
+      return; // session is already past max lifetime, alarm() will clean up
+    }
+    const nextAlarm = Math.min(now + durationMs, this._maxExpiresAt);
+    // Always set on first call after hibernation wake (_lastAlarmSet === 0),
+    // otherwise debounce to avoid overwhelming DO storage writes
+    if (this._lastAlarmSet === 0 || now - this._lastAlarmSet > 30_000) {
       await this.ctx.storage.setAlarm(nextAlarm);
-      this._lastAlarmSet = Date.now();
+      this._lastAlarmSet = now;
     }
   }
 
