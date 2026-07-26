@@ -80,29 +80,8 @@
       background: var(--surface-2);
       gap: 12px;
     }
-    .chat-modal-messages {
-      flex: 1;
-      padding: 16px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: #09090B;
-      -webkit-overflow-scrolling: touch;
-    }
-    .chat-modal-footer {
-      padding: 12px;
-      padding-bottom: max(12px, env(safe-area-inset-bottom));
-      border-top: 1px solid var(--border);
-      background: var(--surface-2);
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      width: 100%;
-      box-sizing: border-box;
-    }
 
-    header {
+    .chat-modal-box header {
       padding: 16px;
       padding-top: max(16px, env(safe-area-inset-top));
       border-bottom: 1px solid #2C2C2E;
@@ -182,6 +161,7 @@
     }
     .chat-bubble-wrapper.peer {
       justify-content: flex-start;
+      overflow: visible;
     }
     .chat-bubble {
       position: relative;
@@ -220,6 +200,7 @@
       border: 1px solid var(--border);
       border-radius: 14px 14px 14px 0;
       margin-left: 6px;
+      overflow: visible;
     }
     .chat-bubble.peer::before {
       content: '';
@@ -247,7 +228,7 @@
       border-left-color: transparent;
       border-bottom-color: var(--border);
       border-right-color: var(--border);
-      z-index: -1;
+      z-index: 0;
     }
 
     header {
@@ -711,8 +692,8 @@
         <div id="chat-empty-state" style="margin: auto; color: var(--text-3); font-family: var(--mono); font-size: 12px; text-align: center;">No messages in this session yet.</div>
       </div>
       <div class="chat-modal-footer">
-        <textarea id="chat-modal-input" placeholder="Type a message..." style="flex: 1 1 0%; min-width: 0; width: 0; height: 44px; background: var(--surface); border: 1px solid var(--border); padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; resize: none; border-radius: 0; box-sizing: border-box;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
-        <button onclick="sendModalChatMessage()" style="flex: 0 0 auto; flex-shrink: 0; background: #FFFFFF; color: #000000; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; font-weight: 800; padding: 0 14px; height: 44px; cursor: pointer; text-transform: uppercase; margin: 0; border-radius: 0;">[ SEND ]</button>
+        <textarea id="chat-modal-input" placeholder="Type a message..." style="flex: 1 1 0%; min-width: 0; height: 44px; background: var(--surface); border: 1px solid var(--border); padding: 10px 12px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; resize: none; box-sizing: border-box;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
+        <button onclick="sendModalChatMessage()" style="flex: 0 0 auto; flex-shrink: 0; background: #FFFFFF; color: #000000; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; font-weight: 800; padding: 0 14px; height: 44px; cursor: pointer; text-transform: uppercase; margin: 0;">[ SEND ]</button>
       </div>
     </div>
   </div>
@@ -734,6 +715,7 @@
 
 
     const state = {
+      chatModalOpen: false,
       ws: null,
       sessionId: null,
       workerHttpUrl: null,
@@ -762,7 +744,7 @@
       }
       const w = params.get('w');
       
-      const savedUrl = localStorage.getItem('cueflex_worker_url') || localStorage.getItem('cueflex_worker_url');
+      const savedUrl = localStorage.getItem('cueflex_worker_url');
       if (w) {
         state.workerHttpUrl = w;
       } else if (savedUrl && !savedUrl.includes('YOUR_SUBDOMAIN')) {
@@ -1457,16 +1439,18 @@
     let unreadChatCount = 0;
 
     function openChatModal() {
+      state.chatModalOpen = true;
       document.getElementById('chat-modal').style.display = 'flex';
       unreadChatCount = 0;
       updateChatBadges();
       const input = document.getElementById('chat-modal-input');
-      if (input) input.focus();
+      if (input) { input.focus(); input.style.height = '44px'; }
       const container = document.getElementById('chat-modal-messages');
       if (container) container.scrollTop = container.scrollHeight;
     }
 
     function closeChatModal() {
+      state.chatModalOpen = false;
       document.getElementById('chat-modal').style.display = 'none';
     }
 
@@ -1476,7 +1460,12 @@
       closeChatModal();
       const list = document.getElementById('chat-modal-messages');
       if (list) {
-        list.innerHTML = '<div id="chat-empty-state" style="margin: auto; color: var(--text-3); font-family: var(--mono); font-size: 12px; text-align: center;">No messages in this session yet.</div>';
+        const emptyDiv = document.createElement('div');
+        emptyDiv.id = 'chat-empty-state';
+        emptyDiv.style.cssText = 'margin: auto; color: var(--text-3); font-family: var(--mono); font-size: 12px; text-align: center; padding: 20px;';
+        emptyDiv.innerText = 'No messages in this session yet.';
+        list.innerHTML = '';
+        list.appendChild(emptyDiv);
       }
     }
 
@@ -1553,8 +1542,8 @@
       }, 50);
 
       const modal = document.getElementById('chat-modal');
-      if (!modal || modal.style.display === 'none') {
-        if (!isMe) {
+      if (!state.chatModalOpen && !isMe) {
+        if (true) {
           unreadChatCount++;
           updateChatBadges();
         }
