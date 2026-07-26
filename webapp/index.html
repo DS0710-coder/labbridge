@@ -1731,8 +1731,7 @@
       const transfer = state.currentTransfer;
       if (!transfer || transfer.direction !== 'sending') return;
       
-      if (state.timerInterval) clearInterval(state.timerInterval);
-        state.expirySeconds = 240;
+      state.expirySeconds = 240;
       updateTimerDisplay();
 
       transfer.sentChunks++;
@@ -1746,8 +1745,7 @@
       const transfer = state.currentTransfer;
       if (!transfer || transfer.direction !== 'receiving') return;
 
-      if (state.timerInterval) clearInterval(state.timerInterval);
-        state.expirySeconds = 240;
+      state.expirySeconds = 240;
       updateTimerDisplay();
 
       let idx = transfer.receivedChunks;

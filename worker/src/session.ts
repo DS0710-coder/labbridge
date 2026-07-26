@@ -59,15 +59,19 @@ const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB max limit per transfer
  * messages and only wake when data arrives or the alarm fires.
  */
 export class Session extends DurableObject {
+  private _createdAt: number | null = null;
+  private _maxExpiresAt: number | null = null;
+
   private async extendAlarm(durationMs = 4 * 60 * 1000): Promise<void> {
-    let createdAt = await this.ctx.storage.get<number>("created_at");
-    if (!createdAt) {
-      createdAt = Date.now();
-      await this.ctx.storage.put("created_at", createdAt);
+    if (!this._createdAt) {
+      this._createdAt = await this.ctx.storage.get<number>("created_at") ?? null;
+      if (!this._createdAt) {
+        this._createdAt = Date.now();
+        await this.ctx.storage.put("created_at", this._createdAt);
+      }
     }
-    const maxExpiresAt = createdAt + MAX_SESSION_LIFETIME_MS;
-    await this.ctx.storage.put("max_expires_at", maxExpiresAt);
-    const nextAlarm = Math.min(Date.now() + durationMs, maxExpiresAt);
+    this._maxExpiresAt = this._createdAt + MAX_SESSION_LIFETIME_MS;
+    const nextAlarm = Math.min(Date.now() + durationMs, this._maxExpiresAt);
     await this.ctx.storage.setAlarm(nextAlarm);
   }
 
@@ -280,8 +284,6 @@ export class Session extends DurableObject {
   /* ------------------------------------------------------------------ */
 
   async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
-    // Reset TTL
-    await this.extendAlarm(5 * 60 * 1000);
     const sockets = this.ctx.getWebSockets();
     const other = getOtherSocket(sockets, ws);
 
@@ -290,8 +292,11 @@ export class Session extends DurableObject {
       const isFromPc = senderAtt?.role === "pc";
 
       if (message instanceof ArrayBuffer) {
-        const maxExpiresAt = (await this.ctx.storage.get<number>("max_expires_at")) ?? (Date.now() + MAX_SESSION_LIFETIME_MS);
-        if (Date.now() >= maxExpiresAt) {
+        // For binary frames, check session expiry using cached value
+        if (!this._maxExpiresAt) {
+          await this.extendAlarm(5 * 60 * 1000);
+        }
+        if (Date.now() >= (this._maxExpiresAt ?? 0)) {
           ws.close(1000, "Session expired (max lifetime reached)");
           other?.close(1000, "Session expired (max lifetime reached)");
           return;
@@ -322,7 +327,10 @@ export class Session extends DurableObject {
           // ACK each chunk back to PC so it keeps sending
           ws.send(JSON.stringify({ type: "ack", chunk_index: chunkIndex }));
 
-          await this.extendAlarm(4 * 60 * 1000);
+          // Extend alarm every 10 chunks to reduce storage ops
+          if (chunkIndex % 10 === 0) {
+            await this.extendAlarm(4 * 60 * 1000);
+          }
           return;
         }
 
@@ -331,10 +339,12 @@ export class Session extends DurableObject {
         }
 
         // Normal relay mode — forward to other peer
-        await this.extendAlarm(4 * 60 * 1000);
         other.send(message);
         return;
       }
+
+      // Text frames: extend alarm and validate
+      await this.extendAlarm(5 * 60 * 1000);
 
       // Text frames: validate minimally, then forward
       try {
