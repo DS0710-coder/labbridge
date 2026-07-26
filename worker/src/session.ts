@@ -61,6 +61,7 @@ const MAX_FILE_SIZE_BYTES = 500 * 1024 * 1024; // 500MB max limit per transfer
 export class Session extends DurableObject {
   private _createdAt: number | null = null;
   private _maxExpiresAt: number | null = null;
+  private _bytesTransferred: number = 0;
 
   private async extendAlarm(durationMs = 4 * 60 * 1000): Promise<void> {
     if (!this._createdAt) {
@@ -301,14 +302,12 @@ export class Session extends DurableObject {
           other?.close(1000, "Session expired (max lifetime reached)");
           return;
         }
-        let bytesTransferred = (await this.ctx.storage.get<number>("bytes_transferred")) ?? 0;
-        bytesTransferred += message.byteLength;
-        if (bytesTransferred > MAX_FILE_SIZE_BYTES) {
+        this._bytesTransferred += message.byteLength;
+        if (this._bytesTransferred > MAX_FILE_SIZE_BYTES) {
           ws.close(1008, "Transfer size exceeds 500MB limit");
           other?.close(1008, "Transfer size exceeds 500MB limit");
           return;
         }
-        await this.ctx.storage.put("bytes_transferred", bytesTransferred);
 
         // Check if we are in shortcut buffering mode (ONLY when PC sends chunks to iOS Shortcut)
         const pending = await this.ctx.storage.get<PendingFile>("pending_file");
@@ -348,18 +347,22 @@ export class Session extends DurableObject {
 
       // Text frames: validate minimally, then forward
       try {
-        const parsed: unknown = JSON.parse(message);
+        const parsed: unknown = JSON.parse(message as string);
         if (!isValidSessionMessage(parsed)) {
           ws.send(JSON.stringify({ type: "error", message: "Invalid message format" }));
           return;
         }
 
-  if (parsed.type === "transfer_init") {
-        // Clear all buffered chunks from any previous transfer
-        const keys = await this.ctx.storage.list({ prefix: "chunk_" });
-        for (const key of keys.keys()) {
-          await this.ctx.storage.delete(key);
-        }
+        if (parsed.type === "transfer_init") {
+          // Reset transfer caps when a new transfer starts
+          this._bytesTransferred = 0;
+          await this.ctx.storage.delete("pending_file");
+          
+          // Clear all buffered chunks from any previous transfer
+          const keys = await this.ctx.storage.list({ prefix: "chunk_" });
+          for (const key of keys.keys()) {
+            await this.ctx.storage.delete(key);
+          }
           const record = parsed as Record<string, unknown>;
           if (
             typeof record.size !== "number" ||
