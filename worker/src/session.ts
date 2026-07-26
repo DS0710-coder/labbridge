@@ -62,6 +62,7 @@ export class Session extends DurableObject {
   private _createdAt: number | null = null;
   private _maxExpiresAt: number | null = null;
   private _bytesTransferred: number = 0;
+  private _lastAlarmSet: number = 0;
 
   private async extendAlarm(durationMs = 4 * 60 * 1000): Promise<void> {
     if (!this._createdAt) {
@@ -73,7 +74,10 @@ export class Session extends DurableObject {
     }
     this._maxExpiresAt = this._createdAt + MAX_SESSION_LIFETIME_MS;
     const nextAlarm = Math.min(Date.now() + durationMs, this._maxExpiresAt);
-    await this.ctx.storage.setAlarm(nextAlarm);
+    if (Date.now() - this._lastAlarmSet > 10000) {
+      await this.ctx.storage.setAlarm(nextAlarm);
+      this._lastAlarmSet = Date.now();
+    }
   }
 
   /* ------------------------------------------------------------------ */
