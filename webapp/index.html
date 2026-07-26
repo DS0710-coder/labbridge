@@ -1377,12 +1377,15 @@
       async function processBinaryQueue() {
         if (isProcessingBinary) return;
         isProcessingBinary = true;
-        while (binaryQueue.length > 0) {
-          let buffer = binaryQueue.shift();
-          if (buffer instanceof Blob) buffer = await buffer.arrayBuffer();
-          await handleIncomingBinaryChunk(buffer);
+        try {
+          while (binaryQueue.length > 0) {
+            let buffer = binaryQueue.shift();
+            if (buffer instanceof Blob) buffer = await buffer.arrayBuffer();
+            await handleIncomingBinaryChunk(buffer);
+          }
+        } finally {
+          isProcessingBinary = false;
         }
-        isProcessingBinary = false;
       }
 
       ws.onmessage = (event) => {
@@ -1810,71 +1813,69 @@
         }, 15000);
 
         if (receivedCount >= transfer.total_chunks) {
-          // Give a 500ms grace period for any out-of-order chunks to land
-          setTimeout(() => {
-            const t = state.currentTransfer;
-            if (!t || t.direction !== 'receiving') return;
+          const t = state.currentTransfer;
+          if (!t || t.direction !== 'receiving') return;
 
-            const validChunks = t.chunksData.filter(Boolean);
+          const validChunks = t.chunksData.filter(Boolean);
 
-            if (validChunks.length !== t.total_chunks) {
-              // Still missing chunks after grace period — show error and reset
-              console.error(`Missing chunks: got ${validChunks.length}/${t.total_chunks}`);
-              state.currentTransfer = null;
-              if (state.sendQueue.length > 0) {
-                processNextInQueue();
-              } else {
-                setPhase('paired');
-                updateQueueDisplay();
-              }
-              setStatus(true, `CONNECTED: ${state.connectedDevice.toUpperCase()} (TRANSFER INCOMPLETE — RETRY)`);
-              return;
-            }
-
-            // Clear stall timer on successful completion
-            if (state.transferStallTimer) {
-              clearTimeout(state.transferStallTimer);
-              state.transferStallTimer = null;
-            }
-
-            const finalBlob = new Blob(validChunks, { type: t.mime_type });
-            t.chunksData = null;
-
-            if (t.filename === 'message.txt' && t.size < 50 * 1024) {
-              finalBlob.text().then(text => {
-                appendChatMessage('PEER', text);
-                state.currentTransfer = null;
-                if (state.sendQueue.length > 0) {
-                  processNextInQueue();
-                } else {
-                  setPhase('paired');
-                  updateQueueDisplay();
-                }
-              });
-              return;
-            }
-
-            const blobUrl = URL.createObjectURL(finalBlob);
-            state.receivedFiles = state.receivedFiles || [];
-            state.receivedFiles.push({
-              filename: t.filename,
-              size: t.size,
-              mimeType: t.mime_type,
-              blobUrl: blobUrl
-            });
-            renderReceivedFiles();
-
+          if (validChunks.length !== t.total_chunks) {
+            // Still missing chunks — show error and reset
+            console.error(`Missing chunks: got ${validChunks.length}/${t.total_chunks}`);
             state.currentTransfer = null;
             if (state.sendQueue.length > 0) {
               processNextInQueue();
             } else {
               setPhase('paired');
               updateQueueDisplay();
-              setStatus(true, `CONNECTED: ${state.connectedDevice.toUpperCase()} (RECEIVED: ${t.filename})`);
-              const sec = document.getElementById('received-files-section');
-              if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
-          }, 500);
+            setStatus(true, `CONNECTED: ${state.connectedDevice.toUpperCase()} (TRANSFER INCOMPLETE — RETRY)`);
+            return;
+          }
+
+          // Clear stall timer on successful completion
+          if (state.transferStallTimer) {
+            clearTimeout(state.transferStallTimer);
+            state.transferStallTimer = null;
+          }
+
+          const finalBlob = new Blob(validChunks, { type: t.mime_type });
+          t.chunksData = null;
+
+          if (t.filename === 'message.txt' && t.size < 50 * 1024) {
+            finalBlob.text().then(text => {
+              appendChatMessage('PEER', text);
+              state.currentTransfer = null;
+              if (state.sendQueue.length > 0) {
+                processNextInQueue();
+              } else {
+                setPhase('paired');
+                updateQueueDisplay();
+                setStatus(true, `CONNECTED: ${state.connectedDevice.toUpperCase()} (LAST RECEIVED: ${t.filename})`);
+              }
+            });
+            return;
+          }
+
+          const blobUrl = URL.createObjectURL(finalBlob);
+          state.receivedFiles = state.receivedFiles || [];
+          state.receivedFiles.push({
+            filename: t.filename,
+            size: t.size,
+            mimeType: t.mime_type,
+            blobUrl: blobUrl
+          });
+          renderReceivedFiles();
+
+          state.currentTransfer = null;
+          if (state.sendQueue.length > 0) {
+            processNextInQueue();
+          } else {
+            setPhase('paired');
+            updateQueueDisplay();
+            setStatus(true, `CONNECTED: ${state.connectedDevice.toUpperCase()} (RECEIVED: ${t.filename})`);
+            const sec = document.getElementById('received-files-section');
+            if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
           return;
         }
       } catch (err) {
