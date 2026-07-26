@@ -660,30 +660,117 @@
     }
     .chat-modal-footer textarea {
       flex: 1;
-      min-height: 36px;
+      min-height: 40px;
       max-height: 120px;
-      background: #1C1C1E;
-      border: 1px solid #3A3A3C;
-      border-radius: 18px;
-      padding: 8px 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 10px 16px;
       color: #FFFFFF;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif;
-      font-size: 15px;
+      font-family: var(--mono);
+      font-size: 14px;
       outline: none;
       resize: none;
-      line-height: 1.3;
+      line-height: 1.4;
       box-sizing: border-box;
+      transition: border-color 0.15s;
+    }
+    .chat-modal-footer textarea:focus {
+      border-color: #FFFFFF;
     }
     .chat-modal-footer button {
-      background: transparent;
-      color: #0A84FF;
-      border: none;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      font-size: 16px;
-      font-weight: 600;
-      padding: 0 4px;
-      height: 36px;
+      background: #FFFFFF;
+      color: #000000;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 800;
+      padding: 0 16px;
+      height: 40px;
       cursor: pointer;
+      text-transform: uppercase;
+      margin-left: 4px;
+      transition: opacity 0.15s;
+    }
+    .chat-modal-footer button:active { opacity: 0.8; }
+
+    /* Chat Bubbles */
+    .chat-bubble-wrapper {
+      display: flex;
+      width: 100%;
+      margin-top: 8px;
+    }
+    .chat-bubble-wrapper.me {
+      justify-content: flex-end;
+    }
+    .chat-bubble-wrapper.peer {
+      justify-content: flex-start;
+    }
+    .chat-bubble {
+      position: relative;
+      padding: 10px 14px;
+      font-family: var(--mono);
+      font-size: 13px;
+      line-height: 1.4;
+      max-width: 75%;
+      word-break: break-word;
+      user-select: text;
+      -webkit-user-select: text;
+      white-space: pre-wrap;
+    }
+    .chat-bubble.me {
+      background: #FFFFFF;
+      color: #000000;
+      border-radius: 14px 14px 0 14px;
+      margin-right: 6px;
+    }
+    .chat-bubble.me::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      right: -6px;
+      width: 0;
+      height: 0;
+      border: 6px solid transparent;
+      border-top-color: transparent;
+      border-right-color: transparent;
+      border-bottom-color: #FFFFFF;
+      border-left-color: #FFFFFF;
+    }
+    .chat-bubble.peer {
+      background: var(--surface-2);
+      color: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 14px 14px 14px 0;
+      margin-left: 6px;
+    }
+    .chat-bubble.peer::before {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: -6px;
+      width: 0;
+      height: 0;
+      border: 6px solid transparent;
+      border-top-color: transparent;
+      border-left-color: transparent;
+      border-bottom-color: var(--surface-2);
+      border-right-color: var(--surface-2);
+    }
+    .chat-bubble.peer::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: -8px;
+      width: 0;
+      height: 0;
+      border: 7px solid transparent;
+      border-top-color: transparent;
+      border-left-color: transparent;
+      border-bottom-color: var(--border);
+      border-right-color: var(--border);
+      z-index: -1;
     }
 
     @media (max-width: 640px) {
@@ -2597,25 +2684,10 @@
 
       const isMe = sender === 'YOU';
       const wrapper = document.createElement('div');
-      wrapper.style.display = 'flex';
-      wrapper.style.flexDirection = 'column';
-      wrapper.style.alignItems = isMe ? 'flex-end' : 'flex-start';
-      wrapper.style.width = '100%';
-      wrapper.style.marginTop = '4px';
+      wrapper.className = isMe ? 'chat-bubble-wrapper me' : 'chat-bubble-wrapper peer';
 
       const msgDiv = document.createElement('div');
-      msgDiv.style.padding = '10px 14px';
-      msgDiv.style.background = isMe ? '#0A84FF' : '#2C2C2E';
-      msgDiv.style.borderRadius = isMe ? '18px 18px 4px 18px' : '18px 18px 18px 4px';
-      msgDiv.style.fontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif';
-      msgDiv.style.fontSize = '15px';
-      msgDiv.style.lineHeight = '1.4';
-      msgDiv.style.color = '#FFFFFF';
-      msgDiv.style.whiteSpace = 'pre-wrap';
-      msgDiv.style.maxWidth = '75%';
-      msgDiv.style.wordBreak = 'break-word';
-      msgDiv.style.userSelect = 'text';
-      msgDiv.style.webkitUserSelect = 'text';
+      msgDiv.className = isMe ? 'chat-bubble me' : 'chat-bubble peer';
       msgDiv.textContent = text;
 
       wrapper.appendChild(msgDiv);
