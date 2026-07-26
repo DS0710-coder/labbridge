@@ -382,6 +382,7 @@ export class Session extends DurableObject {
               return;
             }
             // Normal WebSocket relay path — forward to peer
+            await this.ctx.storage.put("bytes_transferred", 0);
             const cumulative = ((await this.ctx.storage.get<number>("cumulative_transferred")) ?? 0) + (record.size as number);
             if (cumulative > MAX_FILE_SIZE_BYTES * 4) {
               ws.close(1008, "Session cumulative transfer limit exceeded");
@@ -389,7 +390,6 @@ export class Session extends DurableObject {
               return;
             }
             await this.ctx.storage.put("cumulative_transferred", cumulative);
-            await this.ctx.storage.put("bytes_transferred", 0);
             other.send(message);
           }
           return;
@@ -423,26 +423,30 @@ export class Session extends DurableObject {
     reason: string,
     wasClean: boolean,
   ): Promise<void> {
-    // Close the peer socket so both sides know the session is over
+    // A socket closed due to page reload, sleep, or network drop.
+    // Do NOT close the peer socket. Let the peer stay in the session
+    // so this side can reconnect natively using the session ID.
     const sockets = this.ctx.getWebSockets();
     const other = getOtherSocket(sockets, ws);
     if (other) {
       try {
-        other.close(1000, "Peer disconnected");
+        // We can optionally notify the peer that the device temporarily disconnected,
+        // but for resilience, we just let it wait.
+        // other.send(JSON.stringify({ type: "peer_disconnected" }));
       } catch {
-        // Already closed — ignore
+        // ignore
       }
     }
   }
 
   async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
-    // On error, tear down both connections
+    // On error, just close the errored socket. Do not tear down the peer.
     const sockets = this.ctx.getWebSockets();
     for (const s of sockets) {
-      try {
-        s.close(1011, "WebSocket error");
-      } catch {
-        // Already closed — ignore
+      if (s === ws) {
+        try {
+          s.close(1011, "WebSocket error");
+        } catch {}
       }
     }
   }

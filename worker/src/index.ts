@@ -71,20 +71,21 @@ export default {
 
     // ── Static Web & PWA Routes ───────────────────────────────────────
     if (request.method === "GET" || request.method === "HEAD") {
+      const noCache = { "Cache-Control": "no-cache, no-store, must-revalidate" };
       if (path === "/" || path === "/index.html") {
-        return corsResponse(INDEX_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+        return corsResponse(INDEX_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", ...noCache } });
       }
       if (path === "/phone.html" || path === "/pwa") {
-        return corsResponse(PHONE_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+        return corsResponse(PHONE_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", ...noCache } });
       }
       if (path === "/install.html" || path === "/install") {
-        return corsResponse(INSTALL_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
+        return corsResponse(INSTALL_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", ...noCache } });
       }
       if (path === "/manifest.json") {
-        return corsResponse(MANIFEST_JSON, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8" } });
+        return corsResponse(MANIFEST_JSON, { status: 200, headers: { "Content-Type": "application/json; charset=utf-8", ...noCache } });
       }
       if (path === "/sw.js") {
-        return corsResponse(SW_JS, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8" } });
+        return corsResponse(SW_JS, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8", ...noCache } });
       }
       if (path === "/qr.min.js" || path === "/qrcode.min.js") {
         return corsResponse(QR_MIN_JS, { status: 200, headers: { "Content-Type": "application/javascript; charset=utf-8" } });
