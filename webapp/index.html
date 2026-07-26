@@ -830,9 +830,11 @@
         <div id="received-files-list"></div>
       </div>
 
-      <div id="received-messages-section" style="display:none; margin-bottom: 16px;">
-        <div class="section-label" style="margin-bottom:12px;">RECEIVED MESSAGES</div>
-        <div id="received-messages-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      <div style="margin-bottom: 16px;">
+        <button id="btn-pc-chat" onclick="openChatModal('pc')" style="width: 100%; background: var(--surface-2); border: 1px solid var(--border); padding: 14px; color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; text-transform: uppercase;">
+          <span>[ 💬 OPEN MESSAGE WINDOW ]</span>
+          <span id="pc-chat-badge" style="display:none; background: #FFFFFF; color: #000000; padding: 2px 8px; font-size: 11px; font-weight: 800;">0 NEW</span>
+        </button>
       </div>
 
       <div class="folder-section">
@@ -854,11 +856,7 @@
         <span id="queue-status">E2E ENCRYPTED · SAVES DIRECTLY TO TARGET DIRECTORY</span>
       </div>
 
-      <div class="folder-section" style="margin-top: 16px;">
-        <div class="section-label">SEND TEXT MESSAGE</div>
-        <textarea id="text-message-input" placeholder="Type a message to send directly as text..." style="width: 100%; height: 80px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 0; padding: 12px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; resize: vertical; margin-bottom: 12px; transition: border-color 0.15s;" onfocus="this.style.borderColor='#FFFFFF'" onblur="this.style.borderColor='var(--border)'"></textarea>
-        <button onclick="sendTextMessage()" class="btn-text" style="width: 100%; font-size: 13px; padding: 12px;">[ SEND MESSAGE ]</button>
-      </div>
+
     </div>
 
     <!-- Phase 3: Transferring -->
@@ -934,15 +932,11 @@
         <div style="font-size: 11px; color: var(--text-2); margin-top: 4px;">PHOTOS · DOCUMENTS · ARCHIVES</div>
       </div>
 
-      <div style="padding: 16px; background: var(--surface-2); border: 1px solid var(--border); margin-top: 16px;">
-        <div style="font-size: 13px; color: var(--text); font-weight: 800; font-family: var(--mono); margin-bottom: 8px;">SEND TEXT MESSAGE</div>
-        <textarea id="phone-text-message-input" placeholder="Type a message to send directly as text..." style="width: 100%; height: 80px; background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 12px; color: var(--text); font-family: var(--mono); font-size: 13px; outline: none; resize: vertical; margin-bottom: 12px; transition: border-color 0.15s;" onfocus="this.style.borderColor='#FFFFFF'" onblur="this.style.borderColor='var(--border)'"></textarea>
-        <button onclick="phoneSendTextMessage()" style="width: 100%; background: #FFFFFF; color: #000000; border: 1px solid var(--border); border-radius: 0; padding: 14px; font-family: var(--mono); font-size: 12px; font-weight: 800; cursor: pointer; text-transform: uppercase;">[ SEND MESSAGE ]</button>
-      </div>
-
-      <div id="phone-received-messages-section" style="display:none; padding: 16px; background: var(--surface-2); border: 1px solid var(--border); margin-top: 16px;">
-        <div style="font-size: 13px; color: var(--text); font-weight: 800; font-family: var(--mono); margin-bottom: 12px;">RECEIVED MESSAGES</div>
-        <div id="phone-received-messages-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+      <div style="margin-top: 16px;">
+        <button id="btn-phone-chat" onclick="openChatModal('phone')" style="width: 100%; background: var(--surface-2); border: 1px solid var(--border); padding: 14px; color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; text-transform: uppercase;">
+          <span>[ 💬 OPEN MESSAGE WINDOW ]</span>
+          <span id="phone-chat-badge" style="display:none; background: #FFFFFF; color: #000000; padding: 2px 8px; font-size: 11px; font-weight: 800;">0 NEW</span>
+        </button>
       </div>
 
       <!-- Active Transfer Progress -->
@@ -997,6 +991,23 @@
     </div>
 
     <div id="lightbox-thumb-strip" class="thumb-strip"></div>
+  </div>
+
+  <!-- Pop-Open Messages Modal -->
+  <div id="chat-modal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(6px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+    <div style="background: var(--surface); border: 1px solid var(--border); width: 100%; max-width: 540px; height: 500px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 16px 40px rgba(0,0,0,0.9);">
+      <div style="padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: var(--surface-2);">
+        <div style="font-family: var(--mono); font-size: 13px; font-weight: 800; color: #FFFFFF;">[ 💬 MESSAGES / CHAT ]</div>
+        <button onclick="closeChatModal()" style="background: transparent; border: 1px solid var(--border); color: var(--text-2); padding: 4px 10px; font-size: 11px; font-weight: 800; cursor: pointer; text-transform: uppercase;">[ CLOSE ]</button>
+      </div>
+      <div id="chat-modal-messages" style="flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #09090B;">
+        <div id="chat-empty-state" style="margin: auto; color: var(--text-3); font-family: var(--mono); font-size: 12px; text-align: center;">No messages in this session yet.</div>
+      </div>
+      <div style="padding: 12px 14px; border-top: 1px solid var(--border); background: var(--surface-2); display: flex; gap: 10px; align-items: center;">
+        <textarea id="chat-modal-input" placeholder="Type a message to send..." style="flex: 1; height: 42px; background: var(--surface); border: 1px solid var(--border); padding: 10px; color: var(--text); font-family: var(--mono); font-size: 12px; outline: none; resize: none;" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendModalChatMessage();}"></textarea>
+        <button onclick="sendModalChatMessage()" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); font-family: var(--mono); font-size: 12px; font-weight: 800; padding: 0 16px; height: 42px; cursor: pointer; text-transform: uppercase;">[ SEND ]</button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -1273,21 +1284,7 @@
         document.getElementById('done-message').innerText = 'RECEIVED ON IPHONE!';
         document.getElementById('done-subtext').innerText = 'Saved to iPhone Files app';
       } else if (msg.type === 'text_message') {
-        const sec = document.getElementById('received-messages-section');
-        const list = document.getElementById('received-messages-list');
-        if (sec && list) {
-          sec.style.display = 'block';
-          const msgDiv = document.createElement('div');
-          msgDiv.style.padding = '12px';
-          msgDiv.style.background = 'var(--surface)';
-          msgDiv.style.border = '1px solid var(--border)';
-          msgDiv.style.fontFamily = 'var(--mono)';
-          msgDiv.style.fontSize = '13px';
-          msgDiv.style.color = '#FFFFFF';
-          msgDiv.style.whiteSpace = 'pre-wrap';
-          msgDiv.textContent = msg.text;
-          list.prepend(msgDiv);
-        }
+        appendChatMessage('PEER', msg.text);
       } else if (msg.type === 'transfer_init') {
         state.currentTransfer = {
           direction: 'receiving',
@@ -1328,6 +1325,7 @@
       document.getElementById('phase-transferring').style.display = (phase === 'transferring') ? 'flex' : 'none';
       document.getElementById('phase-done').style.display = (phase === 'done') ? 'flex' : 'none';
       if (phase === 'waiting') {
+        clearChatMessages();
         const hint = document.getElementById('shortcut-mode-hint');
         if (hint) hint.style.display = 'none';
       }
@@ -1338,6 +1336,7 @@
     }
 
     function disconnectSession() {
+      clearChatMessages();
       localStorage.removeItem('labbridge_session_id');
       localStorage.removeItem('labbridge_session_expiry');
       if (state.ws) {
@@ -1651,21 +1650,7 @@
 
           if (transfer.filename === 'message.txt' && transfer.size < 50 * 1024) {
             const text = await finalBlob.text();
-            const sec = document.getElementById('received-messages-section');
-            const list = document.getElementById('received-messages-list');
-            if (sec && list) {
-              sec.style.display = 'block';
-              const msgDiv = document.createElement('div');
-              msgDiv.style.padding = '12px';
-              msgDiv.style.background = 'var(--surface)';
-              msgDiv.style.border = '1px solid var(--border)';
-              msgDiv.style.fontFamily = 'var(--mono)';
-              msgDiv.style.fontSize = '13px';
-              msgDiv.style.color = '#FFFFFF';
-              msgDiv.style.whiteSpace = 'pre-wrap';
-              msgDiv.textContent = text;
-              list.prepend(msgDiv);
-            }
+            appendChatMessage('PEER', text);
             state.currentTransfer = null;
             if (state.sendQueue.length > 0) {
               processNextInQueue();
@@ -2142,21 +2127,7 @@
           phoneStartSendingChunks();
         }
       } else if (msg.type === 'text_message') {
-        const sec = document.getElementById('phone-received-messages-section');
-        const list = document.getElementById('phone-received-messages-list');
-        if (sec && list) {
-          sec.style.display = 'block';
-          const msgDiv = document.createElement('div');
-          msgDiv.style.padding = '12px';
-          msgDiv.style.background = 'var(--surface)';
-          msgDiv.style.border = '1px solid var(--border)';
-          msgDiv.style.fontFamily = 'var(--mono)';
-          msgDiv.style.fontSize = '13px';
-          msgDiv.style.color = '#FFFFFF';
-          msgDiv.style.whiteSpace = 'pre-wrap';
-          msgDiv.textContent = msg.text;
-          list.prepend(msgDiv);
-        }
+        appendChatMessage('PEER', msg.text);
       } else if (msg.type === 'ack') {
         if (phoneState.currentTransfer && phoneState.currentTransfer.direction === 'sending') {
           phoneHandleAck(msg.chunk_index);
@@ -2211,21 +2182,7 @@
 
           if (transfer.filename === 'message.txt' && transfer.size < 50 * 1024) {
             const text = await finalBlob.text();
-            const sec = document.getElementById('phone-received-messages-section');
-            const list = document.getElementById('phone-received-messages-list');
-            if (sec && list) {
-              sec.style.display = 'block';
-              const msgDiv = document.createElement('div');
-              msgDiv.style.padding = '12px';
-              msgDiv.style.background = 'var(--surface)';
-              msgDiv.style.border = '1px solid var(--border)';
-              msgDiv.style.fontFamily = 'var(--mono)';
-              msgDiv.style.fontSize = '13px';
-              msgDiv.style.color = '#FFFFFF';
-              msgDiv.style.whiteSpace = 'pre-wrap';
-              msgDiv.textContent = text;
-              list.prepend(msgDiv);
-            }
+            appendChatMessage('PEER', text);
             phoneState.currentTransfer = null;
             phoneShowScreen('connected');
             document.getElementById('phone-dropzone').style.display = 'flex';
@@ -2373,24 +2330,121 @@
       if (phoneFill) phoneFill.style.width = pct + '%';
     }
 
-    function sendTextMessage() {
-      const input = document.getElementById('text-message-input');
-      if (!input) return;
-      const text = input.value.trim();
-      if (!text) return;
-      if (state.ws && state.ws.readyState === WebSocket.OPEN) {
-        state.ws.send(JSON.stringify({ type: 'text_message', text: text }));
-      }
-      input.value = '';
+    let currentChatRole = 'pc';
+    let unreadChatCount = 0;
+
+    function openChatModal(role) {
+      if (role) currentChatRole = role;
+      document.getElementById('chat-modal').style.display = 'flex';
+      unreadChatCount = 0;
+      updateChatBadges();
+      const input = document.getElementById('chat-modal-input');
+      if (input) input.focus();
+      const container = document.getElementById('chat-modal-messages');
+      if (container) container.scrollTop = container.scrollHeight;
     }
 
-    function phoneSendTextMessage() {
-      const input = document.getElementById('phone-text-message-input');
+    function closeChatModal() {
+      document.getElementById('chat-modal').style.display = 'none';
+    }
+
+    function clearChatMessages() {
+      unreadChatCount = 0;
+      updateChatBadges();
+      closeChatModal();
+      const list = document.getElementById('chat-modal-messages');
+      if (list) {
+        list.innerHTML = '<div id="chat-empty-state" style="margin: auto; color: var(--text-3); font-family: var(--mono); font-size: 12px; text-align: center;">No messages in this session yet.</div>';
+      }
+    }
+
+    function updateChatBadges() {
+      const pcBadge = document.getElementById('pc-chat-badge');
+      const phoneBadge = document.getElementById('phone-chat-badge');
+      if (unreadChatCount > 0) {
+        if (pcBadge) { pcBadge.style.display = 'inline-block'; pcBadge.innerText = `${unreadChatCount} NEW`; }
+        if (phoneBadge) { phoneBadge.style.display = 'inline-block'; phoneBadge.innerText = `${unreadChatCount} NEW`; }
+      } else {
+        if (pcBadge) pcBadge.style.display = 'none';
+        if (phoneBadge) phoneBadge.style.display = 'none';
+      }
+    }
+
+    function appendChatMessage(sender, text) {
+      const emptyState = document.getElementById('chat-empty-state');
+      if (emptyState) emptyState.remove();
+
+      const list = document.getElementById('chat-modal-messages');
+      if (!list) return;
+
+      const isMe = sender === 'YOU';
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.alignItems = isMe ? 'flex-end' : 'flex-start';
+      wrapper.style.width = '100%';
+
+      const tag = document.createElement('span');
+      tag.style.fontFamily = 'var(--mono)';
+      tag.style.fontSize = '10px';
+      tag.style.color = 'var(--text-3)';
+      tag.style.marginBottom = '4px';
+      tag.innerText = isMe ? '[ YOU ]' : '[ PEER ]';
+
+      const msgDiv = document.createElement('div');
+      msgDiv.style.padding = '10px 14px';
+      msgDiv.style.background = isMe ? 'var(--surface-2)' : '#18181B';
+      msgDiv.style.border = isMe ? '1px solid var(--border)' : '1px solid #3F3F46';
+      msgDiv.style.fontFamily = 'var(--mono)';
+      msgDiv.style.fontSize = '13px';
+      msgDiv.style.color = '#FFFFFF';
+      msgDiv.style.whiteSpace = 'pre-wrap';
+      msgDiv.style.maxWidth = '85%';
+      msgDiv.style.wordBreak = 'break-word';
+      msgDiv.textContent = text;
+
+      const copyBtn = document.createElement('button');
+      copyBtn.innerText = '[ COPY ]';
+      copyBtn.style.marginTop = '4px';
+      copyBtn.style.background = 'transparent';
+      copyBtn.style.border = 'none';
+      copyBtn.style.color = 'var(--text-2)';
+      copyBtn.style.fontSize = '10px';
+      copyBtn.style.fontFamily = 'var(--mono)';
+      copyBtn.style.cursor = 'pointer';
+      copyBtn.onclick = (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(text);
+        copyBtn.innerText = '[ COPIED! ]';
+        setTimeout(() => { copyBtn.innerText = '[ COPY ]'; }, 1500);
+      };
+
+      wrapper.appendChild(tag);
+      wrapper.appendChild(msgDiv);
+      wrapper.appendChild(copyBtn);
+      list.appendChild(wrapper);
+
+      list.scrollTop = list.scrollHeight;
+
+      const modal = document.getElementById('chat-modal');
+      if (!modal || modal.style.display === 'none') {
+        if (!isMe) {
+          unreadChatCount++;
+          updateChatBadges();
+        }
+      }
+    }
+
+    function sendModalChatMessage() {
+      const input = document.getElementById('chat-modal-input');
       if (!input) return;
       const text = input.value.trim();
       if (!text) return;
-      if (phoneState.ws && phoneState.ws.readyState === WebSocket.OPEN) {
-        phoneState.ws.send(JSON.stringify({ type: 'text_message', text: text }));
+
+      const socket = currentChatRole === 'phone' ? phoneState.ws : state.ws;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'text_message', text: text }));
+        appendChatMessage('YOU', text);
       }
       input.value = '';
     }

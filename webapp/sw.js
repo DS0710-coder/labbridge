@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cueflex-pwa-v13';
+const CACHE_NAME = 'cueflex-pwa-v14';
 const ASSETS = [
   '/',
   '/index.html',
