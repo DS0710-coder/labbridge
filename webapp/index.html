@@ -9,6 +9,8 @@
   <meta property="og:image" content="https://raw.githubusercontent.com/DS0710-coder/cueflex/main/preview.jpg">
   <meta property="og:url" content="https://cueflex.shahdev0710.workers.dev/">
   <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/png" href="/icon.png" />
+  <script src="/fflate.min.js"></script>
   <link rel="manifest" href="manifest.json" />
   <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -1861,20 +1863,61 @@
       renderReceivedFiles();
     }
 
-    function downloadAllReceived() {
-      if (!state.receivedFiles) return;
-      state.receivedFiles.forEach((f, i) => {
-        setTimeout(() => {
-          try {
-            const a = document.createElement('a');
-            a.href = f.blobUrl;
-            a.download = f.filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          } catch (e) {}
-        }, i * 250);
+    async function downloadAllReceived() {
+      if (!state.receivedFiles || state.receivedFiles.length === 0) return;
+      
+      const buttons = document.querySelectorAll('button[onclick="downloadAllReceived()"]');
+      buttons.forEach(btn => {
+        btn.innerText = '[ ZIPPING... ]';
+        btn.style.opacity = '0.5';
+        btn.style.pointerEvents = 'none';
       });
+
+      try {
+        const zipData = {};
+        for (let i = 0; i < state.receivedFiles.length; i++) {
+          const f = state.receivedFiles[i];
+          let filename = f.filename;
+          
+          // Ensure unique filenames in the ZIP
+          while (zipData[filename]) {
+            const parts = filename.split('.');
+            if (parts.length > 1) {
+              const ext = parts.pop();
+              filename = parts.join('.') + `_${i}.` + ext;
+            } else {
+              filename = filename + `_${i}`;
+            }
+          }
+          
+          const res = await fetch(f.blobUrl);
+          const buf = await res.arrayBuffer();
+          zipData[filename] = new Uint8Array(buf);
+        }
+
+        const zipped = window.fflate.zipSync(zipData);
+        const blob = new Blob([zipped], { type: 'application/zip' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        const timestamp = new Date().getTime();
+        a.download = `LabBridge_Transfer_${timestamp}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      } catch (err) {
+        console.error("Zip failed:", err);
+        alert("Failed to zip files. Please download them individually.");
+      } finally {
+        buttons.forEach(btn => {
+          btn.innerText = '[ DOWNLOAD ALL ]';
+          btn.style.opacity = '1';
+          btn.style.pointerEvents = 'auto';
+        });
+      }
     }
 
     function deleteReceivedFile(index) {

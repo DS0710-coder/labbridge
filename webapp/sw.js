@@ -1,8 +1,10 @@
-const CACHE_NAME = 'cueflex-pwa-v21';
+const CACHE_NAME = 'cueflex-pwa-v22';
 const ASSETS = [
   '/',
   '/index.html',
   '/phone.html',
+  '/install.html',
+  '/fflate.min.js',
   '/manifest.json',
   '/icon.png',
   '/icon-192.png',

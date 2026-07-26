@@ -10,6 +10,8 @@
   <meta property="og:url" content="https://cueflex.shahdev0710.workers.dev/">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="/icon.png" />
+  <script src="/fflate.min.js"></script>
   <meta name="theme-color" content="#000000" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -562,10 +564,14 @@
       <img id="phone-lightbox-img" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; border: 1px solid var(--border);" />
     </div>
 
-    <div class="lightbox-nav">
+    <div class="lightbox-nav" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
       <button style="flex: 1; min-height: 40px; background: var(--surface);" onclick="changePhoneGallery(-1)">[ PREV ]</button>
-      <button id="phone-lightbox-save" style="flex: 1.5; min-height: 40px; background: #FFFFFF; color: #000000;" onclick="saveCurrentPhonePhoto()">[ SAVE / SHARE ]</button>
+      <button id="phone-lightbox-save" style="flex: 1.5; min-height: 40px; background: #FFFFFF; color: #000000;" onclick="saveCurrentPhonePhoto()">[ SAVE ]</button>
+      <button style="flex: 1; min-height: 40px; background: transparent; color: #EF4444; border: 1px solid #EF4444;" onclick="deleteCurrentPhonePhoto()">[ DELETE ]</button>
       <button style="flex: 1; min-height: 40px; background: var(--surface);" onclick="changePhoneGallery(1)">[ NEXT ]</button>
+    </div>
+    <div style="display: flex; gap: 8px;">
+      <button id="phone-lightbox-save-all" style="flex: 1; min-height: 40px; background: transparent; color: #FFFFFF; border: 1px solid var(--border);" onclick="saveAllPhonePhotos()">[ SAVE ALL AS ZIP ]</button>
     </div>
 
     <div id="phone-thumb-strip" class="thumb-strip"></div>
@@ -1079,6 +1085,87 @@
     function saveCurrentPhonePhoto() {
       const fileId = state.photoKeys[currentPhoneGalleryIndex];
       if (fileId) shareOrSaveFileById(fileId);
+    }
+
+    function deleteCurrentPhonePhoto() {
+      const fileId = state.photoKeys[currentPhoneGalleryIndex];
+      if (fileId) {
+        deletePhoneFileById(fileId, null);
+        renderPhoneThumbnails();
+        if (state.photoKeys.length > 0) {
+          if (currentPhoneGalleryIndex >= state.photoKeys.length) currentPhoneGalleryIndex = Math.max(0, state.photoKeys.length - 1);
+          openPhoneGalleryById(state.photoKeys[currentPhoneGalleryIndex]);
+        } else {
+          closePhoneGallery();
+        }
+      }
+    }
+
+    async function saveAllPhonePhotos() {
+      if (!state.photoKeys || state.photoKeys.length === 0) return;
+      
+      const btn = document.getElementById('phone-lightbox-save-all');
+      if (btn) { btn.innerText = '[ PROCESSING... ]'; btn.style.pointerEvents = 'none'; }
+      
+      const filesToShare = [];
+      for (const key of state.photoKeys) {
+        const item = (state.completedFilesMap || {})[key];
+        if (item && item.file) filesToShare.push(item.file);
+      }
+      
+      let sharedNative = false;
+      try {
+        if (navigator.canShare && navigator.canShare({ files: filesToShare })) {
+          await navigator.share({ files: filesToShare });
+          sharedNative = true;
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') sharedNative = true;
+      }
+      
+      if (sharedNative) {
+        if (btn) { btn.innerText = '[ SAVE ALL AS ZIP ]'; btn.style.pointerEvents = 'auto'; }
+        return;
+      }
+
+      // Fallback to zip using fflate
+      try {
+        if (btn) { btn.innerText = '[ ZIPPING... ]'; btn.style.pointerEvents = 'none'; }
+        const zipData = {};
+        for (let i = 0; i < filesToShare.length; i++) {
+          const file = filesToShare[i];
+          let filename = file.name || `file_${i}`;
+          while (zipData[filename]) {
+            const parts = filename.split('.');
+            if (parts.length > 1) {
+              const ext = parts.pop();
+              filename = parts.join('.') + `_${i}.` + ext;
+            } else {
+              filename = filename + `_${i}`;
+            }
+          }
+          const buf = await file.arrayBuffer();
+          zipData[filename] = new Uint8Array(buf);
+        }
+        
+        const zipped = window.fflate.zipSync(zipData);
+        const blob = new Blob([zipped], { type: 'application/zip' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        const timestamp = new Date().getTime();
+        a.download = `LabBridge_Transfer_${timestamp}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to zip files.");
+      } finally {
+        if (btn) { btn.innerText = '[ SAVE ALL AS ZIP ]'; btn.style.pointerEvents = 'auto'; }
+      }
     }
 
     async function shareOrSaveFileById(fileId) {
