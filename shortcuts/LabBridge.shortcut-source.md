@@ -1,11 +1,11 @@
-# LabBridge iOS Shortcut
+# CueFlex iOS Shortcut
 
-This document provides the exact sequence of actions to build the **LabBridge** shortcut in the iOS Shortcuts app.
+This document provides the exact sequence of actions to build the **CueFlex** shortcut in the iOS Shortcuts app.
 
 ## Actions in order:
 
 1. **Text** — Set variable `WorkerURL`
-   Value: `https://labbridge-worker.YOUR_SUBDOMAIN.workers.dev`
+   Value: `https://cueflex-worker.YOUR_SUBDOMAIN.workers.dev`
    *(User updates this once after adding the shortcut)*
 
 2. **Scan QR Code** — Scan QR from PC screen
@@ -58,7 +58,7 @@ This document provides the exact sequence of actions to build the **LabBridge** 
        - **Combine Text/Files** `AllChunks` → `FileData`
        - **Set Name** of `FileData` to `Filename`
        - **Save File** `FileData` to Files app
-         - Default location: `iCloud Drive / LabBridge`
+         - Default location: `iCloud Drive / CueFlex`
          - Ask where to save: `YES`
        - **URL**: `[WorkerURL]/session/[SessionID]/phone_ack`
        - **Get Contents of URL** (Method: POST) — confirm receipt with PC

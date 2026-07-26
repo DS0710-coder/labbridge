@@ -1,5 +1,5 @@
 /**
- * Relay helper utilities for the LabBridge worker.
+ * Relay helper utilities for the CueFlex worker.
  * Pure functions — no state, no side effects.
  */
 

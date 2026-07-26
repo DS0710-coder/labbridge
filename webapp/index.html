@@ -6,7 +6,7 @@
   <title>CueFlex — Terminal & PWA</title>
   <meta property="og:title" content="CueFlex">
   <meta property="og:description" content="Zero-cloud P2P encrypted file transfer for your local network and beyond.">
-  <meta property="og:image" content="https://raw.githubusercontent.com/DS0710-coder/labbridge/main/preview.jpg">
+  <meta property="og:image" content="https://raw.githubusercontent.com/DS0710-coder/cueflex/main/preview.jpg">
   <meta property="og:url" content="https://cueflex.shahdev0710.workers.dev/">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="manifest" href="manifest.json" />
@@ -1082,7 +1082,7 @@
 
   <script>
     const isFileOrLocal = window.location.protocol === 'file:';
-    const WORKER_URL = window.CUEFLEX_WORKER_URL || window.LABBRIDGE_WORKER_URL || (isFileOrLocal ? 'wss://cueflex.shahdev0710.workers.dev' : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
+    const WORKER_URL = window.CUEFLEX_WORKER_URL || window.CUEFLEX_WORKER_URL || (isFileOrLocal ? 'wss://cueflex.shahdev0710.workers.dev' : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
     const HTTP_URL = WORKER_URL.replace('ws://', 'http://').replace('wss://', 'https://');
 
     const state = {
@@ -1196,8 +1196,8 @@
     async function createSession(forceNew = false) {
       if (forceNew) {
         if (!checkRateLimit()) return;
-        localStorage.removeItem('labbridge_session_id');
-        localStorage.removeItem('labbridge_session_expiry');
+        localStorage.removeItem('cueflex_session_id');
+        localStorage.removeItem('cueflex_session_expiry');
       }
       if (isCreatingSession) return;
       isCreatingSession = true;
@@ -1234,8 +1234,8 @@
       updateTimerDisplay();
 
       try {
-        const savedId = localStorage.getItem('labbridge_session_id');
-        const savedExpiry = parseInt(localStorage.getItem('labbridge_session_expiry') || '0', 10);
+        const savedId = localStorage.getItem('cueflex_session_id');
+        const savedExpiry = parseInt(localStorage.getItem('cueflex_session_expiry') || '0', 10);
         let data = null;
 
         if (savedId && savedExpiry && savedExpiry > Date.now() + 10000) {
@@ -1246,8 +1246,8 @@
         } else {
           const res = await fetch(`${HTTP_URL}/session/new`);
           data = await res.json();
-          localStorage.setItem('labbridge_session_id', data.session_id);
-          localStorage.setItem('labbridge_session_expiry', new Date(data.expires_at).getTime().toString());
+          localStorage.setItem('cueflex_session_id', data.session_id);
+          localStorage.setItem('cueflex_session_expiry', new Date(data.expires_at).getTime().toString());
         }
 
         state.sessionId = data.session_id;
@@ -1466,8 +1466,8 @@
 
     function disconnectSession() {
       clearChatMessages();
-      localStorage.removeItem('labbridge_session_id');
-      localStorage.removeItem('labbridge_session_expiry');
+      localStorage.removeItem('cueflex_session_id');
+      localStorage.removeItem('cueflex_session_expiry');
       if (state.ws) {
         const oldWs = state.ws;
         state.ws = null;
@@ -2065,7 +2065,7 @@
         }
         phoneProceedToConnected(s);
       } else {
-        const saved = localStorage.getItem('labbridge_phone_session_id');
+        const saved = localStorage.getItem('cueflex_phone_session_id');
         if (saved) {
           phoneProceedToConnected(saved);
         } else {
@@ -2188,7 +2188,7 @@
 
     async function phoneProceedToConnected(sessionId) {
       phoneState.sessionId = sessionId;
-      localStorage.setItem('labbridge_phone_session_id', sessionId);
+      localStorage.setItem('cueflex_phone_session_id', sessionId);
       phoneShowScreen('connected');
       const infoEl = document.getElementById('phone-session-info');
       if (infoEl) infoEl.innerText = `SESSION ID: ${sessionId}`;
