@@ -1410,8 +1410,8 @@
     async function createSession(forceNew = false) {
       if (forceNew) {
         if (!checkRateLimit()) return;
-        localStorage.removeItem('cueflex_session_id');
-        localStorage.removeItem('cueflex_session_expiry');
+        sessionStorage.removeItem('cueflex_session_id');
+        sessionStorage.removeItem('cueflex_session_expiry');
       }
       if (isCreatingSession) return;
       isCreatingSession = true;
@@ -1455,8 +1455,8 @@
         
         updateTimerDisplay();
 
-        const savedId = localStorage.getItem('cueflex_session_id');
-        const savedExpiry = parseInt(localStorage.getItem('cueflex_session_expiry') || '0', 10);
+        const savedId = sessionStorage.getItem('cueflex_session_id');
+        const savedExpiry = parseInt(sessionStorage.getItem('cueflex_session_expiry') || '0', 10);
         let data = null;
 
         if (savedId && savedExpiry && savedExpiry > Date.now() + 10000) {
@@ -1467,8 +1467,8 @@
         } else {
           const res = await fetch(`${HTTP_URL}/session/new`);
           data = await res.json();
-          localStorage.setItem('cueflex_session_id', data.session_id);
-          localStorage.setItem('cueflex_session_expiry', new Date(data.expires_at).getTime().toString());
+          sessionStorage.setItem('cueflex_session_id', data.session_id);
+          sessionStorage.setItem('cueflex_session_expiry', new Date(data.expires_at).getTime().toString());
         }
 
         if (state.sessionId) recordMySessionId(state.sessionId);
@@ -1764,8 +1764,8 @@
 
     function disconnectSession() {
       clearChatMessages();
-      localStorage.removeItem('cueflex_session_id');
-      localStorage.removeItem('cueflex_session_expiry');
+      sessionStorage.removeItem('cueflex_session_id');
+      sessionStorage.removeItem('cueflex_session_expiry');
       if (state.ws) {
         const oldWs = state.ws;
         state.ws = null;

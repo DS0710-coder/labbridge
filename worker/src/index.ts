@@ -171,7 +171,7 @@ export default {
       try {
         const nearbyDoId = env.SESSIONS.idFromName(`nearby:${ip}`);
         const nearbyStub = env.SESSIONS.get(nearbyDoId);
-        nearbyStub.fetch(`https://fake/nearby?ping=${sessionId}`);
+        await nearbyStub.fetch(`https://fake/nearby?ping=${sessionId}`);
       } catch (e) {}
 
       const doId = env.SESSIONS.idFromName(sessionId);
