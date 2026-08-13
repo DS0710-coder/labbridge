@@ -35,6 +35,7 @@ const ipRequests = new Map<string, { count: number; resetAt: number }>();
 const nearbySessions = new Map<string, Array<{ sessionId: string; updatedAt: number }>>();
 
 function registerNearbySession(ip: string, sessionId: string) {
+  if (!sessionId || sessionId === "null" || sessionId === "undefined") return;
   const now = Date.now();
   let list = nearbySessions.get(ip) || [];
   list = list.filter(item => now - item.updatedAt < 240 * 1000 && item.sessionId !== sessionId);
@@ -42,14 +43,23 @@ function registerNearbySession(ip: string, sessionId: string) {
   nearbySessions.set(ip, list);
 }
 
-function getNearbySessions(ip: string, currentSessionId?: string): Array<{ session_id: string; age_seconds: number }> {
+function unregisterNearbySession(ip: string, sessionId: string) {
+  if (!sessionId) return;
+  let list = nearbySessions.get(ip) || [];
+  list = list.filter(item => item.sessionId !== sessionId);
+  nearbySessions.set(ip, list);
+}
+
+function getNearbySessions(ip: string, excludeSessionIds: string[] = []): Array<{ session_id: string; age_seconds: number }> {
   const now = Date.now();
   let list = nearbySessions.get(ip) || [];
   list = list.filter(item => now - item.updatedAt < 240 * 1000);
   nearbySessions.set(ip, list);
 
+  const excludeSet = new Set(excludeSessionIds.filter(Boolean));
+
   return list
-    .filter(item => item.sessionId !== currentSessionId)
+    .filter(item => !excludeSet.has(item.sessionId))
     .map(item => ({
       session_id: item.sessionId,
       age_seconds: Math.floor((now - item.updatedAt) / 1000),
@@ -174,12 +184,21 @@ export default {
 
     // ── GET /nearby ───────────────────────────────────────────────────
     if (path === "/nearby" && request.method === "GET") {
-      const current = url.searchParams.get("current") || undefined;
+      const current = url.searchParams.get("current") || "";
+      const previous = url.searchParams.get("previous") || "";
+      const excludes = (url.searchParams.get("excludes") || "").split(",").map(s => s.trim()).filter(Boolean);
+      
+      if (previous && previous.length === 12) {
+        unregisterNearbySession(ip, previous);
+      }
+      
       const heartbeat = url.searchParams.get("ping");
       if (heartbeat && heartbeat.length === 12) {
         registerNearbySession(ip, heartbeat);
       }
-      const list = getNearbySessions(ip, current);
+
+      const allExcludes = [current, previous, ...excludes];
+      const list = getNearbySessions(ip, allExcludes);
       return corsResponse(JSON.stringify({ devices: list }), {
         status: 200,
         headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
