@@ -1285,36 +1285,14 @@
       connectAsPeer(sid);
     }
 
-    function recordMySessionId(sid) {
-      if (!sid) return;
-      try {
-        const set = new Set(JSON.parse(sessionStorage.getItem('cueflex_my_session_ids') || '[]'));
-        set.add(sid);
-        sessionStorage.setItem('cueflex_my_session_ids', JSON.stringify(Array.from(set)));
-      } catch (e) {}
-    }
-
-    function isMySessionId(sid) {
-      if (!sid) return false;
-      if (sid === state.sessionId) return true;
-      try {
-        const list = JSON.parse(sessionStorage.getItem('cueflex_my_session_ids') || '[]');
-        return list.includes(sid);
-      } catch (e) {
-        return false;
-      }
-    }
-
     async function fetchNearbyDevices() {
       const container = document.getElementById('nearby-list');
       if (!container || state.phase !== 'waiting' || !state.sessionId) return;
       try {
-        recordMySessionId(state.sessionId);
         const currentSid = state.sessionId;
-        const myIds = JSON.parse(sessionStorage.getItem('cueflex_my_session_ids') || '[]').join(',');
-        const res = await fetch(`${HTTP_URL}/nearby?current=${currentSid}&ping=${currentSid}&excludes=${myIds}`);
+        const res = await fetch(`${HTTP_URL}/nearby?current=${currentSid}&ping=${currentSid}`);
         const data = await res.json();
-        const devices = (data.devices || []).filter(d => !isMySessionId(d.session_id));
+        const devices = (data.devices || []).filter(d => d.session_id !== currentSid);
         if (devices.length === 0) {
           container.innerHTML = `<div style="font-size: 11px; color: var(--text-3); text-align: center; padding: 6px;">No other devices found on this network.</div>`;
           return;
@@ -1471,11 +1449,10 @@
           sessionStorage.setItem('cueflex_session_expiry', new Date(data.expires_at).getTime().toString());
         }
 
-        if (state.sessionId) recordMySessionId(state.sessionId);
         state.sessionId = data.session_id;
-        recordMySessionId(data.session_id);
         const dispEl = document.getElementById('display-session-id');
         if (dispEl) dispEl.innerText = data.session_id;
+        fetchNearbyDevices();
 
         if (data.expires_at) {
           state.expirySeconds = Math.max(0, Math.floor((new Date(data.expires_at).getTime() - Date.now()) / 1000));
