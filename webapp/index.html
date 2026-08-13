@@ -1285,14 +1285,44 @@
       connectAsPeer(sid);
     }
 
+    function recordMySessionHistory(sid) {
+      if (!sid) return;
+      try {
+        const list = JSON.parse(sessionStorage.getItem('cueflex_my_history') || '[]');
+        if (!list.includes(sid)) {
+          list.push(sid);
+          sessionStorage.setItem('cueflex_my_history', JSON.stringify(list));
+        }
+      } catch (e) {}
+    }
+
+    function isMyHistorySession(sid) {
+      if (!sid) return false;
+      if (sid === state.sessionId) return true;
+      try {
+        const list = JSON.parse(sessionStorage.getItem('cueflex_my_history') || '[]');
+        return list.includes(sid);
+      } catch (e) {
+        return false;
+      }
+    }
+
+    window.addEventListener('beforeunload', () => {
+      if (state.sessionId) {
+        try { navigator.sendBeacon(`${HTTP_URL}/nearby?unregister=${state.sessionId}`); } catch(e){}
+      }
+    });
+
     async function fetchNearbyDevices() {
       const container = document.getElementById('nearby-list');
       if (!container || state.phase !== 'waiting' || !state.sessionId) return;
       try {
+        recordMySessionHistory(state.sessionId);
         const currentSid = state.sessionId;
-        const res = await fetch(`${HTTP_URL}/nearby?current=${currentSid}&ping=${currentSid}`);
+        const history = (JSON.parse(sessionStorage.getItem('cueflex_my_history') || '[]')).join(',');
+        const res = await fetch(`${HTTP_URL}/nearby?current=${currentSid}&ping=${currentSid}&excludes=${history}`);
         const data = await res.json();
-        const devices = (data.devices || []).filter(d => d.session_id !== currentSid);
+        const devices = (data.devices || []).filter(d => !isMyHistorySession(d.session_id));
         if (devices.length === 0) {
           container.innerHTML = `<div style="font-size: 11px; color: var(--text-3); text-align: center; padding: 6px;">No other devices found on this network.</div>`;
           return;
@@ -1386,8 +1416,12 @@
 
     let isCreatingSession = false;
     async function createSession(forceNew = false) {
+      const oldSid = state.sessionId || sessionStorage.getItem('cueflex_session_id') || '';
       if (forceNew) {
         if (!checkRateLimit()) return;
+        if (oldSid) {
+          try { fetch(`${HTTP_URL}/nearby?unregister=${oldSid}`); } catch(e){}
+        }
         sessionStorage.removeItem('cueflex_session_id');
         sessionStorage.removeItem('cueflex_session_expiry');
       }
@@ -1443,13 +1477,17 @@
             expires_at: new Date(savedExpiry).toISOString()
           };
         } else {
-          const res = await fetch(`${HTTP_URL}/session/new`);
+          const res = await fetch(`${HTTP_URL}/session/new?previous=${oldSid}`);
           data = await res.json();
           sessionStorage.setItem('cueflex_session_id', data.session_id);
           sessionStorage.setItem('cueflex_session_expiry', new Date(data.expires_at).getTime().toString());
         }
 
+        if (state.sessionId && state.sessionId !== data.session_id) {
+          recordMySessionHistory(state.sessionId);
+        }
         state.sessionId = data.session_id;
+        recordMySessionHistory(data.session_id);
         const dispEl = document.getElementById('display-session-id');
         if (dispEl) dispEl.innerText = data.session_id;
         fetchNearbyDevices();

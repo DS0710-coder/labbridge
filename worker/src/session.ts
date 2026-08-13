@@ -135,9 +135,14 @@ export class Session extends DurableObject {
         }
       }
 
-      // Unregister previous session ID if provided
+      const unregister = url.searchParams.get("unregister") || "";
+
+      // Unregister previous or specified session ID if provided
       if (previous && previous.length === 12) {
         delete nearbyMap[previous];
+      }
+      if (unregister && unregister.length === 12) {
+        delete nearbyMap[unregister];
       }
 
       // Register pinged session ID

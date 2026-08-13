@@ -165,13 +165,14 @@ export default {
         });
       }
 
+      const previous = url.searchParams.get("previous") || "";
       const sessionId = generateSessionId();
       
-      // Register session in the IP's nearby DO
+      // Register session in the IP's nearby DO and purge previous if any
       try {
         const nearbyDoId = env.SESSIONS.idFromName(`nearby:${ip}`);
         const nearbyStub = env.SESSIONS.get(nearbyDoId);
-        await nearbyStub.fetch(`https://fake/nearby?ping=${sessionId}`);
+        await nearbyStub.fetch(`https://fake/nearby?ping=${sessionId}&previous=${previous}`);
       } catch (e) {}
 
       const doId = env.SESSIONS.idFromName(sessionId);
