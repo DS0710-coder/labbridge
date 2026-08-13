@@ -896,7 +896,11 @@
           </div>
           <div style="width: 100%; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 4px;">
             <div style="font-size: 10px; color: var(--text-3); letter-spacing: 1px; margin-bottom: 10px; text-align: center;">PC-TO-PC TRANSFER</div>
-            <button id="btn-share-pc-link" onclick="copyPcLink()" style="width: 100%; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 0; padding: 12px; font-family: var(--mono); font-size: 11px; font-weight: 800; cursor: pointer; letter-spacing: 0.5px; transition: border-color 0.15s, background 0.15s;">[ SHARE PC LINK ]</button>
+            <div style="display: flex; gap: 8px; width: 100%;">
+              <input id="peer-session-input" type="text" maxlength="12" placeholder="ENTER SESSION ID" spellcheck="false" autocomplete="off" style="flex: 1; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 0; padding: 10px 12px; font-family: var(--mono); font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; outline: none; transition: border-color 0.15s;" onfocus="this.style.borderColor='#FFFFFF'" onblur="this.style.borderColor=''" onkeydown="if(event.key==='Enter')joinPeerSession()" />
+              <button onclick="joinPeerSession()" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); border-radius: 0; padding: 10px 16px; font-family: var(--mono); font-size: 11px; font-weight: 800; cursor: pointer; letter-spacing: 0.5px; white-space: nowrap;">[ JOIN ]</button>
+            </div>
+            <button id="btn-share-pc-link" onclick="copyPcLink()" style="width: 100%; margin-top: 8px; background: transparent; color: var(--text-3); border: 1px solid var(--border); border-radius: 0; padding: 8px; font-family: var(--mono); font-size: 10px; font-weight: 800; cursor: pointer; letter-spacing: 0.5px; transition: border-color 0.15s, color 0.15s;">[ COPY SHAREABLE LINK ]</button>
           </div>
           <div id="rate-limit-error" style="display:none; color: #EF4444; border: 1px solid #EF4444; background: rgba(239, 68, 68, 0.12); padding: 12px 16px; font-family: var(--mono); font-size: 12px; font-weight: 800; text-align: center; margin-top: 14px; width: 100%;"></div>
         </div>
@@ -1228,6 +1232,31 @@
       }).catch(() => {
         prompt('Copy this link:', link);
       });
+    }
+
+    async function joinPeerSession() {
+      const input = document.getElementById('peer-session-input');
+      const sid = (input ? input.value : '').trim().toLowerCase();
+      if (!sid || sid.length !== 12) {
+        alert('Enter a valid 12-character session ID');
+        return;
+      }
+      // Close current session
+      if (state.ws) {
+        const old = state.ws;
+        state.ws = null;
+        old.onclose = null;
+        try { old.close(); } catch (e) {}
+      }
+      if (state.timerInterval) {
+        clearInterval(state.timerInterval);
+        state.timerInterval = null;
+      }
+      // Switch to peer mode
+      state.sessionId = sid;
+      state.isPeerMode = true;
+      state.cryptoKey = await deriveAESKey(sid);
+      connectAsPeer(sid);
     }
 
     function flattenTreeList(tree, parentId = null) {
