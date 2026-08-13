@@ -32,6 +32,29 @@ const CORS_HEADERS: Record<string, string> = {
 };
 
 const ipRequests = new Map<string, { count: number; resetAt: number }>();
+const nearbySessions = new Map<string, Array<{ sessionId: string; updatedAt: number }>>();
+
+function registerNearbySession(ip: string, sessionId: string) {
+  const now = Date.now();
+  let list = nearbySessions.get(ip) || [];
+  list = list.filter(item => now - item.updatedAt < 240 * 1000 && item.sessionId !== sessionId);
+  list.unshift({ sessionId, updatedAt: now });
+  nearbySessions.set(ip, list);
+}
+
+function getNearbySessions(ip: string, currentSessionId?: string): Array<{ session_id: string; age_seconds: number }> {
+  const now = Date.now();
+  let list = nearbySessions.get(ip) || [];
+  list = list.filter(item => now - item.updatedAt < 240 * 1000);
+  nearbySessions.set(ip, list);
+
+  return list
+    .filter(item => item.sessionId !== currentSessionId)
+    .map(item => ({
+      session_id: item.sessionId,
+      age_seconds: Math.floor((now - item.updatedAt) / 1000),
+    }));
+}
 
 function checkRateLimit(ip: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
@@ -133,6 +156,7 @@ export default {
       }
 
       const sessionId = generateSessionId();
+      registerNearbySession(ip, sessionId);
       const doId = env.SESSIONS.idFromName(sessionId);
       const stub = env.SESSIONS.get(doId);
 
@@ -145,6 +169,20 @@ export default {
       return corsResponse(body, {
         status: res.status,
         headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // ── GET /nearby ───────────────────────────────────────────────────
+    if (path === "/nearby" && request.method === "GET") {
+      const current = url.searchParams.get("current") || undefined;
+      const heartbeat = url.searchParams.get("ping");
+      if (heartbeat && heartbeat.length === 12) {
+        registerNearbySession(ip, heartbeat);
+      }
+      const list = getNearbySessions(ip, current);
+      return corsResponse(JSON.stringify({ devices: list }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
       });
     }
 

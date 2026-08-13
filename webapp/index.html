@@ -894,8 +894,19 @@
             <span>EXPIRES: <span id="timer-sec" class="mono-accent">240s</span></span>
             <button id="btn-refresh-waiting" onclick="createSession(true)" class="btn-text">[ REFRESH SESSION ]</button>
           </div>
+          <!-- Nearby Devices Discovery -->
+          <div id="nearby-section" style="width: 100%; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div style="font-size: 10px; color: var(--text-3); letter-spacing: 1px;">NEARBY DEVICES ON NETWORK</div>
+              <button onclick="fetchNearbyDevices()" style="background: transparent; border: none; color: var(--text-2); font-family: var(--mono); font-size: 10px; cursor: pointer;">[ REFRESH ]</button>
+            </div>
+            <div id="nearby-list" style="display: flex; flex-direction: column; gap: 6px;">
+              <div style="font-size: 11px; color: var(--text-3); text-align: center; padding: 6px;">Searching for devices on same network...</div>
+            </div>
+          </div>
+
           <div style="width: 100%; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 4px;">
-            <div style="font-size: 10px; color: var(--text-3); letter-spacing: 1px; margin-bottom: 10px; text-align: center;">PC-TO-PC TRANSFER</div>
+            <div style="font-size: 10px; color: var(--text-3); letter-spacing: 1px; margin-bottom: 10px; text-align: center;">PC-TO-PC MANUAL JOIN</div>
             <div style="display: flex; gap: 8px; width: 100%;">
               <input id="peer-session-input" type="text" maxlength="12" placeholder="ENTER SESSION ID" spellcheck="false" autocomplete="off" style="flex: 1; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 0; padding: 10px 12px; font-family: var(--mono); font-size: 12px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; outline: none; transition: border-color 0.15s;" onfocus="this.style.borderColor='#FFFFFF'" onblur="this.style.borderColor=''" onkeydown="if(event.key==='Enter')joinPeerSession()" />
               <button onclick="joinPeerSession()" style="background: #FFFFFF; color: #000000; border: 1px solid var(--border); border-radius: 0; padding: 10px 16px; font-family: var(--mono); font-size: 11px; font-weight: 800; cursor: pointer; letter-spacing: 0.5px; white-space: nowrap;">[ JOIN ]</button>
@@ -1156,6 +1167,8 @@
       if (phoneEl) phoneEl.style.display = 'none';
       createSession();
       setupDropzone();
+      fetchNearbyDevices();
+      setInterval(fetchNearbyDevices, 4000);
     }
 
     async function initPeerMode(sessionId) {
@@ -1270,6 +1283,35 @@
       state.isPeerMode = true;
       state.cryptoKey = await deriveAESKey(sid);
       connectAsPeer(sid);
+    }
+
+    async function fetchNearbyDevices() {
+      const container = document.getElementById('nearby-list');
+      if (!container || state.phase !== 'waiting') return;
+      try {
+        const currentSid = state.sessionId || '';
+        const res = await fetch(`${HTTP_URL}/nearby?current=${currentSid}&ping=${currentSid}`);
+        const data = await res.json();
+        const devices = data.devices || [];
+        if (devices.length === 0) {
+          container.innerHTML = `<div style="font-size: 11px; color: var(--text-3); text-align: center; padding: 6px;">No other devices found on this network.</div>`;
+          return;
+        }
+        container.innerHTML = devices.map(d => `
+          <button onclick="quickJoinPeer('${d.session_id}')" style="width: 100%; background: var(--surface); color: #FFFFFF; border: 1px solid var(--border); padding: 8px 12px; font-family: var(--mono); font-size: 11px; font-weight: 800; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 0; transition: border-color 0.15s;" onmouseover="this.style.borderColor='#FFFFFF'" onmouseout="this.style.borderColor=''">
+            <span>💻 SESSION: ${d.session_id} (${d.age_seconds}s ago)</span>
+            <span style="color: #22c55e; font-size: 10px;">[ CONNECT ]</span>
+          </button>
+        `).join('');
+      } catch (err) {
+        console.warn('Error fetching nearby devices:', err);
+      }
+    }
+
+    function quickJoinPeer(sessionId) {
+      const input = document.getElementById('peer-session-input');
+      if (input) input.value = sessionId;
+      joinPeerSession();
     }
 
     function flattenTreeList(tree, parentId = null) {
