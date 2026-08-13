@@ -117,25 +117,25 @@ export class Session extends DurableObject {
       });
     }
 
-    // ── Nearby Discovery handler inside Durable Object ────────────────
+    // ── Nearby / Active Waiting Sessions Discovery handler inside DO ──
     if (path === "/nearby") {
       const current = url.searchParams.get("current") || "";
       const previous = url.searchParams.get("previous") || "";
+      const unregister = url.searchParams.get("unregister") || "";
       const ping = url.searchParams.get("ping") || "";
       const excludesStr = url.searchParams.get("excludes") || "";
       const excludes = excludesStr.split(",").map(s => s.trim()).filter(Boolean);
+      const clientIp = url.searchParams.get("ip") || "";
 
-      let nearbyMap = (await this.ctx.storage.get<Record<string, number>>("nearby_map")) || {};
+      let nearbyMap = (await this.ctx.storage.get<Record<string, { ts: number; ip?: string }>>("nearby_map")) || {};
       const now = Date.now();
 
-      // Clean up old entries older than 240 seconds
-      for (const [id, ts] of Object.entries(nearbyMap)) {
-        if (now - ts > 240 * 1000) {
+      // Clean up old entries older than 60 seconds (active waiting pool)
+      for (const [id, val] of Object.entries(nearbyMap)) {
+        if (!val || typeof val.ts !== 'number' || (now - val.ts > 60 * 1000)) {
           delete nearbyMap[id];
         }
       }
-
-      const unregister = url.searchParams.get("unregister") || "";
 
       // Unregister previous or specified session ID if provided
       if (previous && previous.length === 12) {
@@ -147,17 +147,18 @@ export class Session extends DurableObject {
 
       // Register pinged session ID
       if (ping && ping.length === 12 && ping !== "null" && ping !== "undefined") {
-        nearbyMap[ping] = now;
+        nearbyMap[ping] = { ts: now, ip: clientIp };
       }
 
       await this.ctx.storage.put("nearby_map", nearbyMap);
 
-      const excludeSet = new Set([current, previous, ...excludes].filter(Boolean));
+      const excludeSet = new Set([current, previous, unregister, ...excludes].filter(Boolean));
       const devices = Object.entries(nearbyMap)
         .filter(([id]) => !excludeSet.has(id))
-        .map(([id, ts]) => ({
+        .map(([id, val]) => ({
           session_id: id,
-          age_seconds: Math.floor((now - ts) / 1000),
+          age_seconds: Math.floor((now - val.ts) / 1000),
+          is_same_ip: Boolean(clientIp && val.ip && val.ip === clientIp)
         }));
 
       return Response.json({ devices });

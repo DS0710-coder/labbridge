@@ -1329,7 +1329,7 @@
         }
         container.innerHTML = devices.map(d => `
           <button onclick="quickJoinPeer('${d.session_id}')" style="width: 100%; background: var(--surface); color: #FFFFFF; border: 1px solid var(--border); padding: 8px 12px; font-family: var(--mono); font-size: 11px; font-weight: 800; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-radius: 0; transition: border-color 0.15s;" onmouseover="this.style.borderColor='#FFFFFF'" onmouseout="this.style.borderColor=''">
-            <span>💻 SESSION: ${d.session_id} (${d.age_seconds}s ago)</span>
+            <span>${d.is_same_ip ? '💻' : '🌐'} SESSION: ${d.session_id} <span style="font-size: 9px; color: ${d.is_same_ip ? '#22c55e' : 'var(--text-3)'};">(${d.is_same_ip ? 'SAME WI-FI' : 'ONLINE'})</span></span>
             <span style="color: #22c55e; font-size: 10px;">[ CONNECT ]</span>
           </button>
         `).join('');

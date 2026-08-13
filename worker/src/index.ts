@@ -168,11 +168,11 @@ export default {
       const previous = url.searchParams.get("previous") || "";
       const sessionId = generateSessionId();
       
-      // Register session in the IP's nearby DO and purge previous if any
+      // Register session in global waiting DO and purge previous if any
       try {
-        const nearbyDoId = env.SESSIONS.idFromName(`nearby:${ip}`);
-        const nearbyStub = env.SESSIONS.get(nearbyDoId);
-        await nearbyStub.fetch(`https://fake/nearby?ping=${sessionId}&previous=${previous}`);
+        const globalDoId = env.SESSIONS.idFromName("global_waiting_sessions");
+        const globalStub = env.SESSIONS.get(globalDoId);
+        await globalStub.fetch(`https://fake/nearby?ping=${sessionId}&previous=${previous}&ip=${ip}`);
       } catch (e) {}
 
       const doId = env.SESSIONS.idFromName(sessionId);
@@ -192,9 +192,11 @@ export default {
 
     // ── GET /nearby ───────────────────────────────────────────────────
     if (path === "/nearby" && request.method === "GET") {
-      const nearbyDoId = env.SESSIONS.idFromName(`nearby:${ip}`);
-      const nearbyStub = env.SESSIONS.get(nearbyDoId);
-      const res = await nearbyStub.fetch(request.url);
+      const globalDoId = env.SESSIONS.idFromName("global_waiting_sessions");
+      const globalStub = env.SESSIONS.get(globalDoId);
+      const reqUrl = new URL(request.url);
+      reqUrl.searchParams.set("ip", ip);
+      const res = await globalStub.fetch(reqUrl.toString());
       const body = await res.text();
       return corsResponse(body, {
         status: res.status,
