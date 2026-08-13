@@ -166,7 +166,14 @@ export default {
       }
 
       const sessionId = generateSessionId();
-      registerNearbySession(ip, sessionId);
+      
+      // Register session in the IP's nearby DO
+      try {
+        const nearbyDoId = env.SESSIONS.idFromName(`nearby:${ip}`);
+        const nearbyStub = env.SESSIONS.get(nearbyDoId);
+        nearbyStub.fetch(`https://fake/nearby?ping=${sessionId}`);
+      } catch (e) {}
+
       const doId = env.SESSIONS.idFromName(sessionId);
       const stub = env.SESSIONS.get(doId);
 
@@ -184,23 +191,12 @@ export default {
 
     // ── GET /nearby ───────────────────────────────────────────────────
     if (path === "/nearby" && request.method === "GET") {
-      const current = url.searchParams.get("current") || "";
-      const previous = url.searchParams.get("previous") || "";
-      const excludes = (url.searchParams.get("excludes") || "").split(",").map(s => s.trim()).filter(Boolean);
-      
-      if (previous && previous.length === 12) {
-        unregisterNearbySession(ip, previous);
-      }
-      
-      const heartbeat = url.searchParams.get("ping");
-      if (heartbeat && heartbeat.length === 12) {
-        registerNearbySession(ip, heartbeat);
-      }
-
-      const allExcludes = [current, previous, ...excludes];
-      const list = getNearbySessions(ip, allExcludes);
-      return corsResponse(JSON.stringify({ devices: list }), {
-        status: 200,
+      const nearbyDoId = env.SESSIONS.idFromName(`nearby:${ip}`);
+      const nearbyStub = env.SESSIONS.get(nearbyDoId);
+      const res = await nearbyStub.fetch(request.url);
+      const body = await res.text();
+      return corsResponse(body, {
+        status: res.status,
         headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
       });
     }

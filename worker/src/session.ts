@@ -117,6 +117,47 @@ export class Session extends DurableObject {
       });
     }
 
+    // ── Nearby Discovery handler inside Durable Object ────────────────
+    if (path === "/nearby") {
+      const current = url.searchParams.get("current") || "";
+      const previous = url.searchParams.get("previous") || "";
+      const ping = url.searchParams.get("ping") || "";
+      const excludesStr = url.searchParams.get("excludes") || "";
+      const excludes = excludesStr.split(",").map(s => s.trim()).filter(Boolean);
+
+      let nearbyMap = (await this.ctx.storage.get<Record<string, number>>("nearby_map")) || {};
+      const now = Date.now();
+
+      // Clean up old entries older than 240 seconds
+      for (const [id, ts] of Object.entries(nearbyMap)) {
+        if (now - ts > 240 * 1000) {
+          delete nearbyMap[id];
+        }
+      }
+
+      // Unregister previous session ID if provided
+      if (previous && previous.length === 12) {
+        delete nearbyMap[previous];
+      }
+
+      // Register pinged session ID
+      if (ping && ping.length === 12 && ping !== "null" && ping !== "undefined") {
+        nearbyMap[ping] = now;
+      }
+
+      await this.ctx.storage.put("nearby_map", nearbyMap);
+
+      const excludeSet = new Set([current, previous, ...excludes].filter(Boolean));
+      const devices = Object.entries(nearbyMap)
+        .filter(([id]) => !excludeSet.has(id))
+        .map(([id, ts]) => ({
+          session_id: id,
+          age_seconds: Math.floor((now - ts) / 1000),
+        }));
+
+      return Response.json({ devices });
+    }
+
     // ── WebSocket upgrade for /pc or /phone ──────────────────────────
     // ── GET /poll  (iPhone Shortcut polls for pending file) ───────────────
     if (path === "/poll") {
