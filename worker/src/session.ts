@@ -328,15 +328,15 @@ export class Session extends DurableObject {
     }
 
     if (role === "peer") {
-      // Peer is a second PC — send connection request to the host PC for approval
+      // Peer is a second PC — notify host PC and auto-pair both PCs instantly
       for (const ws of existing) {
         const att = ws.deserializeAttachment() as SocketAttachment | null;
         if (att?.role === "pc") {
-          ws.send(JSON.stringify({ type: "connection_request", device: "PC (Peer)" }));
+          ws.send(JSON.stringify({ type: "paired", device: "PC (Peer)" }));
         }
       }
-      // Tell the peer to wait for approval
-      server.send(JSON.stringify({ type: "waiting", message: "Waiting for host to accept..." }));
+      // Tell the peer it is paired with the host PC
+      server.send(JSON.stringify({ type: "paired", device: "PC (Host)" }));
     }
 
     // If both sides are now paired, reset/extend the session alarm to 240 seconds (4 minutes)
