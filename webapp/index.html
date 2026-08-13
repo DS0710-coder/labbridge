@@ -894,6 +894,10 @@
             <span>EXPIRES: <span id="timer-sec" class="mono-accent">240s</span></span>
             <button id="btn-refresh-waiting" onclick="createSession(true)" class="btn-text">[ REFRESH SESSION ]</button>
           </div>
+          <div style="width: 100%; border-top: 1px solid var(--border); padding-top: 16px; margin-top: 4px;">
+            <div style="font-size: 10px; color: var(--text-3); letter-spacing: 1px; margin-bottom: 10px; text-align: center;">PC-TO-PC TRANSFER</div>
+            <button id="btn-share-pc-link" onclick="copyPcLink()" style="width: 100%; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 0; padding: 12px; font-family: var(--mono); font-size: 11px; font-weight: 800; cursor: pointer; letter-spacing: 0.5px; transition: border-color 0.15s, background 0.15s;">[ SHARE PC LINK ]</button>
+          </div>
           <div id="rate-limit-error" style="display:none; color: #EF4444; border: 1px solid #EF4444; background: rgba(239, 68, 68, 0.12); padding: 12px 16px; font-family: var(--mono); font-size: 12px; font-weight: 800; text-align: center; margin-top: 14px; width: 100%;"></div>
         </div>
       </div>
@@ -1108,16 +1112,22 @@
       currentTransfer: null,
       sendQueue: [],
       receivedFiles: [],
-      photoIndices: []
+      photoIndices: [],
+      isPeerMode: false
     };
 
     const PHONE_MODE = new URLSearchParams(window.location.search).get('mode') === 'phone'
       || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
       || (navigator.maxTouchPoints > 0 && window.innerWidth <= 768);
 
+    const PEER_SESSION_ID = new URLSearchParams(window.location.search).get('s');
+
     if (PHONE_MODE) {
       document.title = 'CueFlex — Phone';
       window.addEventListener('DOMContentLoaded', initPhoneMode);
+    } else if (PEER_SESSION_ID && PEER_SESSION_ID.length === 12) {
+      document.title = 'CueFlex — Peer Transfer';
+      window.addEventListener('DOMContentLoaded', () => initPeerMode(PEER_SESSION_ID));
     } else {
       window.addEventListener('DOMContentLoaded', initPCMode);
     }
@@ -1129,6 +1139,95 @@
       if (phoneEl) phoneEl.style.display = 'none';
       createSession();
       setupDropzone();
+    }
+
+    async function initPeerMode(sessionId) {
+      const pcEl = document.getElementById('pc-mode-container');
+      const phoneEl = document.getElementById('phone-mode-container');
+      if (pcEl) pcEl.style.display = 'flex';
+      if (phoneEl) phoneEl.style.display = 'none';
+      state.sessionId = sessionId;
+      state.isPeerMode = true;
+      setStatus(false, 'CONNECTING TO HOST PC...');
+      setPhase('waiting');
+      // Skip createSession — go straight to key derivation and WS connect
+      state.cryptoKey = await deriveAESKey(sessionId);
+      connectAsPeer(sessionId);
+      setupDropzone();
+    }
+
+    function connectAsPeer(sessionId) {
+      if (state.ws) {
+        const old = state.ws;
+        old.onclose = null;
+        try { old.close(); } catch (e) {}
+      }
+      const ws = new WebSocket(`${WORKER_URL}/session/${sessionId}/peer`);
+      ws.binaryType = 'arraybuffer';
+      state.ws = ws;
+
+      ws.onopen = () => {
+        setStatus(false, 'WAITING FOR HOST PC...');
+      };
+
+      let isProcessingBinary = false;
+      const binaryQueue = [];
+
+      async function processBinaryQueue() {
+        if (isProcessingBinary) return;
+        isProcessingBinary = true;
+        try {
+          while (binaryQueue.length > 0) {
+            let buffer = binaryQueue.shift();
+            if (buffer instanceof Blob) buffer = await buffer.arrayBuffer();
+            await handleIncomingBinaryChunk(buffer);
+          }
+        } finally {
+          isProcessingBinary = false;
+        }
+      }
+
+      ws.onmessage = (event) => {
+        if (typeof event.data === 'string') {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'transfer_init' && (!msg.total_chunks || msg.total_chunks <= 0)) {
+            console.error('Invalid transfer_init: total_chunks must be > 0');
+            state.ws.send(JSON.stringify({ type: 'error', message: 'Invalid transfer size' }));
+            return;
+          }
+          handleTextMessage(msg);
+        } else {
+          binaryQueue.push(event.data);
+          processBinaryQueue();
+        }
+      };
+
+      ws.onclose = () => {
+        if (state.isPeerMode) {
+          setStatus(false, 'DISCONNECTED FROM HOST');
+          setPhase('waiting');
+        }
+      };
+    }
+
+    function copyPcLink() {
+      if (!state.sessionId) return;
+      const link = `${HTTP_URL}/join?s=${state.sessionId}`;
+      navigator.clipboard.writeText(link).then(() => {
+        const btn = document.getElementById('btn-share-pc-link');
+        if (btn) {
+          btn.innerText = '[ COPIED! ]';
+          btn.style.borderColor = '#22c55e';
+          btn.style.color = '#22c55e';
+          setTimeout(() => {
+            btn.innerText = '[ SHARE PC LINK ]';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+          }, 2000);
+        }
+      }).catch(() => {
+        prompt('Copy this link:', link);
+      });
     }
 
     function flattenTreeList(tree, parentId = null) {
@@ -1330,11 +1429,24 @@
       if (state.phase === 'transferring') {
         alert('Peer disconnected during transfer.');
       }
-      if (state.phase === 'waiting') {
+      if (state.isPeerMode) {
+        // Peer mode: try to reconnect to the host
+        setStatus(false, 'DISCONNECTED FROM HOST');
+        document.getElementById('btn-disconnect').style.display = 'none';
+        const oldWs = state.ws;
+        state.ws = null;
+        if (oldWs) {
+          oldWs.onclose = null;
+          try { oldWs.close(); } catch (e) {}
+        }
+        setPhase('waiting');
+        // Try to reconnect after 2 seconds
+        setTimeout(() => connectAsPeer(state.sessionId), 2000);
+      } else if (state.phase === 'waiting') {
         // Reconnect silently if dropped while waiting (e.g. idle timeout)
         setTimeout(connectWebSocket, 1000);
       } else {
-        setStatus(false, 'DISCONNECTED BY PHONE');
+        setStatus(false, 'DISCONNECTED BY PEER');
         document.getElementById('btn-disconnect').style.display = 'none';
         clearInterval(state.timerInterval);
         const oldWs = state.ws;

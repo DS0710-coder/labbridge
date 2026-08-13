@@ -6,7 +6,7 @@ interface Env {
 }
 
 interface SocketAttachment {
-  role: "pc" | "phone";
+  role: "pc" | "phone" | "peer";
 }
 
 interface PendingFile {
@@ -217,13 +217,13 @@ export class Session extends DurableObject {
       }
     }
 
-    // ── WebSocket upgrade for /pc or /phone ──────────────────────────
-    const roleMatch = path.match(/\/(pc|phone)$/);
+    // ── WebSocket upgrade for /pc, /phone, or /peer ─────────────────
+    const roleMatch = path.match(/\/(pc|phone|peer)$/);
     if (!roleMatch) {
       return new Response("Not found", { status: 404 });
     }
 
-    const role = roleMatch[1] as "pc" | "phone";
+    const role = roleMatch[1] as "pc" | "phone" | "peer";
 
     // Require Upgrade header
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
@@ -249,14 +249,19 @@ export class Session extends DurableObject {
 
     // Send initial messages based on role
     if (role === "pc") {
-      // Check if phone is already connected
-      const phoneConnected = existing.some((ws) => {
+      // Check if phone or peer is already connected
+      const peerConnected = existing.some((ws) => {
         const att = ws.deserializeAttachment() as SocketAttachment | null;
-        return att?.role === "phone";
+        return att?.role === "phone" || att?.role === "peer";
       });
 
-      if (phoneConnected) {
-        server.send(JSON.stringify({ type: "paired", device: "phone" }));
+      if (peerConnected) {
+        const peerAtt = existing.find((ws) => {
+          const att = ws.deserializeAttachment() as SocketAttachment | null;
+          return att?.role === "phone" || att?.role === "peer";
+        });
+        const peerRole = peerAtt ? (peerAtt.deserializeAttachment() as SocketAttachment)?.role : "phone";
+        server.send(JSON.stringify({ type: "paired", device: peerRole === "peer" ? "PC (Peer)" : "phone" }));
       } else {
         server.send(JSON.stringify({ type: "waiting" }));
       }
@@ -275,15 +280,30 @@ export class Session extends DurableObject {
       }
     }
 
-    // If both PC and phone are now paired, reset/extend the session alarm to 240 seconds (4 minutes)
+    if (role === "peer") {
+      // Peer is a second PC — notify the host PC that a peer has paired
+      for (const ws of existing) {
+        const att = ws.deserializeAttachment() as SocketAttachment | null;
+        if (att?.role === "pc") {
+          ws.send(JSON.stringify({ type: "paired", device: "PC (Peer)" }));
+        }
+      }
+      // Tell the peer it's paired with the host PC
+      server.send(JSON.stringify({ type: "paired", device: "PC (Host)" }));
+    }
+
+    // If both sides are now paired, reset/extend the session alarm to 240 seconds (4 minutes)
     const hasPc =
       role === "pc" ||
       existing.some((ws) => (ws.deserializeAttachment() as SocketAttachment | null)?.role === "pc");
-    const hasPhone =
-      role === "phone" ||
-      existing.some((ws) => (ws.deserializeAttachment() as SocketAttachment | null)?.role === "phone");
+    const hasPeer =
+      role === "phone" || role === "peer" ||
+      existing.some((ws) => {
+        const att = ws.deserializeAttachment() as SocketAttachment | null;
+        return att?.role === "phone" || att?.role === "peer";
+      });
 
-    if (hasPc && hasPhone) {
+    if (hasPc && hasPeer) {
       await this.extendAlarm(4 * 60 * 1000);
     }
 

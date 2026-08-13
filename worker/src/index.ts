@@ -117,6 +117,10 @@ export default {
         const bin = Uint8Array.from(atob(ICON_512_BASE64), c => c.charCodeAt(0));
         return new Response(bin, { status: 200, headers: { "Content-Type": "image/png", "Access-Control-Allow-Origin": "*" } });
       }
+      if (path === "/join" || path === "/join.html") {
+        const noCache = { "Cache-Control": "no-cache, no-store, must-revalidate" };
+        return corsResponse(INDEX_HTML, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8", ...noCache } });
+      }
     }
 
     // ── GET /session/new ──────────────────────────────────────────────
@@ -144,8 +148,8 @@ export default {
       });
     }
 
-    // ── GET /session/:id/pc  or  /session/:id/phone ──────────────────
-    const wsMatch = path.match(/^\/session\/([a-zA-Z0-9]{12})\/(pc|phone)$/);
+    // ── GET /session/:id/pc  or  /session/:id/phone  or  /session/:id/peer ──
+    const wsMatch = path.match(/^\/session\/([a-zA-Z0-9]{12})\/(pc|phone|peer)$/);
     if (wsMatch && request.method === "GET") {
       if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket") {
         const [, , role] = wsMatch;
