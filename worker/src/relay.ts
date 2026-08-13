@@ -45,6 +45,9 @@ const ALLOWED_MESSAGE_TYPES = new Set([
   "error",
   "shortcut_ack",
   "text_message",
+  "connection_request",
+  "connection_accept",
+  "connection_decline",
 ]);
 
 /** Minimal validation: the parsed JSON must be a non-null object with a valid `type` string. */
